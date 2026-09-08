@@ -1,15 +1,17 @@
-# Backend/Tools/openweather.py
 import os
 import logging
+from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv()
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+load_dotenv()  # Fallback to current working directory if present
 
 logger = logging.getLogger(__name__)
 
 # ========== SECURE ENV LOADING (No Hardcoded Keys!) ==========
-API_KEY = os.getenv("WEATHER_KEY")
+API_KEY = os.getenv("WEATHER_KEY", "").strip().removesuffix("git")
 BASE_URL = os.getenv("WEATHER_URL")
 
 if not API_KEY:

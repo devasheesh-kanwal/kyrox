@@ -7,9 +7,12 @@ This file handles ONLY API communication — no risk calculations, no LLM logic.
 """
 import os
 import logging
+from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 load_dotenv()
 
 logger = logging.getLogger(__name__)
