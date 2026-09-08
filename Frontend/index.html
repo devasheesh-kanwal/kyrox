@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <title>ORCA • Marine Bridge Console & Tactical Chart (मरीन ब्रिज कंसोल)</title>
   <meta name="description" content="Commercial-grade marine navigational console, bathymetric cartography, INCOIS potential fishing zones, and coastal safety telemetry for fishermen.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
   
   <style>
     /* ==========================================================================
@@ -57,8 +60,8 @@
       --pfz-border: #8C9B5E;
       --pfz-bright: #A9BB73;
 
-      --font-nav: "Rockwell", "Georgia", "Iowan Old Style", "Times New Roman", serif;
-      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-nav: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-ui: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-telemetry: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
 
       --radius-subtle: 3px;
@@ -108,6 +111,10 @@
       overflow-x: hidden;
       display: flex;
       flex-direction: column;
+    }
+
+    body, button, input, select, textarea, .station-callsign, .coastal-label, .bulletin-title, .brief-title, .drawer-zone-title, .card-btn, .classification-tag {
+      font-family: var(--font-ui) !important;
     }
 
     /* Master Bridge Frame */
@@ -884,6 +891,69 @@
       font-size: 12px;
     }
 
+    .tactical-voice-btn {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      color: var(--brass-bright);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+
+    .tactical-voice-btn:hover {
+      background-color: var(--bg-console-raised);
+      border-color: var(--brass-base);
+      color: var(--text-chart);
+    }
+
+    .tactical-voice-btn:active {
+      transform: scale(0.95);
+    }
+
+    .tactical-voice-btn.listening {
+      background-color: var(--danger-fill);
+      border-color: var(--danger-border);
+      color: var(--danger-bright);
+      animation: voiceTransmitGlow 1.4s infinite alternate;
+    }
+
+    @keyframes voiceTransmitGlow {
+      from {
+        box-shadow: 0 0 4px var(--danger-border), inset 0 0 6px var(--danger-fill);
+      }
+      to {
+        box-shadow: 0 0 14px var(--danger-bright), inset 0 0 12px var(--danger-fill);
+      }
+    }
+
+    .voice-pulse-ring {
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border: 1.5px solid var(--danger-bright);
+      border-radius: var(--radius-subtle);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .tactical-voice-btn.listening .voice-pulse-ring {
+      animation: micRingPulse 1.2s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+    }
+
+    @keyframes micRingPulse {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+
     .tactical-submit-btn {
       background-color: var(--brass-base);
       border: 1px solid var(--brass-bright);
@@ -953,6 +1023,104 @@
       align-items: center;
       gap: 6px;
       backdrop-filter: blur(4px);
+    }
+
+    /* Nautical Thermal Heatmap Layer */
+    .marine-heatmap-layer {
+      opacity: 0.85;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .marine-heatmap-layer.hidden {
+      opacity: 0;
+    }
+
+    body.deck-sunlight .marine-heatmap-layer {
+      opacity: 0.65;
+      mix-blend-mode: normal;
+    }
+
+    /* HUD Heatmap Toggle Button */
+    .hud-heatmap-btn {
+      background-color: rgba(24, 20, 17, 0.94);
+      border: 1px solid var(--border-brass);
+      border-radius: var(--radius-subtle);
+      padding: 4px 8px;
+      font-family: var(--font-telemetry);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--brass-bright);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .hud-heatmap-btn:hover {
+      background-color: var(--bg-console-raised);
+      border-color: var(--brass-bright);
+    }
+
+    .hud-heatmap-btn.off {
+      border-color: var(--border-bezel);
+      color: var(--text-dim);
+      opacity: 0.75;
+    }
+
+    .hud-heatmap-btn .heatmap-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #FFD152;
+      box-shadow: 0 0 6px #FFD152;
+      transition: background-color 0.2s, box-shadow 0.2s;
+    }
+
+    .hud-heatmap-btn.off .heatmap-live-dot {
+      background-color: var(--text-dim);
+      box-shadow: none;
+    }
+
+    /* Legend Heatmap Swatch & Gradient Ramp */
+    .swatch-heatmap-fish {
+      background: linear-gradient(135deg, #FFD152 0%, #27AE60 50%, #16A085 100%);
+      border-color: #FFD152;
+    }
+
+    .heatmap-legend-scale {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 3px;
+      padding-top: 5px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      transition: opacity 0.25s ease;
+    }
+
+    .heatmap-legend-scale .scale-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-telemetry);
+      font-size: 8.5px;
+      color: var(--text-dim);
+    }
+
+    .heatmap-legend-scale .scale-gradient-bar {
+      height: 5px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, 
+        rgba(22, 160, 133, 0.8) 0%, 
+        rgba(39, 174, 96, 0.8) 35%, 
+        rgba(243, 156, 18, 0.9) 70%, 
+        rgba(255, 209, 82, 1) 100%
+      );
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .scale-bar-segment {
@@ -1281,11 +1449,11 @@
     }
 
     body.force-phone-view .bridge-frame {
-      max-width: 440px;
-      margin: 0 auto;
-      border-left: 2px solid var(--border-bezel);
-      border-right: 2px solid var(--border-bezel);
-      box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
+      max-width: 100%;
+      margin: 0;
+      border-left: none;
+      border-right: none;
+      box-shadow: none;
     }
 
     body.force-phone-view .bridge-cockpit {
@@ -1552,6 +1720,7 @@
           <div class="lang-bezel-pill" role="group" aria-label="Select Language">
             <button id="btnLangHI" class="lang-opt-btn selected" type="button">HI</button>
             <button id="btnLangEN" class="lang-opt-btn" type="button">EN</button>
+            <button id="btnLangTA" class="lang-opt-btn" type="button">TA</button>
           </div>
         </div>
 
@@ -1607,6 +1776,11 @@
               <div class="scale-bar-segment"></div>
               <span>10 NM (18.5 km)</span>
             </div>
+            <!-- Heatmap Thermal Layer Toggle -->
+            <button id="btnToggleHeatmap" class="hud-heatmap-btn" type="button" aria-pressed="true">
+              <span class="heatmap-live-dot"></span>
+              <span id="txtHeatmapToggle">HEATMAP: ON</span>
+            </button>
           </div>
 
           <!-- Chart Legend Panel -->
@@ -1632,6 +1806,17 @@
                 <span class="legend-swatch swatch-vessel"></span>
                 <span id="legVessel">नाव की स्थिति (GPS)</span>
               </div>
+              <div class="legend-row">
+                <span class="legend-swatch swatch-heatmap-fish"></span>
+                <span id="legHeatmap">मत्स्य सघनता / SST हीटमैप</span>
+              </div>
+              <div class="heatmap-legend-scale" id="heatmapLegendScale">
+                <div class="scale-labels">
+                  <span id="heatScaleLow">27.2°C (कम)</span>
+                  <span id="heatScaleHigh">28.8°C (उत्तम PFZ)</span>
+                </div>
+                <div class="scale-gradient-bar"></div>
+              </div>
             </div>
           </div>
 
@@ -1641,10 +1826,79 @@
               <pattern id="marineHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
                 <line x1="0" y1="0" x2="0" y2="8" stroke="#3A2C21" stroke-width="1.2" opacity="0.4" />
               </pattern>
+              
+              <!-- High-Resolution Marine Thermal Heatmap Gradients -->
+              <!-- PFZ Alpha: Fish Density & Sea Surface Temperature Upwelling (Optimal 28.2°C - 28.8°C front) -->
+              <radialGradient id="heatPfzThermal" cx="35%" cy="45%" r="65%">
+                <stop offset="0%" stop-color="#FFD152" stop-opacity="0.65" />
+                <stop offset="25%" stop-color="#F39C12" stop-opacity="0.50" />
+                <stop offset="50%" stop-color="#27AE60" stop-opacity="0.35" />
+                <stop offset="75%" stop-color="#16A085" stop-opacity="0.18" />
+                <stop offset="100%" stop-color="#0E4B43" stop-opacity="0" />
+              </radialGradient>
+
+              <!-- Secondary Pelagic Feeding Ground (Betul-Karwar Shelf) -->
+              <radialGradient id="heatSecondaryThermal" cx="45%" cy="45%" r="65%">
+                <stop offset="0%" stop-color="#F1C40F" stop-opacity="0.48" />
+                <stop offset="35%" stop-color="#2ECC71" stop-opacity="0.32" />
+                <stop offset="70%" stop-color="#1ABC9C" stop-opacity="0.16" />
+                <stop offset="100%" stop-color="#0E4B43" stop-opacity="0" />
+              </radialGradient>
+
+              <!-- Squall & Cyclonic Wind Energy Core (Doppler Thermal Radar 45 kt) -->
+              <radialGradient id="heatStormThermal" cx="50%" cy="50%" r="60%">
+                <stop offset="0%" stop-color="#E74C3C" stop-opacity="0.68" />
+                <stop offset="30%" stop-color="#D35400" stop-opacity="0.48" />
+                <stop offset="60%" stop-color="#E67E22" stop-opacity="0.28" />
+                <stop offset="85%" stop-color="#F39C12" stop-opacity="0.12" />
+                <stop offset="100%" stop-color="#784212" stop-opacity="0" />
+              </radialGradient>
+
+              <!-- Continental Shelf Upwelling Gradient (50m shelf break current) -->
+              <linearGradient id="heatShelfCurrent" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1ABC9C" stop-opacity="0" />
+                <stop offset="35%" stop-color="#2ECC71" stop-opacity="0.22" />
+                <stop offset="60%" stop-color="#F1C40F" stop-opacity="0.26" />
+                <stop offset="80%" stop-color="#16A085" stop-opacity="0.14" />
+                <stop offset="100%" stop-color="#1ABC9C" stop-opacity="0" />
+              </linearGradient>
+
+              <!-- Soft Blend Heat Filter for smooth continuous organic thermal dispersion -->
+              <filter id="heatBlurFilter" x="-25%" y="-25%" width="150%" height="150%">
+                <feGaussianBlur stdDeviation="22" result="blur" />
+              </filter>
             </defs>
 
             <!-- Base Deep Coastal Waters -->
             <rect width="1000" height="700" class="sea-water-base" id="baseWaterRect" />
+
+            <!-- DYNAMIC MARINE THERMAL & FISH DENSITY HEATMAP LAYER (Non-blocking, sub-surface) -->
+            <g id="svgMarineHeatmapLayer" class="marine-heatmap-layer" pointer-events="none">
+              <!-- Blurred Thermal Energy & Chlorophyll Density Fields -->
+              <g filter="url(#heatBlurFilter)">
+                <!-- Primary INCOIS PFZ Alpha Biomass Upwelling Core (15°12'N, 73°32'E) -->
+                <ellipse cx="270" cy="460" rx="190" ry="140" fill="url(#heatPfzThermal)" transform="rotate(-15 270 460)" />
+                <!-- Secondary Pelagic Feeding Ground (Betul-Karwar Shelf) -->
+                <ellipse cx="380" cy="330" rx="140" ry="110" fill="url(#heatSecondaryThermal)" transform="rotate(-25 380 330)" />
+                <!-- Upwelling Current Ribbon along 50m Bathymetry -->
+                <path d="M 230 0 C 260 180, 310 390, 420 700" stroke="url(#heatShelfCurrent)" stroke-width="75" fill="none" opacity="0.75" />
+                <!-- Storm Squall Doppler Intensity Core (SE Sector 14°50'N, 73°58'E) -->
+                <ellipse cx="550" cy="525" rx="140" ry="120" fill="url(#heatStormThermal)" transform="rotate(10 550 525)" />
+              </g>
+
+              <!-- Crisp Thermal Front Isobar Lines & Temperature Markers -->
+              <g opacity="0.45">
+                <ellipse cx="270" cy="460" rx="110" ry="80" fill="none" stroke="#FFD152" stroke-width="1" stroke-dasharray="4,4" transform="rotate(-15 270 460)" />
+                <text x="210" y="405" fill="#FFD152" font-family="var(--font-telemetry)" font-size="8.5" font-weight="700">SST 28.5°C (THERMAL FRONT)</text>
+                
+                <ellipse cx="270" cy="460" rx="170" ry="125" fill="none" stroke="#27AE60" stroke-width="0.8" stroke-dasharray="5,5" transform="rotate(-15 270 460)" />
+                <text x="135" y="475" fill="#2ECC71" font-family="var(--font-telemetry)" font-size="8">SST 27.8°C</text>
+
+                <!-- Squall Doppler Radar Isobar -->
+                <ellipse cx="550" cy="525" rx="85" ry="75" fill="none" stroke="#E74C3C" stroke-width="1" stroke-dasharray="4,4" transform="rotate(10 550 525)" />
+                <text x="495" y="475" fill="#E74C3C" font-family="var(--font-telemetry)" font-size="8.5" font-weight="700">DOPPLER 45 KT CORE</text>
+              </g>
+            </g>
 
             <!-- Latitude & Longitude Graticule Grid -->
             <!-- Longitudes -->
@@ -1906,6 +2160,16 @@
                   placeholder="सामरिक प्रश्न दर्ज करें (उदा: क्या आज हवा सुरक्षित है?)" 
                   autocomplete="off"
                 />
+                <!-- Voice Command Button (Google Voice Search Style) -->
+                <button class="tactical-voice-btn" id="btnVoiceCommand" type="button" title="Voice Command / बोलकर पूछें" aria-label="Voice Command">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                  <span class="voice-pulse-ring"></span>
+                </button>
                 <button class="tactical-submit-btn" id="btnSubmitQuery" type="submit">
                   <span>पूछें</span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -1964,7 +2228,7 @@
     let currentLang = localStorage.getItem('orca_marine_lang') || 'hi';
     let currentAlertFilter = 'all';
     let activeZoneId = null;
-    let currentDeviceMode = localStorage.getItem('orca_marine_device_mode') || ((window.innerWidth < 960) ? 'phone' : 'pc');
+    let currentDeviceMode = 'pc';
 
     // Bilingual Maritime Translations
     const I18N = {
@@ -2001,6 +2265,11 @@
         legCaution: "सावधानी क्षेत्र (हवा/लहर)",
         legDanger: "प्रतिबंधित खतरा (रेड अलर्ट)",
         legVessel: "नाव की स्थिति (GPS)",
+        legHeatmap: "मत्स्य सघनता व SST हीटमैप",
+        heatScaleLow: "27.2°C (कम)",
+        heatScaleHigh: "28.8°C (उत्तम PFZ)",
+        heatmapBtnOn: "हीटमैप: चालू",
+        heatmapBtnOff: "हीटमैप: बंद",
         tabAlerts: "⚠️ सुरक्षा अलर्ट बुलेटिन",
         tabChat: "💬 सामरिक परामर्श लॉग",
         registryTitle: "तटीय सुरक्षा सूचनाएं",
@@ -2063,6 +2332,11 @@
         legCaution: "Caution Zone (Wind/Swell)",
         legDanger: "Restricted Danger (Red Alert)",
         legVessel: "Vessel Position (GPS)",
+        legHeatmap: "Fish Density & SST Heatmap",
+        heatScaleLow: "27.2°C (Low)",
+        heatScaleHigh: "28.8°C (Peak PFZ)",
+        heatmapBtnOn: "HEATMAP: ON",
+        heatmapBtnOff: "HEATMAP: OFF",
         tabAlerts: "⚠️ Marine Bulletins",
         tabChat: "💬 Tactical Advisory Log",
         registryTitle: "Coastal Safety Notices",
@@ -2091,6 +2365,73 @@
           { label: "⚓ Return Tide Window", query: "Is it safe to venture out tomorrow morning?" },
           { label: "🆘 Coast Guard Emergency", query: "Emergency distress assistance VHF Ch 16 contact" }
         ]
+      },
+      ta: {
+        bridgeSubtitle: "வணிக கடல்சார் வழிசெலுத்தல் அமைப்பு • கோவா-கார்வார் துறை",
+        sunlight: "SUNLIGHT",
+        sunlightActive: "DECK HIGH-CONTRAST",
+        telemetryFix: "DGPS நிலை: 15°24.6'N, 73°48.2'E",
+        telemTopBar: {
+          fix: "DGPS நிலை: 15°24.6'N, 73°48.2'E",
+          sog: "வேகம் (SOG): <strong>6.2 kt</strong>",
+          cog: "திசை (COG): <strong>218° SW</strong>",
+          depth: "ஆழம் (DEPTH): <strong>34m</strong>",
+          baro: "காற்றழுத்தம் (BARO): <strong>1008.4 hPa ↓</strong>",
+          vhf: "VHF CH 16 பாதுகாப்பு"
+        },
+        telemLabels: {
+          bearing: "திசை (BEARING)",
+          depth: "ஆழம் (DEPTH)",
+          wave: "அலைகள் (WAVE)",
+          current: "நீரோட்டம் (CURRENT)",
+          wind: "காற்று (WIND)",
+          highTide: "உயர் அலை (HIGH TIDE)",
+          lowTide: "குறைந்த அலை (LOW TIDE)",
+          visibility: "தெரிவுநிலை (VISIBILITY)",
+          clearance: "பாதுகாப்பு நிலை",
+          vhfGuard: "VHF பாதுகாப்பு",
+          mrccPhone: "கடலோர காவல்படை எண்",
+          gpsBeacon: "GPS பூட்டு",
+          patrolVessel: "ரோந்து படகு"
+        },
+        legendTitle: "கடல்சார் குறியீடுகள் (Legend)",
+        legPfz: "மீன்பிடி பகுதி (INCOIS PFZ)",
+        legCaution: "எச்சரிக்கை பகுதி (அலை/காற்று)",
+        legDanger: "தடைசெய்யப்பட்ட ஆபத்து (ரெட் அலர்ட்)",
+        legVessel: "படகு அமைவிடம் (GPS)",
+        legHeatmap: "மீன் செறிவு & SST வெப்ப வரைபடம்",
+        heatScaleLow: "27.2°C (குறைவு)",
+        heatScaleHigh: "28.8°C (சிறந்த PFZ)",
+        heatmapBtnOn: "வெப்ப வரைபடம்: ஆன்",
+        heatmapBtnOff: "வெப்ப வரைபடம்: ஆஃப்",
+        tabAlerts: "⚠️ பாதுகாப்பு எச்சரிக்கைகள்",
+        tabChat: "💬 ஆலோசனைப் பதிவு",
+        registryTitle: "கடற்கரை பாதுகாப்பு அறிவிப்புகள்",
+        registrySector: "துறை: கோவா–கார்வார்",
+        statusSummary: (d, c) => `செயலில் உள்ளவை: ${d} ஆபத்து (RED), ${c} எச்சரிக்கை (CAUTION)`,
+        filtAll: "அனைத்தும்",
+        filtDanger: "ஆபத்து",
+        filtCaution: "எச்சரிக்கை",
+        filtResolved: "இயல்பு",
+        plotOnChart: "🗺️ வரைபடத்தில் காட்டு",
+        askInRadio: "💬 வானொலியில் கேள்",
+        briefTitle: "மாலுமி ஆலோசனை மையம்",
+        briefBody: "INCOIS மற்றும் கடலோர காவல்படை இணைப்பு செயலில் உள்ளது. மீன்பிடி மண்டலங்கள் (PFZ), வானிலை எச்சரிக்கைகள் அல்லது அலை விபரங்களை அறிய கீழ் உள்ள பொத்தான்களை அழுத்தவும்.",
+        inputPlaceholder: "கேள்வியை தட்டச்சு செய்யவும் (எ.கா: இன்று காற்று பாதுகாப்பானதா?)",
+        submitBtn: "கேள்",
+        drawerAsk: "வானொலி ஆலோசனையில் கேள் 💬",
+        drawerDismiss: "மூடு",
+        mobChart: "வரைபடம்",
+        mobAlerts: "எச்சரிக்கைகள்",
+        mobChat: "வானொலி",
+        viewPC: "PC",
+        viewPhone: "போன்",
+        queries: [
+          { label: "🐟 சிறந்த மீன்பிடி பகுதி (PFZ)", query: "இன்று சிறந்த மீன்பிடி பகுதி எங்குள்ளது?" },
+          { label: "🌊 பலத்த காற்று & 3m அலைகள்", query: "இன்று கடுமையான அலைகள் மற்றும் பலத்த காற்று ஆபத்து உள்ளதா?" },
+          { label: "⚓ துறைமுகம் திரும்பும் நேரம்", query: "நாளை காலை கடலுக்குச் செல்வது பாதுகாப்பானதா?" },
+          { label: "🆘 அவசர உதவி (VHF Ch 16)", query: "Emergency distress assistance VHF Ch 16 contact" }
+        ]
       }
     };
 
@@ -2101,12 +2442,16 @@
         type: "danger",
         source_hi: "तटरक्षक बल (ICG) व IMD पणजी",
         source_en: "Coast Guard MRCC & IMD Panaji",
+        source_ta: "கடலோர காவல்படை (ICG) & IMD பனாஜி",
         title_hi: "चक्रवाती दबाव व तीव्र तड़ित झंझा (Squall Warning)",
         title_en: "Severe Squall Line & Lightning Cell (Red Alert)",
+        title_ta: "சூறாவளி அழுத்தம் & பலத்த மின்னல் (ரெட் அலர்ட்)",
         desc_hi: "दक्षिण-पूर्व तटीय जलक्षेत्र में 45 समुद्री मील प्रति घंटे की तीव्र झंझावाती हवाएं और सक्रिय बिजली का केंद्र। नावों के पलटने का गंभीर जोखिम।",
         desc_en: "Active squall line generating 45 knot gusts and intense lightning strikes SE offshore. Extreme capsize risk for mechanized craft.",
+        desc_ta: "தென்கிழக்கு கடற்பகுதியில் 45 நாட் வேகத்தில் சூறாவளி காற்று மற்றும் தீவிர மின்னல் ஆபத்து. படகுகள் கவிழும் அபாயம் உள்ளது.",
         action_hi: "सभी छोटी नौकाएं तत्काल 14:00 बजे तक बेतुल या मोरमुगाओ बंदरगाह लौटें।",
         action_en: "All craft < 20m OAL must return to Mormugao or Betul harbour by 14:00 IST.",
+        action_ta: "அனைத்து சிறிய படகுகளும் மதியம் 14:00 மணிக்குள் மோர்முகாவோ அல்லது பெதுல் துறைமுகத்திற்கு திரும்ப வேண்டும்.",
         zone_id: "zone-danger-se",
         coords: "14°50'N, 73°58'E (18 NM SE)"
       },
@@ -2115,12 +2460,16 @@
         type: "caution",
         source_hi: "INCOIS महासागर चेतावनी प्रभाग",
         source_en: "INCOIS Ocean State Forecast",
+        source_ta: "INCOIS கடல் எச்சரிக்கை பிரிவு",
         title_hi: "उत्तर-पूर्वी तटीय क्षेत्र: 2.8m ऊंची लहरें",
         title_en: "NE Sector: 2.8m Rough Swell Advisory",
+        title_ta: "வடகிழக்கு கடற்பகுதி: 2.8m உயரமான அலைகள்",
         desc_hi: "दोपहर 13:30 से 18:00 बजे के बीच जलधारा गति 2.4 नॉट और 2.8 मीटर ऊंची लहरें। ज्वार-भाटे के दौरान चैनल में प्रवेश जोखिमपूर्ण।",
         desc_en: "Strong tidal currents up to 2.4 kts with 2.8m swells between 13:30 and 18:00 IST. Channel transit dangerous during ebb tide.",
+        desc_ta: "மதியம் 13:30 முதல் 18:00 வரை 2.4 நாட் நீரோட்டம் மற்றும் 2.8 மீ உயரமான அலைகள் எழும். குறைந்த அலை நேரத்தில் செல்வது ஆபத்தானது.",
         action_hi: "तट से 5 किमी के भीतर रहें और लाइफ-जैकट अनिवार्य रूप से पहनें।",
         action_en: "Maintain within 3 NM inshore. Lifejackets mandatory for all deck crew.",
+        action_ta: "கரையில் இருந்து 5 கிமீ தூரத்திற்குள் இருக்கவும், உயிர் காக்கும் உடுப்பை (Lifejacket) கட்டாயம் அணியவும்.",
         zone_id: "zone-wind-ne",
         coords: "15°26'N, 73°44'E (8 NM NE)"
       },
@@ -2129,12 +2478,16 @@
         type: "resolved",
         source_hi: "INCOIS उपग्रह मत्स्य डेटा",
         source_en: "INCOIS Marine Fishery Advisory",
+        source_ta: "INCOIS செயற்கைக்கோள் மீன்வளத் தரவு",
         title_hi: "अनुकूल मत्स्य क्षेत्र (PFZ Alpha) सामान्य",
         title_en: "Potential Fishing Zone (PFZ Alpha) Clear",
+        title_ta: "சாதகமான மீன்பிடி பகுதி (PFZ Alpha) இயல்பு",
         desc_hi: "दक्षिण-पश्चिम सागर में शांत समुद्री स्थिति, समुद्री सतह तापमान 28.2°C और उच्च क्लोरोफिल सघनता।",
         desc_en: "Sea Surface Temp 28.2°C with optimal chlorophyll front. Calm sea state Douglas 2, optimal for Indian Mackerel.",
+        desc_ta: "தென்மேற்கு கடலில் அமைதியான சூழல், கடல் பரப்பு வெப்பநிலை 28.2°C மற்றும் அதிக குளோரோபில் உள்ளது.",
         action_hi: "अनुशंसित बिंदु 15°12'N, 73°32'E पर सामान्य मत्स्य संचालन की अनुमति।",
         action_en: "Normal fishing permitted at waypoint 15°12'N, 73°32'E.",
+        action_ta: "குறிப்பிட்ட புள்ளி 15°12'N, 73°32'E-ல் வழக்கமான மீன்பிடி நடவடிக்கைகளுக்கு அனுமதி.",
         zone_id: "zone-pfz-sw",
         coords: "15°12'N, 73°32'E (15 NM SW)"
       }
@@ -2148,11 +2501,14 @@
         path: "M 180 340 C 260 300, 380 340, 410 420 C 430 490, 360 560, 270 570 C 180 580, 140 500, 150 430 Z",
         label_hi: "INCOIS PFZ (उत्तम मत्स्य क्षेत्र)",
         label_en: "INCOIS PFZ (Optimal Fishing)",
+        label_ta: "INCOIS PFZ (சிறந்த மீன்பிடி பகுதி)",
         sub_hi: "SST 28.2°C • Chlorophyll 0.42mg/m³",
         sub_en: "SST 28.2°C • Chlorophyll 0.42mg/m³",
+        sub_ta: "SST 28.2°C • Chlorophyll 0.42mg/m³",
         textPos: { x: 200, y: 440 },
         reason_hi: "उच्च क्लोरोफिल व अनुकूल तापीय प्रवणता। बांगड़ा और सुरमई के झुंड सक्रिय। हवा मात्र 12 किमी/घंटा, समुद्र पूर्णतः शांत।",
         reason_en: "High chlorophyll density with thermal front. Strong pelagic fish schools (Mackerel & Kingfish). Winds light at 6 kts.",
+        reason_ta: "அதிக குளோரோபில் மற்றும் சாதகமான வெப்பநிலை. கானாங்கெளுத்தி மற்றும் வஞ்சிரம் மீன் கூட்டங்கள் அதிகம். காற்று 12 கிமீ/மணி, கடல் அமைதி.",
         coords: "15°12'N, 73°32'E (Bearing 215° SW, 14 NM)"
       },
       {
@@ -2161,11 +2517,14 @@
         path: "M 380 80 C 470 60, 560 90, 580 160 C 590 230, 510 270, 440 260 C 370 250, 340 180, 350 120 Z",
         label_hi: "सावधानी क्षेत्र (तीव्र लहर)",
         label_en: "Caution Area (Rough Swell)",
+        label_ta: "எச்சரிக்கை பகுதி (உயர்ந்த அலைகள்)",
         sub_hi: "Swell 2.8m • Winds 35 km/h",
         sub_en: "Swell 2.8m • Winds 19 kts",
+        sub_ta: "Swell 2.8m • Winds 35 km/h",
         textPos: { x: 395, y: 170 },
         reason_hi: "दोपहर 2:00 बजे के बाद 35 किमी/घंटे की हवाएं और 2.8m ऊंची लहरें संभव। छोटी डोंगियों के लिए असुरक्षित।",
         reason_en: "Wind picking up to 19 kts with 2.8m cross-swells after 14:00 IST. Unsafe for open motorized canoes.",
+        reason_ta: "மதியம் 2:00 மணிக்கு மேல் 35 கிமீ/மணி வேக காற்று மற்றும் 2.8 மீ உயரமான அலைகள் எழலாம். சிறிய படகுகளுக்கு பாதுகாப்பற்றது.",
         coords: "15°26'N, 73°44'E (Bearing 030° NE, 8 NM)"
       },
       {
@@ -2174,11 +2533,14 @@
         path: "M 480 440 C 560 410, 630 450, 620 530 C 610 600, 540 640, 470 620 C 420 600, 430 510, 460 460 Z",
         label_hi: "प्रतिबंधित खतरा क्षेत्र (रेड अलर्ट)",
         label_en: "Restricted Danger Zone (Red Alert)",
+        label_ta: "தடைசெய்யப்பட்ட ஆபத்து பகுதி (ரெட் அலர்ட்)",
         sub_hi: "Squall 45 kt • Lightning Radar Lock",
         sub_en: "Squall 45 kt • Lightning Radar Lock",
+        sub_ta: "Squall 45 kt • Lightning Radar Lock",
         textPos: { x: 470, y: 535 },
         reason_hi: "तटरक्षक बल व मौसम विभाग द्वारा रेड अलर्ट जारी। 45 नॉट की तूफानी हवाएं और सक्रिय आकाशीय बिजली का केंद्र। नौका संचालन प्रतिबंधित।",
         reason_en: "IMD / Coast Guard Red Alert squall line. Active lightning strikes and 45 knot cyclonic gusts. Entry strictly prohibited.",
+        reason_ta: "கடலோர காவல்படை ரெட் அலர்ட் விடுத்துள்ளது. 45 நாட் சூறாவளி காற்று மற்றும் தீவிர மின்னல் அபாயம். படகு செல்ல தடை.",
         coords: "14°50'N, 73°58'E (Bearing 140° SE, 18 NM)"
       }
     ];
@@ -2191,9 +2553,11 @@
         y: 350,
         label_hi: "आपकी नाव (Your Boat)",
         label_en: "Your Vessel (GPS Lock)",
+        label_ta: "உங்கள் படகு (Your Boat)",
         coords: "15°24.6'N, 73°48.2'E",
         reason_hi: "वर्तमान नाव स्थिति। गति: 6.2 नॉट, दिशा: 218° दक्षिण-पश्चिम। सुरक्षित पानी में।",
-        reason_en: "Active GPS position. SOG: 6.2 kt, COG: 218° SW. Vessel currently in safe waters."
+        reason_en: "Active GPS position. SOG: 6.2 kt, COG: 218° SW. Vessel currently in safe waters.",
+        reason_ta: "தற்போதைய படகு அமைவிடம். வேகம்: 6.2 நாட், திசை: 218° தென்மேற்கு. பாதுகாப்பான கடலில் உள்ளது."
       },
       {
         id: "mkr-pfz-target",
@@ -2203,9 +2567,11 @@
         zone_id: "zone-pfz-sw",
         label_hi: "PFZ-ALPHA (उत्तम बिंदु)",
         label_en: "PFZ-ALPHA (Target Waypoint)",
+        label_ta: "PFZ-ALPHA (இலக்கு புள்ளி)",
         coords: "15°12'N, 73°32'E",
         reason_hi: "अनुशंसित जाल डालने का बिंदु। बांगड़ा और सुरमई के भारी झुंड। गहराई: 42 मीटर।",
-        reason_en: "Optimal net casting coordinates. Heavy Mackerel schools detected at 42m depth."
+        reason_en: "Optimal net casting coordinates. Heavy Mackerel schools detected at 42m depth.",
+        reason_ta: "வலை வீசுவதற்கு உகந்த இடம். அதிக கானாங்கெளுத்தி மற்றும் வஞ்சிரம் மீன்கள். ஆழம்: 42 மீட்டர்."
       },
       {
         id: "mkr-squall-center",
@@ -2215,19 +2581,22 @@
         zone_id: "zone-danger-se",
         label_hi: "तूफान केंद्र (Doppler Eye)",
         label_en: "Squall Core (Doppler Eye)",
+        label_ta: "புயல் மையம் (Doppler Eye)",
         coords: "14°50'N, 73°58'E",
         reason_hi: "डॉपलर रडार द्वारा ट्रैक किया गया चक्रवाती केंद्र। उत्तर-पूर्व दिशा में 18 नॉट की गति से बढ़ रहा है।",
-        reason_en: "Doppler tracked cyclonic squall core propagating 045° NE at 18 knots."
+        reason_en: "Doppler tracked cyclonic squall core propagating 045° NE at 18 knots.",
+        reason_ta: "டாப்ளர் ரேடார் மூலம் கண்காணிக்கப்பட்ட புயல் மையம். வடகிழக்கு நோக்கி 18 நாட் வேகத்தில் நகர்கிறது."
       }
     ];
 
-    // Maritime Responses Repository with explicit bilingual depth, bearing, wave, current
+    // Maritime Responses Repository with explicit multilingual depth, bearing, wave, current
     const ADVISORY_RESPONSES = {
       fishing: {
-        keywords: ["machli", "pfz", "kahan", "fishing", "fish", "spot", "best"],
+        keywords: ["machli", "pfz", "kahan", "fishing", "fish", "spot", "best", "meen", "meengal", "meenpidi", "valai", "மீன்"],
         station: "INCOIS-HYD / MRCC-GOA",
         text_hi: "उपग्रह डेटा के अनुसार आज दक्षिण-पश्चिम क्षेत्र (15°12'N, 73°32'E) में **उत्तम मत्स्य क्षेत्र (PFZ Alpha)** सक्रिय है। समुद्री सतह तापमान 28.2°C और क्लोरोफिल प्रचुर मात्रा में है। बांगड़ा और सुरमई मिलने की 85% संभावना है।",
         text_en: "Satellite telemetry confirms active **Potential Fishing Zone (PFZ Alpha)** at 15°12'N, 73°32'E. Sea surface temperature 28.2°C with strong chlorophyll concentration. 85% probability for Indian Mackerel and Kingfish.",
+        text_ta: "செயற்கைக்கோள் தகவலின்படி தென்மேற்கு பகுதியில் (15°12'N, 73°32'E) **சிறந்த மீன்பிடி மண்டலம் (PFZ Alpha)** செயல்படுகிறது. கடல் வெப்பநிலை 28.2°C மற்றும் அதிக குளோரோபில் உள்ளது. கானாங்கெளுத்தி மற்றும் வஞ்சிரம் கிடைக்க 85% வாய்ப்பு உண்டு.",
         telemetry_en: {
           bearing: "215° SW (14 NM)",
           depth: "42 Meters",
@@ -2240,13 +2609,20 @@
           wave: "1.1 मीटर (शांत लहरें)",
           current: "0.8 नॉट SSE (शांत बहाव)"
         },
+        telemetry_ta: {
+          bearing: "215° SW (14 கடல் மைல் / NM)",
+          depth: "42 மீட்டர்",
+          wave: "1.1 மீட்டர் (அமைதியான அலை)",
+          current: "0.8 நாட் SSE (மிதமான நீரோட்டம்)"
+        },
         zone_id: "zone-pfz-sw"
       },
       weather: {
-        keywords: ["hawa", "lehar", "wind", "swell", "khatra", "rough", "wave"],
+        keywords: ["hawa", "lehar", "wind", "swell", "khatra", "rough", "wave", "kaatru", "alai", "alaigal", "puyal", "காற்று", "அலை"],
         station: "IMD-MAUSAM / COASTGUARD",
         text_hi: "चेतावनी: दोपहर 13:30 के बाद दक्षिण-पूर्व क्षेत्र में **35 से 45 नॉट की तूफानी हवाएं** और 2.8m ऊंची लहरें उठने का पूर्वानुमान है। दक्षिण-पूर्व क्षेत्र में रेड अलर्ट सक्रिय है। उत्तर-पूर्व में तटीय सीमा में ही रहें।",
         text_en: "Warning: Doppler radar projects **35 to 45 knot squall gusts** and 2.8m swells after 13:30 IST in SE offshore sector. SE Sector is under Red Alert. Inshore transit recommended.",
+        text_ta: "எச்சரிக்கை: மதியம் 13:30 மணிக்கு மேல் தென்கிழக்கு கடற்பகுதியில் **35 முதல் 45 நாட் பலத்த காற்று** மற்றும் 2.8 மீ உயரமான அலைகள் எழக்கூடும். தென்கிழக்கு பகுதியில் ரெட் அலர்ட் விடுக்கப்பட்டுள்ளது. கரையோர எல்லைக்குள் இருக்கவும்.",
         telemetry_en: {
           bearing: "Sector SE & NE (18 NM)",
           depth: "30–50 Meters",
@@ -2261,13 +2637,21 @@
           current: "2.4 नॉट तीव्र बहाव",
           wind: "35–45 नॉट झंझावात"
         },
+        telemetry_ta: {
+          bearing: "துறை SE மற்றும் NE (18 கடல் மைல்)",
+          depth: "30–50 மீட்டர்",
+          wave: "2.8 மீட்டர் உயரமான அலைகள்",
+          current: "2.4 நாட் தீவிர நீரோட்டம்",
+          wind: "35–45 நாட் பலத்த காற்று"
+        },
         zone_id: "zone-danger-se"
       },
       safety: {
-        keywords: ["safe", "kal", "subah", "lautna", "tomorrow", "tide", "entry", "harbour"],
+        keywords: ["safe", "kal", "subah", "lautna", "tomorrow", "tide", "entry", "harbour", "paadhukaapu", "naalai", "kaalai", "பாதுகாப்பு"],
         station: "NHO-DEHRADUN / MPT-PORT",
         text_hi: "कल सुबह 05:30 से 10:30 बजे तक समुद्र सामान्य रहेगा (हवा 12 km/h, लहर 1.0m)। मोरमुगाओ व बेतुल चैनल में उच्च ज्वार (High Tide) 06:45 IST पर रहेगा जो बंदरगाह में सुरक्षित प्रवेश के लिए सर्वोत्तम है।",
         text_en: "Tomorrow morning 05:30 to 10:30 IST conditions are nominal (wind 6 kts, swell 1.0m). High tide at Mormugao & Betul channel peaks at 06:45 IST, optimal for safe bar entry.",
+        text_ta: "நாளை காலை 05:30 முதல் 10:30 வரை கடல் அமைதியாக இருக்கும் (காற்று 12 km/h, அலை 1.0m). மோர்முகாவோ மற்றும் பெதுல் கால்வாயில் உயர் அலை (High Tide) காலை 06:45 மணிக்கு இருக்கும், இது துறைமுகம் திரும்ப உகந்தது.",
         telemetry_en: {
           bearing: "Channel Course 095° E",
           depth: "Harbour Bar 8.5m",
@@ -2282,13 +2666,21 @@
           current: "0.6 नॉट अनुकूल धारा",
           highTide: "06:45 IST (+2.1m)"
         },
+        telemetry_ta: {
+          bearing: "கால்வாய் திசை 095° E",
+          depth: "துறைமுக முகத்துவாரம் 8.5 மீட்டர்",
+          wave: "1.0 மீட்டர் (அமைதியான கடல்)",
+          current: "0.6 நாட் சாதகமான நீரோட்டம்",
+          highTide: "06:45 IST (+2.1m)"
+        },
         zone_id: "zone-pfz-sw"
       },
       emergency: {
-        keywords: ["sos", "emergency", "help", "madad", "vhf", "coastguard", "distress"],
+        keywords: ["sos", "emergency", "help", "madad", "vhf", "coastguard", "distress", "udhavi", "kaavarpadai", "அவசரம்", "உதவி"],
         station: "MRCC-MUMBAI / COASTGUARD-GOA",
         text_hi: "तटरक्षक बल आपातकालीन बचाव चैनल: **VHF Channel 16 (156.800 MHz)** अथवा तटरक्षक टोल-फ्री नंबर **1554** पर तुरंत कॉल करें। आपकी स्थिति (15°24.6'N, 73°48.2'E) गोवा स्टेशन द्वारा लॉक है।",
         text_en: "Coast Guard Search & Rescue protocol: Standby on **VHF Channel 16 (156.800 MHz)** or emergency toll-free **1554**. Your position 15°24.6'N, 73°48.2'E is logged at MRCC Goa.",
+        text_ta: "கடலோர காவல்படை அவசர மீட்பு அலைவரிசை: **VHF Channel 16 (156.800 MHz)** அல்லது கட்டணமில்லா எண் **1554**-ஐ அழைக்கவும். உங்கள் அமைவிடம் (15°24.6'N, 73°48.2'E) கோவா நிலையத்தால் பாதுகாக்கப்படுகிறது.",
         telemetry_en: {
           bearing: "MRCC Goa Bearing 085° E",
           depth: "Vessel Depth 34m",
@@ -2302,6 +2694,13 @@
           wave: "1.5 मीटर लहरें",
           current: "1.0 नॉट बहाव",
           vhfGuard: "VHF CH 16 / 08 सक्रिय"
+        },
+        telemetry_ta: {
+          bearing: "கோவா காவல்படை திசை 085° E",
+          depth: "படகு அமைவிட ஆழம் 34 மீட்டர்",
+          wave: "1.5 மீட்டர் அலைகள்",
+          current: "1.0 நாட் நீரோட்டம்",
+          vhfGuard: "VHF CH 16 / 08 செயலில் உள்ளது"
         },
         zone_id: "zone-danger-se"
       }
@@ -2330,8 +2729,8 @@
         g.setAttribute('role', 'button');
         g.setAttribute('tabindex', '0');
 
-        const label = (currentLang === 'hi') ? z.label_hi : z.label_en;
-        const sub = (currentLang === 'hi') ? z.sub_hi : z.sub_en;
+        const label = (currentLang === 'hi') ? z.label_hi : (currentLang === 'ta' ? (z.label_ta || z.label_en) : z.label_en);
+        const sub = (currentLang === 'hi') ? z.sub_hi : (currentLang === 'ta' ? (z.sub_ta || z.sub_en) : z.sub_en);
         const cls = z.type === 'pfz' ? 'zone-pfz-style' : (z.type === 'caution' ? 'zone-caution-style' : 'zone-danger-style');
 
         g.innerHTML = `
@@ -2364,7 +2763,7 @@
         g.setAttribute('tabindex', '0');
         g.style.cursor = 'pointer';
 
-        const label = (currentLang === 'hi') ? m.label_hi : m.label_en;
+        const label = (currentLang === 'hi') ? m.label_hi : (currentLang === 'ta' ? (m.label_ta || m.label_en) : m.label_en);
 
         let innerSvg = '';
         if (m.kind === 'vessel') {
@@ -2395,7 +2794,7 @@
         g.addEventListener('click', (e) => {
           e.stopPropagation();
           const theme = m.kind === 'danger' ? 'danger' : (m.kind === 'pfz' ? 'pfz' : 'caution');
-          const reason = (currentLang === 'hi') ? m.reason_hi : m.reason_en;
+          const reason = (currentLang === 'hi') ? m.reason_hi : (currentLang === 'ta' ? (m.reason_ta || m.reason_en) : m.reason_en);
           showTacticalDrawer(label, reason, m.coords, theme, m.zone_id || 'zone-pfz-sw');
         });
 
@@ -2422,8 +2821,8 @@
 
       const z = MAP_ZONES.find(item => item.id === zoneId);
       if (z) {
-        const title = (currentLang === 'hi') ? z.label_hi : z.label_en;
-        const reason = (currentLang === 'hi') ? z.reason_hi : z.reason_en;
+        const title = (currentLang === 'hi') ? z.label_hi : (currentLang === 'ta' ? (z.label_ta || z.label_en) : z.label_en);
+        const reason = (currentLang === 'hi') ? z.reason_hi : (currentLang === 'ta' ? (z.reason_ta || z.reason_en) : z.reason_en);
         showTacticalDrawer(title, reason, z.coords, z.type, z.id);
       }
     }
@@ -2461,7 +2860,9 @@
       const z = MAP_ZONES.find(item => item.id === drawerTargetZoneId);
       const query = (currentLang === 'hi') ? 
         `Is kshetr ke baare mein jankari dein: ${z ? z.label_hi : 'Goa Offshore'}` : 
-        `Provide tactical briefing for area: ${z ? z.label_en : 'Goa Offshore'}`;
+        (currentLang === 'ta' ? 
+          `இந்த பகுதி பற்றிய விவரம் தேவை: ${z ? (z.label_ta || z.label_en) : 'Goa Offshore'}` : 
+          `Provide tactical briefing for area: ${z ? z.label_en : 'Goa Offshore'}`);
       triggerTacticalQuery(query);
     });
 
@@ -2481,13 +2882,15 @@
         const card = document.createElement('article');
         card.className = `bulletin-card card-${b.type}`;
         
-        const title = (currentLang === 'hi') ? b.title_hi : b.title_en;
-        const desc = (currentLang === 'hi') ? b.desc_hi : b.desc_en;
-        const action = (currentLang === 'hi') ? b.action_hi : b.action_en;
-        const source = (currentLang === 'hi') ? b.source_hi : b.source_en;
+        const title = (currentLang === 'hi') ? b.title_hi : (currentLang === 'ta' ? (b.title_ta || b.title_en) : b.title_en);
+        const desc = (currentLang === 'hi') ? b.desc_hi : (currentLang === 'ta' ? (b.desc_ta || b.desc_en) : b.desc_en);
+        const action = (currentLang === 'hi') ? b.action_hi : (currentLang === 'ta' ? (b.action_ta || b.action_en) : b.action_en);
+        const source = (currentLang === 'hi') ? b.source_hi : (currentLang === 'ta' ? (b.source_ta || b.source_en) : b.source_en);
         const tagText = (currentLang === 'hi') ? 
           (b.type === 'danger' ? 'अति गंभीर (RED)' : (b.type === 'caution' ? 'सतर्कता (CAUTION)' : 'सामान्य (NOMINAL)')) : 
-          b.type.toUpperCase();
+          (currentLang === 'ta' ? 
+            (b.type === 'danger' ? 'அதி தீவிர ஆபத்து (RED)' : (b.type === 'caution' ? 'எச்சரிக்கை (CAUTION)' : 'இயல்பு நிலை (NOMINAL)')) : 
+            b.type.toUpperCase());
 
         card.innerHTML = `
           <div class="card-top-header">
@@ -2534,7 +2937,9 @@
           }
           const q = (currentLang === 'hi') ? 
             `Kya meri boat is alert se prabhavit hai: ${title}?` : 
-            `Is my vessel in danger from: ${title}?`;
+            (currentLang === 'ta' ? 
+              `இந்த எச்சரிக்கையால் என் படகுக்கு ஆபத்து உள்ளதா: ${title}?` : 
+              `Is my vessel in danger from: ${title}?`);
           triggerTacticalQuery(q);
         });
 
@@ -2615,9 +3020,9 @@
         advisoryDiv.className = 'dispatch-entry advisory';
         advisoryDiv.setAttribute('data-response-key', matchedKey);
         
-        const ans = (currentLang === 'hi') ? matched.text_hi : matched.text_en;
-        const t = I18N[currentLang];
-        const telemData = (currentLang === 'hi') ? (matched.telemetry_hi || matched.telemetry) : (matched.telemetry_en || matched.telemetry);
+        const ans = (currentLang === 'hi') ? matched.text_hi : (currentLang === 'ta' ? (matched.text_ta || matched.text_en) : matched.text_en);
+        const t = I18N[currentLang] || I18N.en;
+        const telemData = (currentLang === 'hi') ? (matched.telemetry_hi || matched.telemetry) : (currentLang === 'ta' ? (matched.telemetry_ta || matched.telemetry_en || matched.telemetry) : (matched.telemetry_en || matched.telemetry));
 
         let telemRows = '';
         for (const [k, v] of Object.entries(telemData)) {
@@ -2666,6 +3071,112 @@
         queryInput.value = '';
       }
     });
+
+    // Voice Command / Voice Search Recognition (Google Voice Style)
+    const btnVoiceCommand = document.getElementById('btnVoiceCommand');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    let recognitionInstance = null;
+    let isListening = false;
+    let silenceTimer = null;
+
+    function stopVoiceListening(submitNow = true) {
+      if (silenceTimer) clearTimeout(silenceTimer);
+      silenceTimer = null;
+      isListening = false;
+      if (btnVoiceCommand) btnVoiceCommand.classList.remove('listening');
+      const t = I18N[currentLang];
+      queryInput.placeholder = t.inputPlaceholder;
+
+      if (recognitionInstance) {
+        try { recognitionInstance.stop(); } catch (e) {}
+        recognitionInstance = null;
+      }
+
+      if (submitNow) {
+        const val = queryInput.value.trim();
+        if (val) {
+          triggerTacticalQuery(val);
+          queryInput.value = '';
+        }
+      }
+    }
+
+    if (btnVoiceCommand) {
+      btnVoiceCommand.addEventListener('click', () => {
+        if (isListening) {
+          stopVoiceListening(true);
+          return;
+        }
+
+        if (!SpeechRecognition) {
+          alert(currentLang === 'hi' ? 
+            'इस ब्राउज़र में वॉयस रिकग्निशन समर्थित नहीं है। कृपया Google Chrome या Edge का उपयोग करें।' : 
+            'Voice recognition is not supported in this browser. Please open in Google Chrome or Edge.');
+          return;
+        }
+
+        try {
+          recognitionInstance = new SpeechRecognition();
+          recognitionInstance.continuous = true;
+          recognitionInstance.interimResults = true;
+          recognitionInstance.lang = (currentLang === 'hi') ? 'hi-IN' : (currentLang === 'ta' ? 'ta-IN' : 'en-IN');
+
+          recognitionInstance.onstart = () => {
+            isListening = true;
+            btnVoiceCommand.classList.add('listening');
+            queryInput.placeholder = (currentLang === 'hi') ? 'बोलिए, सुन रहे हैं... (Listening...)' : (currentLang === 'ta' ? 'பேசுங்கள், கேட்கிறோம்... (Listening...)' : 'Listening... Speak command');
+          };
+
+          recognitionInstance.onresult = (event) => {
+            let transcript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              transcript += event.results[i][0].transcript;
+            }
+            queryInput.value = transcript;
+
+            // Auto-submit after 1.8 seconds of silence once user speaks
+            if (silenceTimer) clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(() => {
+              if (isListening && queryInput.value.trim()) {
+                stopVoiceListening(true);
+              }
+            }, 1800);
+          };
+
+          recognitionInstance.onerror = (event) => {
+            console.warn('Speech recognition error:', event.error);
+            const err = event.error;
+            stopVoiceListening(false);
+
+            if (err === 'not-allowed' || err === 'service-not-allowed') {
+              alert(currentLang === 'hi' ? 
+                'माइक्रोफ़ोन अनुमति (Microphone Permission) ब्लॉक है!\n\nकृपया URL बार में लॉक (🔒) आइकन पर क्लिक करके Microphone को "Allow" करें।' : 
+                (currentLang === 'ta' ? 
+                  'மைக்ரோஃபோன் அனுமதி தடுக்கப்பட்டுள்ளது!\n\nதயவுசெய்து உலாவி URL பட்டியில் உள்ள பூட்டு (🔒) ஐகானைக் கிளிக் செய்து Microphone-ஐ "Allow" செய்யவும்.' : 
+                  'Microphone permission blocked!\n\nPlease click the lock (🔒) icon in your browser URL bar and allow Microphone.'));
+            } else if (err === 'network') {
+              alert(currentLang === 'hi' ? 
+                'Brave ब्राउज़र में Google Speech सर्विस बंद है!\n\nसॉल्यूशन:\n1. Brave के URL में लिखें: brave://settings/system\n2. "Use Google services for speech recognition" को ON करें।\n(या फिर Google Chrome / Edge में खोलें)।' : 
+                (currentLang === 'ta' ? 
+                  'Brave உலாவி Google Speech சேவையை இயல்பாகத் தடுக்கிறது.\n\nதீர்வு:\n1. brave://settings/system செல்லவும்\n2. "Use Google services for speech recognition" என்பதை இயக்கவும் (ON).\n(அல்லது Google Chrome / Edge-ல் திறக்கவும்).' : 
+                  'Brave Browser blocks Google Speech Service by default.\n\nTo fix in Brave:\n1. Open brave://settings/system\n2. Turn ON "Use Google services for speech recognition"\n(Or open in Google Chrome / Edge).'));
+            }
+          };
+
+          recognitionInstance.onend = () => {
+            if (isListening) {
+              stopVoiceListening(true);
+            }
+          };
+
+          recognitionInstance.start();
+        } catch (err) {
+          console.error('Failed to start speech recognition:', err);
+          stopVoiceListening(false);
+        }
+      });
+    }
 
     // Sub-Navigation Tab Switching (Alerts <-> Chat) in Companion Station
     const tabBtnAlerts = document.getElementById('tabBtnAlerts');
@@ -2719,6 +3230,36 @@
     mobNavAlerts.addEventListener('click', () => switchMobileView('alerts'));
     mobNavChat.addEventListener('click', () => switchMobileView('chat'));
 
+    // Heatmap Layer Toggle Logic
+    let isHeatmapActive = localStorage.getItem('orca_marine_heatmap') !== 'false'; // default ON
+    const btnToggleHeatmap = document.getElementById('btnToggleHeatmap');
+    const svgHeatmapLayer = document.getElementById('svgMarineHeatmapLayer');
+    const heatmapLegendScale = document.getElementById('heatmapLegendScale');
+
+    function updateHeatmapVisuals() {
+      const t = I18N[currentLang] || I18N.en;
+      if (svgHeatmapLayer) {
+        svgHeatmapLayer.classList.toggle('hidden', !isHeatmapActive);
+      }
+      if (btnToggleHeatmap) {
+        btnToggleHeatmap.classList.toggle('off', !isHeatmapActive);
+        btnToggleHeatmap.setAttribute('aria-pressed', isHeatmapActive ? 'true' : 'false');
+        const txtEl = document.getElementById('txtHeatmapToggle');
+        if (txtEl) txtEl.textContent = isHeatmapActive ? t.heatmapBtnOn : t.heatmapBtnOff;
+      }
+      if (heatmapLegendScale) {
+        heatmapLegendScale.style.opacity = isHeatmapActive ? '1' : '0.4';
+      }
+    }
+
+    if (btnToggleHeatmap) {
+      btnToggleHeatmap.addEventListener('click', () => {
+        isHeatmapActive = !isHeatmapActive;
+        localStorage.setItem('orca_marine_heatmap', isHeatmapActive);
+        updateHeatmapVisuals();
+      });
+    }
+
     // Legend Toggle
     const btnToggleLegend = document.getElementById('btnToggleLegend');
     const chartLegendPanel = document.getElementById('chartLegendPanel');
@@ -2744,6 +3285,7 @@
     // Language Toggle
     const btnLangHI = document.getElementById('btnLangHI');
     const btnLangEN = document.getElementById('btnLangEN');
+    const btnLangTA = document.getElementById('btnLangTA');
 
     function setLanguage(lang) {
       currentLang = lang;
@@ -2752,8 +3294,9 @@
 
       btnLangHI.classList.toggle('selected', lang === 'hi');
       btnLangEN.classList.toggle('selected', lang === 'en');
+      if (btnLangTA) btnLangTA.classList.toggle('selected', lang === 'ta');
 
-      const t = I18N[lang];
+      const t = I18N[lang] || I18N.en;
       document.getElementById('txtBridgeSubtitle').textContent = t.bridgeSubtitle;
       document.getElementById('txtTelemetryFix').textContent = t.telemetryFix;
 
@@ -2776,6 +3319,10 @@
       document.getElementById('legCaution').textContent = t.legCaution;
       document.getElementById('legDanger').textContent = t.legDanger;
       document.getElementById('legVessel').textContent = t.legVessel;
+      if (document.getElementById('legHeatmap')) document.getElementById('legHeatmap').textContent = t.legHeatmap;
+      if (document.getElementById('heatScaleLow')) document.getElementById('heatScaleLow').textContent = t.heatScaleLow;
+      if (document.getElementById('heatScaleHigh')) document.getElementById('heatScaleHigh').textContent = t.heatScaleHigh;
+      updateHeatmapVisuals();
 
       document.getElementById('txtTabAlertsLabel').textContent = t.tabAlerts;
       document.getElementById('txtTabChatLabel').textContent = t.tabChat;
@@ -2810,13 +3357,13 @@
         const key = entry.getAttribute('data-response-key');
         const matched = ADVISORY_RESPONSES[key];
         if (matched) {
-          const ansText = (lang === 'hi') ? matched.text_hi : matched.text_en;
+          const ansText = (lang === 'hi') ? matched.text_hi : (lang === 'ta' ? (matched.text_ta || matched.text_en) : matched.text_en);
           const mainTextEl = entry.querySelector('.advisory-main-text');
           if (mainTextEl) mainTextEl.innerHTML = formatMarkdown(ansText);
 
           const telemGrid = entry.querySelector('.nautical-telemetry-grid');
           if (telemGrid) {
-            const telemData = (lang === 'hi') ? (matched.telemetry_hi || matched.telemetry) : (matched.telemetry_en || matched.telemetry);
+            const telemData = (lang === 'hi') ? (matched.telemetry_hi || matched.telemetry) : (lang === 'ta' ? (matched.telemetry_ta || matched.telemetry_en || matched.telemetry) : (matched.telemetry_en || matched.telemetry));
             let rows = '';
             for (const [k, v] of Object.entries(telemData)) {
               const label = (t.telemLabels && t.telemLabels[k]) ? t.telemLabels[k] : k.toUpperCase();
@@ -2839,6 +3386,7 @@
 
     btnLangHI.addEventListener('click', () => setLanguage('hi'));
     btnLangEN.addEventListener('click', () => setLanguage('en'));
+    if (btnLangTA) btnLangTA.addEventListener('click', () => setLanguage('ta'));
 
     // Device View Mode Toggle (PC 🖥️ <-> PHONE 📱)
     const btnViewPC = document.getElementById('btnViewPC');
@@ -2878,26 +3426,16 @@
 
     // Initialize application
     function initBridge() {
+      if (window.innerWidth >= 960) {
+        currentDeviceMode = 'pc';
+        try { localStorage.removeItem('orca_marine_device_mode'); } catch(e){}
+      }
       setLanguage(currentLang);
       setDeviceMode(currentDeviceMode);
-      if (window.innerWidth < 640 || currentDeviceMode === 'phone') {
+      if (window.innerWidth < 640) {
         chartLegendPanel.classList.add('collapsed');
         legendArrow.textContent = '▸';
         btnToggleLegend.setAttribute('aria-expanded', 'false');
-      }
-
-      // Auto-focus respective station when opened directly from /Alerts or /Chat
-      const loc = (window.location.pathname || '').toLowerCase();
-      if (loc.includes('alert')) {
-        switchStationTab('alerts');
-        if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
-          switchMobileView('alerts');
-        }
-      } else if (loc.includes('chat')) {
-        switchStationTab('chat');
-        if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
-          switchMobileView('chat');
-        }
       }
     }
 
