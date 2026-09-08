@@ -9,6 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
   
+  <!-- Leaflet Geographic Mapping Engine -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <!-- CARTO Basemaps & Environment Configuration Utility -->
+  <script src="env.js" onerror=""></script>
+  <script src="../env.js" onerror=""></script>
+  <script src="../../env.js" onerror=""></script>
+  <script src="map_config.js" onerror=""></script>
+  <script src="../map_config.js" onerror=""></script>
+  <script src="../../map_config.js" onerror=""></script>
+  
   <style>
     /* ==========================================================================
        ORCA COMMERCIAL MARINE DESIGN SYSTEM — RUGGED BRIDGE SPECIFICATION
@@ -1709,7 +1720,145 @@
       70% { r: 24; opacity: 0; }
       100% { r: 24; opacity: 0; }
     }
+
+    /* ==========================================================================
+       LEAFLET NAUTICAL DARK ENGINE & PULSING GPS BEACON STYLES
+       ========================================================================== */
+    #marineMapLeaflet {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #12100E;
+      z-index: 1;
+    }
+
+    .chart-viewport {
+      position: relative !important;
+      overflow: hidden !important;
+    }
+
+    .chart-hud-overlay {
+      z-index: 1000 !important;
+    }
+
+    .chart-legend-container {
+      z-index: 1000 !important;
+    }
+
+    .tactical-detail-drawer {
+      z-index: 1010 !important;
+    }
+
+    /* Dark Nautical Leaflet Controls */
+    .leaflet-control-zoom {
+      border: 1px solid var(--border-bezel) !important;
+      border-radius: var(--radius-subtle) !important;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    .leaflet-control-zoom a {
+      background-color: rgba(24, 20, 17, 0.94) !important;
+      color: var(--brass-bright) !important;
+      border-bottom: 1px solid var(--border-bezel) !important;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background-color: var(--bg-console-raised) !important;
+      color: #FFF !important;
+    }
+
+    .leaflet-container {
+      background: #12100E !important;
+      font-family: var(--font-telemetry) !important;
+    }
+
+    .leaflet-tile-pane {
+      filter: brightness(0.92) contrast(1.08);
+    }
+
+    /* CARTO & OSM Map Attribution (Strictly visible and styled) */
+    .leaflet-control-attribution {
+      background: rgba(18, 16, 14, 0.88) !important;
+      color: #A89B88 !important;
+      font-family: var(--font-telemetry) !important;
+      font-size: 10px !important;
+      padding: 2px 8px !important;
+      border-top-left-radius: 4px !important;
+      border: 1px solid var(--border-bezel) !important;
+      border-right: none !important;
+      border-bottom: none !important;
+      z-index: 1000 !important;
+    }
+    .leaflet-control-attribution a {
+      color: var(--brass-bright) !important;
+      text-decoration: underline !important;
+    }
+
+    /* Tactical Map Tooltip */
+    .tactical-map-tooltip {
+      background: rgba(24, 20, 17, 0.94) !important;
+      color: var(--text-chart) !important;
+      border: 1px solid var(--border-brass) !important;
+      border-radius: 2px !important;
+      font-family: var(--font-telemetry) !important;
+      font-size: 10.5px !important;
+      font-weight: 700 !important;
+      padding: 3px 7px !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7) !important;
+    }
+    .tactical-map-tooltip:before {
+      border-top-color: var(--border-brass) !important;
+    }
+
+    /* Pulsing GPS Location Beacon */
+    .leaflet-user-beacon {
+      position: relative;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-beacon-core {
+      width: 14px;
+      height: 14px;
+      background: #FFD152;
+      border: 2.5px solid #12100E;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #FFD152, 0 0 20px rgba(255, 209, 82, 0.6);
+      z-index: 2;
+      position: relative;
+    }
+
+    .user-beacon-pulse {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 209, 82, 0.4);
+      animation: userBeaconRings 2.2s infinite cubic-bezier(0.2, 0.8, 0.4, 1);
+      z-index: 1;
+    }
+
+    @keyframes userBeaconRings {
+      0% {
+        transform: scale(0.4);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(2.4);
+        opacity: 0;
+      }
+    }
   </style>
+
 </head>
 <body>
 
@@ -1880,237 +2029,8 @@
             </div>
           </div>
 
-          <!-- THE AUTHENTIC NAUTICAL CHART SVG -->
-          <svg class="nautical-svg-chart" id="marineSvgChart" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <pattern id="marineHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-                <line x1="0" y1="0" x2="0" y2="8" stroke="#3A2C21" stroke-width="1.2" opacity="0.4" />
-              </pattern>
-              
-              <!-- High-Resolution Marine Thermal Heatmap Gradients -->
-              <!-- PFZ Alpha: Fish Density & Sea Surface Temperature Upwelling (Optimal 28.2°C - 28.8°C front) -->
-              <radialGradient id="heatPfzThermal" cx="35%" cy="45%" r="65%">
-                <stop offset="0%" stop-color="#FFD152" stop-opacity="0.65" />
-                <stop offset="25%" stop-color="#F39C12" stop-opacity="0.50" />
-                <stop offset="50%" stop-color="#27AE60" stop-opacity="0.35" />
-                <stop offset="75%" stop-color="#16A085" stop-opacity="0.18" />
-                <stop offset="100%" stop-color="#0E4B43" stop-opacity="0" />
-              </radialGradient>
-
-              <!-- Secondary Pelagic Feeding Ground (Betul-Karwar Shelf) -->
-              <radialGradient id="heatSecondaryThermal" cx="45%" cy="45%" r="65%">
-                <stop offset="0%" stop-color="#F1C40F" stop-opacity="0.48" />
-                <stop offset="35%" stop-color="#2ECC71" stop-opacity="0.32" />
-                <stop offset="70%" stop-color="#1ABC9C" stop-opacity="0.16" />
-                <stop offset="100%" stop-color="#0E4B43" stop-opacity="0" />
-              </radialGradient>
-
-              <!-- Squall & Cyclonic Wind Energy Core (Doppler Thermal Radar 45 kt) -->
-              <radialGradient id="heatStormThermal" cx="50%" cy="50%" r="60%">
-                <stop offset="0%" stop-color="#E74C3C" stop-opacity="0.68" />
-                <stop offset="30%" stop-color="#D35400" stop-opacity="0.48" />
-                <stop offset="60%" stop-color="#E67E22" stop-opacity="0.28" />
-                <stop offset="85%" stop-color="#F39C12" stop-opacity="0.12" />
-                <stop offset="100%" stop-color="#784212" stop-opacity="0" />
-              </radialGradient>
-
-              <!-- Continental Shelf Upwelling Gradient (50m shelf break current) -->
-              <linearGradient id="heatShelfCurrent" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#1ABC9C" stop-opacity="0" />
-                <stop offset="35%" stop-color="#2ECC71" stop-opacity="0.22" />
-                <stop offset="60%" stop-color="#F1C40F" stop-opacity="0.26" />
-                <stop offset="80%" stop-color="#16A085" stop-opacity="0.14" />
-                <stop offset="100%" stop-color="#1ABC9C" stop-opacity="0" />
-              </linearGradient>
-
-              <!-- Soft Blend Heat Filter for smooth continuous organic thermal dispersion -->
-              <filter id="heatBlurFilter" x="-25%" y="-25%" width="150%" height="150%">
-                <feGaussianBlur stdDeviation="22" result="blur" />
-              </filter>
-            </defs>
-
-            <!-- Base Deep Coastal Waters -->
-            <rect width="1000" height="700" class="sea-water-base" id="baseWaterRect" />
-
-            <!-- DYNAMIC MARINE THERMAL & FISH DENSITY HEATMAP LAYER (Non-blocking, sub-surface) -->
-            <g id="svgMarineHeatmapLayer" class="marine-heatmap-layer" pointer-events="none">
-              <!-- Blurred Thermal Energy & Chlorophyll Density Fields -->
-              <g filter="url(#heatBlurFilter)">
-                <!-- Primary INCOIS PFZ Alpha Biomass Upwelling Core (15°12'N, 73°32'E) -->
-                <ellipse cx="270" cy="460" rx="190" ry="140" fill="url(#heatPfzThermal)" transform="rotate(-15 270 460)" />
-                <!-- Secondary Pelagic Feeding Ground (Betul-Karwar Shelf) -->
-                <ellipse cx="380" cy="330" rx="140" ry="110" fill="url(#heatSecondaryThermal)" transform="rotate(-25 380 330)" />
-                <!-- Upwelling Current Ribbon along 50m Bathymetry -->
-                <path d="M 230 0 C 260 180, 310 390, 420 700" stroke="url(#heatShelfCurrent)" stroke-width="75" fill="none" opacity="0.75" />
-                <!-- Storm Squall Doppler Intensity Core (SE Sector 14°50'N, 73°58'E) -->
-                <ellipse cx="550" cy="525" rx="140" ry="120" fill="url(#heatStormThermal)" transform="rotate(10 550 525)" />
-              </g>
-
-              <!-- Crisp Thermal Front Isobar Lines & Temperature Markers -->
-              <g opacity="0.45">
-                <ellipse cx="270" cy="460" rx="110" ry="80" fill="none" stroke="#FFD152" stroke-width="1" stroke-dasharray="4,4" transform="rotate(-15 270 460)" />
-                <text x="210" y="405" fill="#FFD152" font-family="var(--font-telemetry)" font-size="8.5" font-weight="700">SST 28.5°C (THERMAL FRONT)</text>
-                
-                <ellipse cx="270" cy="460" rx="170" ry="125" fill="none" stroke="#27AE60" stroke-width="0.8" stroke-dasharray="5,5" transform="rotate(-15 270 460)" />
-                <text x="135" y="475" fill="#2ECC71" font-family="var(--font-telemetry)" font-size="8">SST 27.8°C</text>
-
-                <!-- Squall Doppler Radar Isobar -->
-                <ellipse cx="550" cy="525" rx="85" ry="75" fill="none" stroke="#E74C3C" stroke-width="1" stroke-dasharray="4,4" transform="rotate(10 550 525)" />
-                <text x="495" y="475" fill="#E74C3C" font-family="var(--font-telemetry)" font-size="8.5" font-weight="700">DOPPLER 45 KT CORE</text>
-              </g>
-            </g>
-
-            <!-- Latitude & Longitude Graticule Grid -->
-            <!-- Longitudes -->
-            <line x1="180" y1="0" x2="180" y2="700" class="chart-graticule-line" />
-            <text x="184" y="692" class="chart-graticule-text">073°30'E</text>
-
-            <line x1="420" y1="0" x2="420" y2="700" class="chart-graticule-line" />
-            <text x="424" y="692" class="chart-graticule-text">073°45'E</text>
-
-            <line x1="680" y1="0" x2="680" y2="700" class="chart-graticule-line" />
-            <text x="684" y="692" class="chart-graticule-text">074°00'E</text>
-
-            <line x1="900" y1="0" x2="900" y2="700" class="chart-graticule-line" />
-            <text x="904" y="692" class="chart-graticule-text">074°15'E</text>
-
-            <!-- Latitudes -->
-            <line x1="0" y1="120" x2="1000" y2="120" class="chart-graticule-line" />
-            <text x="10" y="115" class="chart-graticule-text">15°30'N</text>
-
-            <line x1="0" y1="280" x2="1000" y2="280" class="chart-graticule-line" />
-            <text x="10" y="275" class="chart-graticule-text">15°15'N</text>
-
-            <line x1="0" y1="460" x2="1000" y2="460" class="chart-graticule-line" />
-            <text x="10" y="455" class="chart-graticule-text">15°00'N</text>
-
-            <line x1="0" y1="620" x2="1000" y2="620" class="chart-graticule-line" />
-            <text x="10" y="615" class="chart-graticule-text">14°45'N</text>
-
-            <!-- Bathymetry Depth Contours (Real Marine Depth Curves) -->
-            <!-- 100m Continental Shelf Edge -->
-            <path d="M 80 0 C 110 200, 160 420, 240 700" class="bathymetry-100m" />
-            <text x="135" y="320" class="sounding-depth-text">100m SHELF BREAK</text>
-
-            <!-- 50m Mid-Depth Contour -->
-            <path d="M 230 0 C 260 180, 310 390, 420 700" class="bathymetry-50m" />
-            <text x="285" y="240" class="sounding-depth-text">50m</text>
-            <text x="350" y="480" class="sounding-depth-text">50m</text>
-
-            <!-- 20m Inshore Contour -->
-            <path d="M 440 0 C 470 160, 520 340, 620 700" class="bathymetry-20m" />
-            <text x="490" y="210" class="sounding-depth-text">20m</text>
-            <text x="560" y="440" class="sounding-depth-text">20m</text>
-
-            <!-- 10m Coastal Contour -->
-            <path d="M 570 0 C 600 140, 640 320, 730 700" class="bathymetry-10m" />
-            <text x="610" y="160" class="sounding-depth-text">10m</text>
-            <text x="680" y="470" class="sounding-depth-text">10m</text>
-
-            <!-- Soundings (Real Depth Numbers stamped across charts in meters) -->
-            <text x="190" y="140" class="sounding-depth-text">64</text>
-            <text x="140" y="480" class="sounding-depth-text">88</text>
-            <text x="280" y="360" class="sounding-depth-text">42</text>
-            <text x="340" y="190" class="sounding-depth-text">38</text>
-            <text x="390" y="580" class="sounding-depth-text">44</text>
-            <text x="480" y="290" class="sounding-depth-text">26</text>
-            <text x="530" y="130" class="sounding-depth-text">18</text>
-            <text x="540" y="520" class="sounding-depth-text">22</text>
-            <text x="630" y="320" class="sounding-depth-text">14</text>
-            <text x="660" y="240" class="sounding-depth-text">12</text>
-            <text x="700" y="590" class="sounding-depth-text">11</text>
-            <text x="710" y="110" class="sounding-depth-text">8</text>
-
-            <!-- Realistic Goa - Karwar Coastline Geometry -->
-            <!-- Coastal Mainland Landmass -->
-            <path d="
-              M 640 0
-              L 650 30
-              C 645 60, 630 80, 625 100
-              L 615 110
-              C 605 125, 620 135, 640 130
-              L 665 125
-              C 655 145, 630 155, 610 160
-              L 590 170
-              C 580 185, 595 200, 615 195
-              L 650 190
-              C 635 210, 615 220, 600 235
-              L 580 250
-              C 565 265, 580 280, 610 275
-              L 640 270
-              C 630 290, 640 310, 660 325
-              L 680 340
-              C 670 370, 655 400, 640 430
-              L 630 450
-              C 625 470, 645 490, 675 495
-              L 710 500
-              C 700 520, 690 540, 695 560
-              L 715 580
-              C 710 600, 725 620, 750 630
-              L 770 650
-              C 760 670, 770 690, 790 700
-              L 1000 700
-              L 1000 0
-              Z
-            " class="coastal-landmass" />
-
-            <!-- Mormugao Harbour Breakwater & Port -->
-            <path d="M 580 250 L 555 245 L 565 258 Z" class="port-harbour-area" />
-
-            <!-- Anjadip Island & Oyster Rocks -->
-            <ellipse cx="685" cy="565" rx="7" ry="4" class="port-harbour-area" />
-            <circle cx="660" cy="545" r="4" class="port-harbour-area" />
-
-            <!-- Major Navigation Lighthouses -->
-            <!-- Aguada Lighthouse -->
-            <circle cx="612" cy="162" r="3.5" class="lighthouse-symbol" />
-            <!-- Mormugao Headland Light -->
-            <circle cx="578" cy="248" r="3.5" class="lighthouse-symbol" />
-            <!-- Betul Cape Light -->
-            <circle cx="638" cy="432" r="3.5" class="lighthouse-symbol" />
-            <!-- Oyster Rocks Karwar Light -->
-            <circle cx="659" cy="544" r="3.5" class="lighthouse-symbol" />
-
-            <!-- Geographic Chart Labels -->
-            <text x="660" y="100" class="coastal-label">GOA (NORTH)</text>
-            <text x="625" y="165" class="coastal-label" font-size="9.5">AGUADA</text>
-            <text x="625" y="245" class="coastal-label" font-size="10">MORMUGAO</text>
-            <text x="660" y="265" class="coastal-label" font-size="9">ZUARI ESTUARY</text>
-            <text x="680" y="380" class="coastal-label">GOA (SOUTH)</text>
-            <text x="650" y="440" class="coastal-label" font-size="9.5">BETUL CAPE</text>
-            <text x="730" y="575" class="coastal-label">KARWAR</text>
-            <text x="675" y="542" class="coastal-label" font-size="8.5">OYSTER ROCKS</text>
-
-            <!-- 32-Point Vintage Mariner's Compass Rose -->
-            <g transform="translate(190, 530)" opacity="0.6">
-              <circle cx="0" cy="0" r="54" stroke="#4A3D30" stroke-width="1.2" fill="none" />
-              <circle cx="0" cy="0" r="48" stroke="#3A2F25" stroke-width="0.8" fill="none" />
-              <!-- Points -->
-              <polygon points="0,-48 4,-12 0,0 -4,-12" fill="#DE6347" />
-              <polygon points="0,48 4,12 0,0 -4,12" fill="#7E6E5C" />
-              <polygon points="-48,0 -12,-4 0,0 -12,4" fill="#7E6E5C" />
-              <polygon points="48,0 12,-4 0,0 12,4" fill="#7E6E5C" />
-              <polygon points="34,-34 8,-8 0,0 3,-10" fill="#5A4E40" />
-              <polygon points="-34,-34 -8,-8 0,0 -10,-3" fill="#5A4E40" />
-              <polygon points="34,34 8,8 0,0 10,3" fill="#5A4E40" />
-              <polygon points="-34,34 -8,8 0,0 -3,10" fill="#5A4E40" />
-              <text x="-4" y="-52" fill="#DE6347" font-family="var(--font-telemetry)" font-size="10" font-weight="700">N</text>
-              <text x="52" y="3" fill="#A89B88" font-family="var(--font-telemetry)" font-size="9">E</text>
-              <text x="-3" y="60" fill="#A89B88" font-family="var(--font-telemetry)" font-size="9">S</text>
-              <text x="-62" y="3" fill="#A89B88" font-family="var(--font-telemetry)" font-size="9">W</text>
-              <text x="-35" y="70" fill="#6E6050" font-family="var(--font-telemetry)" font-size="8">Var 1°15'W (2026)</text>
-            </g>
-
-            <!-- DYNAMIC INTERACTIVE MARINE SAFETY ZONES -->
-            <g id="svgMarineZonesContainer">
-              <!-- Rendered via JavaScript with exact nautical coordinates -->
-            </g>
-
-            <!-- DYNAMIC VESSEL & TELEMETRY MARKERS -->
-            <g id="svgMarineMarkersContainer">
-              <!-- Rendered via JavaScript -->
-            </g>
-          </svg>
+          <!-- LEAFLET INTERACTIVE GEOGRAPHIC GPS & NAUTICAL CHART -->
+          <div id="marineMapLeaflet"></div>
 
           <!-- Tactical Zone Detail Drawer (Opens when tapping on zones or markers) -->
           <div class="tactical-detail-drawer" id="tacticalDrawer">
@@ -2558,14 +2478,19 @@
       {
         id: "zone-pfz-sw",
         type: "pfz",
-        path: "M 180 340 C 260 300, 380 340, 410 420 C 430 490, 360 560, 270 570 C 180 580, 140 500, 150 430 Z",
+        center: [15.20, 73.53],
+        latLngs: [
+          [15.28, 73.45],
+          [15.26, 73.62],
+          [15.12, 73.65],
+          [15.08, 73.48]
+        ],
         label_hi: "INCOIS PFZ (उत्तम मत्स्य क्षेत्र)",
         label_en: "INCOIS PFZ (Optimal Fishing)",
         label_ta: "INCOIS PFZ (சிறந்த மீன்பிடி பகுதி)",
         sub_hi: "SST 28.2°C • Chlorophyll 0.42mg/m³",
         sub_en: "SST 28.2°C • Chlorophyll 0.42mg/m³",
         sub_ta: "SST 28.2°C • Chlorophyll 0.42mg/m³",
-        textPos: { x: 200, y: 440 },
         reason_hi: "उच्च क्लोरोफिल व अनुकूल तापीय प्रवणता। बांगड़ा और सुरमई के झुंड सक्रिय। हवा मात्र 12 किमी/घंटा, समुद्र पूर्णतः शांत।",
         reason_en: "High chlorophyll density with thermal front. Strong pelagic fish schools (Mackerel & Kingfish). Winds light at 6 kts.",
         reason_ta: "அதிக குளோரோபில் மற்றும் சாதகமான வெப்பநிலை. கானாங்கெளுத்தி மற்றும் வஞ்சிரம் மீன் கூட்டங்கள் அதிகம். காற்று 12 கிமீ/மணி, கடல் அமைதி.",
@@ -2574,14 +2499,19 @@
       {
         id: "zone-wind-ne",
         type: "caution",
-        path: "M 380 80 C 470 60, 560 90, 580 160 C 590 230, 510 270, 440 260 C 370 250, 340 180, 350 120 Z",
+        center: [15.43, 73.74],
+        latLngs: [
+          [15.48, 73.68],
+          [15.49, 73.80],
+          [15.38, 73.82],
+          [15.37, 73.70]
+        ],
         label_hi: "सावधानी क्षेत्र (तीव्र लहर)",
         label_en: "Caution Area (Rough Swell)",
         label_ta: "எச்சரிக்கை பகுதி (உயர்ந்த அலைகள்)",
         sub_hi: "Swell 2.8m • Winds 35 km/h",
         sub_en: "Swell 2.8m • Winds 19 kts",
         sub_ta: "Swell 2.8m • Winds 35 km/h",
-        textPos: { x: 395, y: 170 },
         reason_hi: "दोपहर 2:00 बजे के बाद 35 किमी/घंटे की हवाएं और 2.8m ऊंची लहरें संभव। छोटी डोंगियों के लिए असुरक्षित।",
         reason_en: "Wind picking up to 19 kts with 2.8m cross-swells after 14:00 IST. Unsafe for open motorized canoes.",
         reason_ta: "மதியம் 2:00 மணிக்கு மேல் 35 கிமீ/மணி வேக காற்று மற்றும் 2.8 மீ உயரமான அலைகள் எழலாம். சிறிய படகுகளுக்கு பாதுகாப்பற்றது.",
@@ -2590,14 +2520,19 @@
       {
         id: "zone-danger-se",
         type: "danger",
-        path: "M 480 440 C 560 410, 630 450, 620 530 C 610 600, 540 640, 470 620 C 420 600, 430 510, 460 460 Z",
+        center: [14.83, 73.96],
+        latLngs: [
+          [14.92, 73.90],
+          [14.90, 74.05],
+          [14.78, 74.02],
+          [14.80, 73.88]
+        ],
         label_hi: "प्रतिबंधित खतरा क्षेत्र (रेड अलर्ट)",
         label_en: "Restricted Danger Zone (Red Alert)",
         label_ta: "தடைசெய்யப்பட்ட ஆபத்து பகுதி (ரெட் அலர்ட்)",
         sub_hi: "Squall 45 kt • Lightning Radar Lock",
         sub_en: "Squall 45 kt • Lightning Radar Lock",
         sub_ta: "Squall 45 kt • Lightning Radar Lock",
-        textPos: { x: 470, y: 535 },
         reason_hi: "तटरक्षक बल व मौसम विभाग द्वारा रेड अलर्ट जारी। 45 नॉट की तूफानी हवाएं और सक्रिय आकाशीय बिजली का केंद्र। नौका संचालन प्रतिबंधित।",
         reason_en: "IMD / Coast Guard Red Alert squall line. Active lightning strikes and 45 knot cyclonic gusts. Entry strictly prohibited.",
         reason_ta: "கடலோர காவல்படை ரெட் அலர்ட் விடுத்துள்ளது. 45 நாட் சூறாவளி காற்று மற்றும் தீவிர மின்னல் அபாயம். படகு செல்ல தடை.",
@@ -2607,23 +2542,9 @@
 
     const MAP_MARKERS = [
       {
-        id: "mkr-vessel",
-        kind: "vessel",
-        x: 480,
-        y: 350,
-        label_hi: "आपकी नाव (Your Boat)",
-        label_en: "Your Vessel (GPS Lock)",
-        label_ta: "உங்கள் படகு (Your Boat)",
-        coords: "15°24.6'N, 73°48.2'E",
-        reason_hi: "वर्तमान नाव स्थिति। गति: 6.2 नॉट, दिशा: 218° दक्षिण-पश्चिम। सुरक्षित पानी में।",
-        reason_en: "Active GPS position. SOG: 6.2 kt, COG: 218° SW. Vessel currently in safe waters.",
-        reason_ta: "தற்போதைய படகு அமைவிடம். வேகம்: 6.2 நாட், திசை: 218° தென்மேற்கு. பாதுகாப்பான கடலில் உள்ளது."
-      },
-      {
         id: "mkr-pfz-target",
         kind: "pfz",
-        x: 270,
-        y: 470,
+        latLng: [15.20, 73.53],
         zone_id: "zone-pfz-sw",
         label_hi: "PFZ-ALPHA (उत्तम बिंदु)",
         label_en: "PFZ-ALPHA (Target Waypoint)",
@@ -2636,8 +2557,7 @@
       {
         id: "mkr-squall-center",
         kind: "danger",
-        x: 550,
-        y: 520,
+        latLng: [14.83, 73.96],
         zone_id: "zone-danger-se",
         label_hi: "तूफान केंद्र (Doppler Eye)",
         label_en: "Squall Core (Doppler Eye)",
@@ -2649,7 +2569,6 @@
       }
     ];
 
-    // Maritime Responses Repository with explicit multilingual depth, bearing, wave, current
     const ADVISORY_RESPONSES = {
       fishing: {
         keywords: ["machli", "pfz", "kahan", "fishing", "fish", "spot", "best", "meen", "meengal", "meenpidi", "valai", "மீன்"],
@@ -2776,114 +2695,154 @@
     setInterval(updateBridgeClock, 1000);
     updateBridgeClock();
 
-    // Render Marine Zones on SVG Chart
-    function renderMapZones() {
-      const container = document.getElementById('svgMarineZonesContainer');
-      if (!container) return;
-      container.innerHTML = '';
+    // Leaflet Geographic Map Engine State
+    let leafletMap = null;
+    let tileLayer = null;
+    let userGpsMarker = null;
+    let riskHeatmapLayer = null;
+    let tacticalZonesLayer = null;
+    let waypointsLayer = null;
+
+    function initLeafletMap() {
+      if (leafletMap) return;
+      const mapContainer = document.getElementById('marineMapLeaflet');
+      if (!mapContainer) return;
+
+      const initLat = vesselLocation ? vesselLocation.latitude : 15.25;
+      const initLon = vesselLocation ? vesselLocation.longitude : 73.80;
+
+      leafletMap = L.map('marineMapLeaflet', {
+        center: [initLat, initLon],
+        zoom: 11,
+        minZoom: 3,
+        maxZoom: 18,
+        zoomControl: false
+      });
+
+      L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+
+            // CARTO Voyager Basemap Integration
+      const cartoTileUrl = (typeof CartoMapConfig !== 'undefined' && CartoMapConfig.getTileUrl)
+        ? CartoMapConfig.getTileUrl()
+        : (() => {
+            const env = (typeof window !== 'undefined' && (window.__ENV__ || window.CARTO_CONFIG || window.ENV)) || {};
+            const baseUrl = env.CARTO_BASEMAP_URL || 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+            const apiKey = env.CARTO_API_KEY || (typeof window !== 'undefined' && window.CARTO_API_KEY) || '';
+            if (apiKey && apiKey.trim().length > 0) {
+              const sep = baseUrl.includes('?') ? '&' : '?';
+              return `${baseUrl}${sep}key=${encodeURIComponent(apiKey.trim())}`;
+            }
+            return baseUrl;
+          })();
+
+      const cartoAttribution = (typeof CartoMapConfig !== 'undefined' && CartoMapConfig.attribution)
+        ? CartoMapConfig.attribution
+        : '&copy; <a href="https://carto.com/" target="_blank" rel="noopener">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+
+      // 1. CARTO Voyager Basemap (bottom layer, tilePane, zIndex 200)
+      tileLayer = L.tileLayer(cartoTileUrl, {
+        attribution: cartoAttribution,
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(leafletMap);
+
+      // STRICT LAYER ORDERING:
+      // CARTO BASEMAP (tileLayer) -> RISK HEATMAP -> RISK ZONES / MARKERS -> USER GPS MARKER
+      // 2. Risk Heatmap Layer (overlayPane, zIndex 400)
+      riskHeatmapLayer = L.layerGroup().addTo(leafletMap);
+
+      // 3. Tactical Zones & Waypoint Risk Markers (overlayPane, renders on top of heatmap)
+      tacticalZonesLayer = L.layerGroup().addTo(leafletMap);
+      waypointsLayer = L.layerGroup().addTo(leafletMap);
+
+      renderLeafletTacticalZones();
+      renderLeafletWaypoints();
+
+      leafletMap.on('click', () => {
+        closeTacticalDrawer();
+      });
+
+      // Synchronize initial heatmap visibility
+      updateHeatmapVisuals();
+    }
+
+    function renderLeafletTacticalZones() {
+      if (!tacticalZonesLayer) return;
+      tacticalZonesLayer.clearLayers();
 
       MAP_ZONES.forEach(z => {
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('class', 'map-zone-group');
-        g.setAttribute('data-zone-id', z.id);
-        g.setAttribute('role', 'button');
-        g.setAttribute('tabindex', '0');
+        if (!z.latLngs) return;
+        const color = z.type === 'pfz' ? '#8C9B5E' : (z.type === 'caution' ? '#E8A44C' : '#DE6347');
+        const fillColor = z.type === 'pfz' ? '#74804E' : (z.type === 'caution' ? '#D4903B' : '#C4543A');
+
+        const polygon = L.polygon(z.latLngs, {
+          color: color,
+          weight: 1.5,
+          fillColor: fillColor,
+          fillOpacity: 0.24
+        });
 
         const label = (currentLang === 'hi') ? z.label_hi : (currentLang === 'ta' ? (z.label_ta || z.label_en) : z.label_en);
-        const sub = (currentLang === 'hi') ? z.sub_hi : (currentLang === 'ta' ? (z.sub_ta || z.sub_en) : z.sub_en);
-        const cls = z.type === 'pfz' ? 'zone-pfz-style' : (z.type === 'caution' ? 'zone-caution-style' : 'zone-danger-style');
+        polygon.bindTooltip(label, { permanent: false, direction: 'center', className: 'tactical-map-tooltip' });
 
-        g.innerHTML = `
-          <path d="${z.path}" class="map-zone-path ${cls}" />
-          <text x="${z.textPos.x}" y="${z.textPos.y}" fill="var(--text-chart)" font-family="var(--font-telemetry)" font-size="11.5" font-weight="700">${label}</text>
-          <text x="${z.textPos.x}" y="${z.textPos.y + 16}" fill="var(--text-muted)" font-family="var(--font-telemetry)" font-size="9.5">${sub}</text>
-        `;
-
-        g.addEventListener('click', (e) => {
-          e.stopPropagation();
+        polygon.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
           selectMapZone(z.id);
         });
 
-        container.appendChild(g);
+        tacticalZonesLayer.addLayer(polygon);
       });
     }
 
-    // Render Markers on SVG Chart
-    function renderMapMarkers() {
-      const container = document.getElementById('svgMarineMarkersContainer');
-      if (!container) return;
-      container.innerHTML = '';
+    function renderLeafletWaypoints() {
+      if (!waypointsLayer) return;
+      waypointsLayer.clearLayers();
 
       MAP_MARKERS.forEach(m => {
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('class', 'map-marker-group');
-        g.setAttribute('data-marker-id', m.id);
-        g.setAttribute('transform', `translate(${m.x}, ${m.y})`);
-        g.setAttribute('role', 'button');
-        g.setAttribute('tabindex', '0');
-        g.style.cursor = 'pointer';
+        if (!m.latLng) return;
+        const isPfz = m.kind === 'pfz';
+        const markerColor = isPfz ? '#74804E' : '#C4543A';
+        const iconChar = isPfz ? '🐟' : '⚡';
 
+        const waypointHtml = `
+          <div style="background:${markerColor}; border:2px solid #EFEAE1; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; box-shadow:0 2px 8px rgba(0,0,0,0.6); cursor:pointer;">
+            ${iconChar}
+          </div>
+        `;
+
+        const icon = L.divIcon({
+          className: 'custom-tactical-waypoint',
+          html: waypointHtml,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker(m.latLng, { icon: icon });
         const label = (currentLang === 'hi') ? m.label_hi : (currentLang === 'ta' ? (m.label_ta || m.label_en) : m.label_en);
+        marker.bindTooltip(label, { permanent: false, direction: 'top', className: 'tactical-map-tooltip' });
 
-        let innerSvg = '';
-        if (m.kind === 'vessel') {
-          innerSvg = `
-            <circle cx="0" cy="0" r="14" class="vessel-ping-ring" fill="none" stroke="var(--text-chart)" stroke-width="1.8" />
-            <polygon points="0,-10 6,8 0,4 -6,8" fill="var(--text-chart)" stroke="var(--brass-base)" stroke-width="1.5" transform="rotate(218)" />
-            <circle cx="0" cy="0" r="2.5" fill="var(--text-inverse)" />
-            <text x="12" y="4" fill="var(--text-chart)" font-family="var(--font-telemetry)" font-size="11" font-weight="700">${label}</text>
-          `;
-        } else if (m.kind === 'pfz') {
-          innerSvg = `
-            <circle cx="0" cy="0" r="14" class="vessel-ping-ring" fill="none" stroke="var(--pfz-border)" stroke-width="1.6" />
-            <circle cx="0" cy="0" r="8" fill="var(--pfz-border)" stroke="var(--bg-hull)" stroke-width="2" />
-            <polygon points="0,-4 3,3 -3,3" fill="#FFF" />
-            <text x="12" y="4" fill="var(--pfz-bright)" font-family="var(--font-telemetry)" font-size="11" font-weight="700">${label}</text>
-          `;
-        } else if (m.kind === 'danger') {
-          innerSvg = `
-            <circle cx="0" cy="0" r="16" class="vessel-ping-ring" fill="none" stroke="var(--danger-border)" stroke-width="1.8" />
-            <circle cx="0" cy="0" r="9" fill="var(--danger-base)" stroke="var(--bg-hull)" stroke-width="2" />
-            <polygon points="-2,-4 2,-1 -1,1 1,5 -3,1 -1,0" fill="#FFF" />
-            <text x="14" y="4" fill="var(--danger-border)" font-family="var(--font-telemetry)" font-size="11" font-weight="700">${label}</text>
-          `;
-        }
-
-        g.innerHTML = innerSvg;
-
-        g.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const theme = m.kind === 'danger' ? 'danger' : (m.kind === 'pfz' ? 'pfz' : 'caution');
+        marker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          const theme = m.kind === 'danger' ? 'danger' : 'pfz';
           const reason = (currentLang === 'hi') ? m.reason_hi : (currentLang === 'ta' ? (m.reason_ta || m.reason_en) : m.reason_en);
           showTacticalDrawer(label, reason, m.coords, theme, m.zone_id || 'zone-pfz-sw');
         });
 
-        container.appendChild(g);
+        waypointsLayer.addLayer(marker);
       });
-
-      // Tap on empty water dismisses drawer
-      const baseRect = document.getElementById('baseWaterRect');
-      if (baseRect) {
-        baseRect.addEventListener('click', () => closeTacticalDrawer());
-      }
     }
 
     // Select and focus zone on map
     function selectMapZone(zoneId) {
       activeZoneId = zoneId;
-      document.querySelectorAll('.map-zone-path').forEach(p => p.classList.remove('selected'));
-      
-      const zoneGroup = document.querySelector(`[data-zone-id="${zoneId}"]`);
-      if (zoneGroup) {
-        const path = zoneGroup.querySelector('.map-zone-path');
-        if (path) path.classList.add('selected');
-      }
-
       const z = MAP_ZONES.find(item => item.id === zoneId);
       if (z) {
         const title = (currentLang === 'hi') ? z.label_hi : (currentLang === 'ta' ? (z.label_ta || z.label_en) : z.label_en);
         const reason = (currentLang === 'hi') ? z.reason_hi : (currentLang === 'ta' ? (z.reason_ta || z.reason_en) : z.reason_en);
         showTacticalDrawer(title, reason, z.coords, z.type, z.id);
+        if (leafletMap && z.center) {
+          leafletMap.flyTo(z.center, 12, { duration: 1.2 });
+        }
       }
     }
 
@@ -3050,29 +3009,11 @@
     let vesselLocation = null; // null = not yet resolved; backend uses its own default
     let gpsWatchId = null;
 
-    // Cartographic Projection: Map Latitude & Longitude to SVG Chart (viewBox 0 0 1000 700)
-    function projectCoordsToSvg(lat, lon) {
-      // Reference Nautical Graticule:
-      // lat 14.75°N (y=620) to 15.50°N (y=120)
-      // lon 73.50°E (x=180) to 74.25°E (x=900)
-      const latMin = 14.75, latMax = 15.50, yMin = 620, yMax = 120;
-      const lonMin = 73.50, lonMax = 74.25, xMin = 180, xMax = 900;
-
-      let x = xMin + ((lon - lonMin) / (lonMax - lonMin)) * (xMax - xMin);
-      let y = yMin + ((lat - latMin) / (latMax - latMin)) * (yMax - yMin);
-
-      // Clamp gracefully within SVG boundaries so pin remains visible with safe margin
-      x = Math.max(40, Math.min(960, x));
-      y = Math.max(40, Math.min(660, y));
-      return { x: Math.round(x), y: Math.round(y) };
-    }
-
-    // Pin User Location on Frontend Navigational Chart
+    // Pin User Location on Leaflet GPS Navigational Chart
     function pinUserLocationOnMap(gpsData) {
       if (!gpsData || typeof gpsData.latitude !== 'number' || typeof gpsData.longitude !== 'number') return;
       const lat = gpsData.latitude;
       const lon = gpsData.longitude;
-      const proj = projectCoordsToSvg(lat, lon);
 
       const latDeg = Math.floor(Math.abs(lat));
       const latMin = ((Math.abs(lat) - latDeg) * 60).toFixed(1);
@@ -3080,50 +3021,59 @@
       const lonMin = ((Math.abs(lon) - lonDeg) * 60).toFixed(1);
       const coordsStr = `${latDeg}°${latMin}'${lat >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonMin}'${lon >= 0 ? 'E' : 'W'}`;
 
-      let mkr = MAP_MARKERS.find(m => m.id === 'user_location' || m.id === 'mkr-vessel');
-      if (!mkr) {
-        mkr = {
-          id: 'user_location',
-          kind: 'vessel',
-          x: proj.x,
-          y: proj.y,
-          label_hi: '📍 आपकी वर्तमान स्थिति',
-          label_en: '📍 Your Current Location',
-          label_ta: '📍 உங்கள் தற்போதைய அமைவிடம்',
-          coords: coordsStr,
-          reason_hi: `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।`,
-          reason_en: `Live GPS-verified device coordinates (${coordsStr}). Weather, marine conditions, and risk analyses synced to this position.`,
-          reason_ta: `நேரலை GPS மூலம் பெறப்பட்ட படகு அமைவிடம் (${coordsStr}).`
-        };
-        MAP_MARKERS.unshift(mkr);
-      } else {
-        mkr.id = 'user_location';
-        mkr.x = proj.x;
-        mkr.y = proj.y;
-        mkr.coords = coordsStr;
-        mkr.label_hi = '📍 आपकी वर्तमान स्थिति';
-        mkr.label_en = '📍 Your Current Location';
-        mkr.label_ta = '📍 உங்கள் தற்போதைய அமைவிடம்';
-        mkr.reason_hi = `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।`;
-        mkr.reason_en = `Live GPS-verified device coordinates (${coordsStr}). Weather, marine conditions, and risk analyses synced to this position.`,
-        mkr.reason_ta = `நேரலை GPS மூலம் பெறப்பட்ட படகு அமைவிடம் (${coordsStr}).`;
-      }
-
       // Update masthead telemetry bar
       const elFix = document.getElementById('txtTelemetryFix');
       if (elFix) elFix.textContent = `DGPS FIX: ${coordsStr}`;
 
-      renderMapMarkers();
-      focusMapOnUserLocation(proj.x, proj.y);
+      if (!leafletMap) {
+        initLeafletMap();
+      }
+
+      // Create or update live pulsing beacon icon
+      const beaconHtml = `
+        <div class="leaflet-user-beacon" title="📍 Your Current Location (${coordsStr})">
+          <div class="user-beacon-pulse"></div>
+          <div class="user-beacon-core"></div>
+        </div>
+      `;
+      const beaconIcon = L.divIcon({
+        className: 'custom-user-beacon-icon',
+        html: beaconHtml,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      if (userGpsMarker) {
+        userGpsMarker.setLatLng([lat, lon]);
+        userGpsMarker.setIcon(beaconIcon);
+      } else {
+        userGpsMarker = L.marker([lat, lon], {
+          icon: beaconIcon,
+          zIndexOffset: 1000
+        }).addTo(leafletMap);
+
+        userGpsMarker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          const title = (currentLang === 'hi') ? '📍 आपकी वर्तमान स्थिति' : (currentLang === 'ta' ? '📍 உங்கள் தற்போதைய அமைவிடம்' : '📍 Your Current Location');
+          const reason = (currentLang === 'hi') ? 
+            `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।` : 
+            (currentLang === 'ta' ? 
+              `நேரலை GPS மூலம் பெறப்பட்ட படகு அமைவிடம் (${coordsStr}).` : 
+              `Live GPS-verified device coordinates (${coordsStr}). Weather, marine conditions, and risk analyses synced to this position.`);
+          showTacticalDrawer(title, reason, coordsStr, 'vessel', 'user_location');
+        });
+      }
+
+      // Fly and center map to user coordinates
+      focusMapOnUserLocation(lat, lon);
     }
 
     // Center or Move Map Viewport to User Location
-    function focusMapOnUserLocation(x, y) {
-      const viewport = document.getElementById('chartViewport');
-      if (!viewport) return;
-      const scrollX = Math.max(0, (x / 1000) * viewport.scrollWidth - viewport.clientWidth / 2);
-      const scrollY = Math.max(0, (y / 700) * viewport.scrollHeight - viewport.clientHeight / 2);
-      viewport.scrollTo({ left: scrollX, top: scrollY, behavior: 'smooth' });
+    function focusMapOnUserLocation(lat, lon) {
+      if (!leafletMap) return;
+      const targetLat = (typeof lat === 'number') ? lat : (vesselLocation ? vesselLocation.latitude : 15.25);
+      const targetLon = (typeof lon === 'number') ? lon : (vesselLocation ? vesselLocation.longitude : 73.80);
+      leafletMap.flyTo([targetLat, targetLon], 12, { duration: 1.2 });
     }
 
     // Update Bridge Telemetry Strip UI
@@ -3151,7 +3101,90 @@
       }
     }
 
-    // Transmit User GPS Location to Backend GPS Agent & Trigger Telemetry
+    // Render Dynamic 3x3 Risk Heatmap around User GPS
+    function renderDynamicRiskHeatmap(riskPoints, userLocation) {
+      if (!riskHeatmapLayer) return;
+      riskHeatmapLayer.clearLayers();
+
+      if (!Array.isArray(riskPoints) || riskPoints.length === 0) return;
+
+      riskPoints.forEach((pt, idx) => {
+        const risk = Number(pt.risk) || 0;
+        const isCenterUser = (idx === 4);
+
+        let fillColor = '#27AE60'; // Low Risk Green
+        let strokeColor = '#2ECC71';
+        let fillOpacity = 0.38;
+
+        if (pt.risk_level === 'CRITICAL' || risk >= 80) {
+          fillColor = '#C4543A'; // Critical Rust Red
+          strokeColor = '#DE6347';
+          fillOpacity = 0.55;
+        } else if (pt.risk_level === 'HIGH' || risk >= 55) {
+          fillColor = '#E67E22'; // High Orange
+          strokeColor = '#F39C12';
+          fillOpacity = 0.48;
+        } else if (pt.risk_level === 'MEDIUM' || risk >= 30) {
+          fillColor = '#D4903B'; // Caution Amber
+          strokeColor = '#F1C40F';
+          fillOpacity = 0.42;
+        }
+
+        const circle = L.circle([pt.latitude, pt.longitude], {
+          radius: isCenterUser ? 3200 : 2800,
+          color: strokeColor,
+          weight: isCenterUser ? 2 : 1,
+          dashArray: isCenterUser ? null : '4, 4',
+          fillColor: fillColor,
+          fillOpacity: fillOpacity
+        });
+
+        const cellLabel = isCenterUser ? `📍 User GPS (${risk}% ${pt.risk_level})` : `P${idx + 1}: ${risk}% Risk (${pt.risk_level})`;
+        circle.bindTooltip(cellLabel, {
+          permanent: false,
+          direction: 'top',
+          className: 'tactical-map-tooltip'
+        });
+
+        circle.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          const theme = (pt.risk_level === 'CRITICAL' || pt.risk_level === 'HIGH') ? 'danger' : (pt.risk_level === 'MEDIUM' ? 'caution' : 'pfz');
+          const title = `${cellLabel} • [${pt.latitude.toFixed(4)}°, ${pt.longitude.toFixed(4)}°]`;
+          const reason = `Live multi-agent risk assessment: ${risk}% composite risk score. Marine swell: ${pt.wave_height || '1.1m'}, Wind: ${pt.wind_speed || '12 kt'}. Status: ${pt.risk_level}.`;
+          showTacticalDrawer(title, reason, `${pt.latitude.toFixed(4)}°N, ${pt.longitude.toFixed(4)}°E`, theme, `risk_point_${idx+1}`);
+        });
+
+        riskHeatmapLayer.addLayer(circle);
+      });
+
+      // Update legend labels for 3x3 Risk Heatmap
+      const legScaleLow = document.getElementById('heatScaleLow');
+      const legScaleHigh = document.getElementById('heatScaleHigh');
+      const legHeatmap = document.getElementById('legHeatmap');
+      if (legScaleLow) legScaleLow.textContent = '0% (कम जोखिम / SAFE)';
+      if (legScaleHigh) legScaleHigh.textContent = '100% (गंभीर / CRITICAL)';
+      if (legHeatmap) legHeatmap.textContent = '3×3 जीपीएस जोखिम हीटमैप (Live Risk Grid)';
+    }
+
+    // Query 3x3 Risk Heatmap from Backend
+    async function fetchRiskHeatmap(lat, lon) {
+      try {
+        const res = await fetch(`${BACKEND_API_BASE}/heatmap`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude: lat, longitude: lon })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && Array.isArray(data.risk_points)) {
+          renderDynamicRiskHeatmap(data.risk_points, data.user_location);
+        }
+      } catch (err) {
+        console.warn('[KyroX] Heatmap fetch failed:', err);
+      }
+    }
+
+    // Transmit User GPS Location to Backend GPS Agent & Trigger Heatmap + Telemetry
     async function sendLocationToBackend(lat, lon) {
       try {
         const res = await fetch(`${BACKEND_API_BASE}/location`, {
@@ -3164,6 +3197,11 @@
           if (data && data.gps) {
             pinUserLocationOnMap(data.gps);
             if (data.telemetry) updateBridgeTelemetryUI(data.telemetry);
+            if (data.risk_points && data.risk_points.length > 0) {
+              renderDynamicRiskHeatmap(data.risk_points, data.user_location);
+            } else {
+              fetchRiskHeatmap(lat, lon);
+            }
             return data;
           }
         }
@@ -3179,6 +3217,7 @@
         type: 'CURRENT_LOCATION',
         marker_type: 'USER'
       });
+      fetchRiskHeatmap(lat, lon);
     }
 
     // Geolocation Error Handling (Clear User Guidance, No Silent Fake Locations)
@@ -3276,6 +3315,11 @@
         isBackendConnected = true;
         if (data.gps) {
           pinUserLocationOnMap(data.gps);
+        }
+        if (data.risk_points && data.risk_points.length > 0) {
+          renderDynamicRiskHeatmap(data.risk_points, data.user_location);
+        } else if (vesselLocation) {
+          fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
         }
         updateBridgeTelemetryUI(data);
       } catch (err) {
@@ -3729,13 +3773,16 @@
     // Heatmap Layer Toggle Logic
     let isHeatmapActive = localStorage.getItem('orca_marine_heatmap') !== 'false'; // default ON
     const btnToggleHeatmap = document.getElementById('btnToggleHeatmap');
-    const svgHeatmapLayer = document.getElementById('svgMarineHeatmapLayer');
     const heatmapLegendScale = document.getElementById('heatmapLegendScale');
 
     function updateHeatmapVisuals() {
       const t = I18N[currentLang] || I18N.en;
-      if (svgHeatmapLayer) {
-        svgHeatmapLayer.classList.toggle('hidden', !isHeatmapActive);
+      if (leafletMap && riskHeatmapLayer) {
+        if (isHeatmapActive) {
+          if (!leafletMap.hasLayer(riskHeatmapLayer)) leafletMap.addLayer(riskHeatmapLayer);
+        } else {
+          if (leafletMap.hasLayer(riskHeatmapLayer)) leafletMap.removeLayer(riskHeatmapLayer);
+        }
       }
       if (btnToggleHeatmap) {
         btnToggleHeatmap.classList.toggle('off', !isHeatmapActive);
@@ -3874,8 +3921,8 @@
       });
 
 
-      renderMapZones();
-      renderMapMarkers();
+      renderLeafletTacticalZones();
+      renderLeafletWaypoints();
       renderBulletinsList();
       renderQuickQueries();
     }
@@ -3936,6 +3983,9 @@
         legendArrow.textContent = '▸';
         btnToggleLegend.setAttribute('aria-expanded', 'false');
       }
+      // Initialize Leaflet Map
+      initLeafletMap();
+
       // Click on DGPS fix in masthead to recenter on user location
       const elFix = document.getElementById('txtTelemetryFix');
       if (elFix) {
@@ -3943,13 +3993,11 @@
         elFix.title = 'Click to focus chart on current GPS location';
         elFix.addEventListener('click', () => {
           if (vesselLocation) {
-            const proj = projectCoordsToSvg(vesselLocation.latitude, vesselLocation.longitude);
-            focusMapOnUserLocation(proj.x, proj.y);
+            focusMapOnUserLocation(vesselLocation.latitude, vesselLocation.longitude);
           }
         });
       }
 
-      // Load live telemetry and safety bulletins from backend
       fetchLiveTelemetry();
       fetchLiveBulletins();
     }

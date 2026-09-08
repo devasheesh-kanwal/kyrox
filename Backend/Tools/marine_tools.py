@@ -19,12 +19,7 @@ logger = logging.getLogger(__name__)
 
 # ========== SECURE ENV LOADING ==========
 # Open-Meteo public Marine API does NOT require an API key.
-BASE_URL = os.getenv("MARINE_API_BASE_URL")
-
-if not BASE_URL:
-    raise RuntimeError(
-        "MARINE_API_BASE_URL environment variable is not set in .env"
-    )
+BASE_URL = os.getenv("MARINE_API_BASE_URL") or "https://marine-api.open-meteo.com/v1/marine"
 
 REQUEST_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
