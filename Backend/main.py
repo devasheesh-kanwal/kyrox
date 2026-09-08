@@ -9,6 +9,10 @@ Integrates:
   - Conversational Agent (Multilingual Intent Classifier)
   - Orchestrator (Multi-Agent Dispatcher)
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import asyncio
 import logging
 from typing import Optional, List, Dict, Any
