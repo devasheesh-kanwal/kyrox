@@ -1,9 +1,9 @@
 # backend/tools/marine_tools.py
 import os
-import httpx  # <-- IMPORTANT: Use httpx, NOT requests
+import httpx  
 from dotenv import load_dotenv
 
-# Load environment variables (best practice from Option 1)
+
 load_dotenv()
 
 NASA_API_KEY = os.getenv("NASA_API_KEY")
