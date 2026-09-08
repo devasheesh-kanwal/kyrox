@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asyncio
 import logging
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -32,10 +32,14 @@ from Models.schemas import (
 )
 from Agents.marine_agent import marine_agent as run_marine_agent
 from Agents.weather_agent import weather_agent as run_weather_agent
-from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
+try:
+    from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
+except ImportError:
+    from Agents.geospatial_agent import geospatial_agent as run_geospatial_agent
 from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
 from Agents.gps_agent import gps_agent
+from Agents.risk_agent import generate_risk_heatmap
 from Agents.orchestrator import (
     calculate_risk,
     orchestrate,
@@ -61,14 +65,34 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 # Default vessel operational location (Goa-Karwar coastal waters)
 DEFAULT_LATITUDE = 15.246
 DEFAULT_LONGITUDE = 73.803
+
+
+# --------------------------------------------------
+# AGENT RESULT NORMALIZATION
+# --------------------------------------------------
+def _normalize_agent_result(result: Any, fallback: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Agent calls can come back as a Pydantic model, a plain dict, or (when run
+    through asyncio.gather(..., return_exceptions=True)) an Exception object.
+    Always normalize to a plain dict so downstream `.get(...)` calls never
+    raise AttributeError, and so real data isn't silently discarded just
+    because it came back as a model instance instead of a dict.
+    """
+    if result is None or isinstance(result, Exception):
+        return dict(fallback)
+    if hasattr(result, "model_dump"):
+        return result.model_dump()
+    if isinstance(result, dict):
+        return result
+    return dict(fallback)
 
 
 # --------------------------------------------------
@@ -111,10 +135,13 @@ async def process_query(request: UserRequest):
 
     if request.location:
         loc = request.location
+    elif request.latitude is not None and request.longitude is not None:
+        loc = Location(latitude=request.latitude, longitude=request.longitude)
     elif detected_loc:
         loc = detected_loc
     elif target_zone and target_zone in KNOWN_ZONES:
-        loc = KNOWN_ZONES[target_zone]
+        zone_info = KNOWN_ZONES[target_zone]
+        loc = Location(latitude=zone_info["latitude"], longitude=zone_info["longitude"])
     else:
         loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
 
@@ -148,58 +175,48 @@ async def process_query(request: UserRequest):
     else:
         conv_data = conv_res
 
-    # Safe handling of marine agent
+    # Safe handling of marine agent (may return a MarineData model, a dict,
+    # or an Exception) -- normalize to a dict so `.get(...)` calls below
+    # never raise and real data is never silently dropped.
+    marine_fallback = {
+        "wave_height": 1.4,
+        "wave_direction": 225,
+        "wave_period": 7.0,
+        "swell_wave_height": 1.0,
+        "ocean_current_velocity": 1.2,
+        "ocean_current_direction": 190,
+        "sea_surface_temperature": 28.3,
+    }
     if isinstance(marine_res, Exception):
         logger.warning("Marine agent error: %s", marine_res)
-        marine_data = {
-            "wave_height": 1.4,
-            "wave_direction": 225,
-            "wave_period": 7.0,
-            "swell_wave_height": 1.0,
-            "ocean_current_velocity": 1.2,
-            "ocean_current_direction": 190,
-            "sea_surface_temperature": 28.3,
-        }
-    else:
-        marine_data = marine_res
+    marine_data = _normalize_agent_result(marine_res, marine_fallback)
 
     # Safe handling of weather agent
+    weather_fallback = {
+        "wind_speed": 12.0,
+        "wave_height": float(marine_data.get("wave_height") or 1.4),
+        "lightning_risk": "LOW",
+        "storm_risk": "LOW",
+    }
     if isinstance(weather_res, Exception):
         logger.warning("Weather agent error: %s", weather_res)
-        weather_data = {
-            "wind_speed": 12.0,
-            "wave_height": float(marine_data.get("wave_height") or 1.4),
-            "lightning_risk": "LOW",
-            "storm_risk": "LOW",
-        }
-    elif hasattr(weather_res, "model_dump"):
-        weather_data = weather_res.model_dump()
-    elif isinstance(weather_res, dict):
-        weather_data = weather_res
-    else:
-        weather_data = {
-            "wind_speed": 12.0,
-            "wave_height": 1.4,
-            "lightning_risk": "LOW",
-            "storm_risk": "LOW",
-        }
+    weather_data = _normalize_agent_result(weather_res, weather_fallback)
 
     # Cross-fill wave height from marine if weather had 0.0
     if not weather_data.get("wave_height") and marine_data.get("wave_height"):
         weather_data["wave_height"] = marine_data["wave_height"]
 
     # Safe handling of geospatial agent
+    geo_fallback = {
+        "inside_protected_area": False,
+        "restricted_zone": False,
+        "near_boundary": False,
+        "distance_to_boundary_meters": 10000.0,
+        "restrictions": [],
+    }
     if isinstance(geo_res, Exception):
         logger.warning("Geospatial agent error: %s", geo_res)
-        geo_data = {
-            "inside_protected_area": False,
-            "restricted_zone": False,
-            "near_boundary": False,
-            "distance_to_boundary_meters": 10000.0,
-            "restrictions": [],
-        }
-    else:
-        geo_data = geo_res
+    geo_data = _normalize_agent_result(geo_res, geo_fallback)
 
     # 3. Deterministic Risk Assessment (incorporating intent, message, zone)
     risk_assessment = calculate_risk(
@@ -274,6 +291,14 @@ async def process_query(request: UserRequest):
     # Generate standardized GPS user location marker via GPS Agent
     gps_data = gps_agent(loc.latitude, loc.longitude)
 
+    # Generate or retrieve 3x3 risk heatmap around user coordinates
+    try:
+        heatmap_res = await generate_risk_heatmap(loc.latitude, loc.longitude)
+        risk_points = heatmap_res.get("risk_points", [])
+    except Exception as exc:
+        logger.warning("Could not generate risk points for /query: %s", exc)
+        risk_points = []
+
     return {
         "status": "success",
         "user_query": request.message,
@@ -281,6 +306,7 @@ async def process_query(request: UserRequest):
         "conversation": conv_data,
         "location": loc.model_dump(),
         "gps": gps_data,
+        "risk_points": risk_points,
         "zone_id": effective_zone,
         "marine_data": marine_data,
         "weather_data": weather_data,
@@ -303,22 +329,29 @@ async def get_live_telemetry(
     """Returns live vessel bridge telemetry for given or current coordinates."""
     loc = Location(latitude=lat, longitude=lon)
     try:
-        marine_data, weather_data = await asyncio.gather(
+        marine_res, weather_res = await asyncio.gather(
             run_marine_agent(loc),
             run_weather_agent(loc),
             return_exceptions=True
         )
     except Exception:
-        marine_data, weather_data = {}, {}
+        marine_res, weather_res = None, None
 
-    m_data = marine_data if isinstance(marine_data, dict) else {}
-    w_data = weather_data.model_dump() if hasattr(weather_data, "model_dump") else (weather_data if isinstance(weather_data, dict) else {})
+    m_data = _normalize_agent_result(marine_res, {})
+    w_data = _normalize_agent_result(weather_res, {})
 
     wave_h = float(m_data.get("wave_height") or w_data.get("wave_height") or 1.4)
     wind_spd = float(w_data.get("wind_speed") or 12.0)
     current_vel = float(m_data.get("ocean_current_velocity") or 1.2)
     sst = float(m_data.get("sea_surface_temperature") or 28.2)
     gps_data = gps_agent(loc.latitude, loc.longitude)
+
+    try:
+        heatmap_res = await generate_risk_heatmap(loc.latitude, loc.longitude)
+        risk_points = heatmap_res.get("risk_points", [])
+    except Exception as exc:
+        logger.warning("Failed to generate risk heatmap in /telemetry: %s", exc)
+        risk_points = []
 
     return {
         "fix": f"DGPS: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
@@ -337,6 +370,7 @@ async def get_live_telemetry(
         "clearance": "SAFE" if wave_h < 2.0 and wind_spd < 20 else "PROCEED_WITH_CAUTION",
         "location": loc.model_dump(),
         "gps": gps_data,
+        "risk_points": risk_points,
     }
 
 
@@ -351,7 +385,7 @@ class LocationUpdateRequest(BaseModel):
 @app.post("/location")
 @app.get("/location")
 async def update_user_location(
-    body: Optional[LocationUpdateRequest] = None,
+    body: Optional[LocationUpdateRequest] = Body(None),
     lat: Optional[float] = Query(None),
     lon: Optional[float] = Query(None)
 ):
@@ -366,26 +400,36 @@ async def update_user_location(
     loc = Location(latitude=gps_data["latitude"], longitude=gps_data["longitude"])
 
     try:
-        marine_data, weather_data = await asyncio.gather(
+        marine_res, weather_res = await asyncio.gather(
             run_marine_agent(loc),
             run_weather_agent(loc),
             return_exceptions=True
         )
     except Exception:
-        marine_data, weather_data = {}, {}
+        marine_res, weather_res = None, None
 
-    m_data = marine_data if isinstance(marine_data, dict) else {}
-    w_data = weather_data.model_dump() if hasattr(weather_data, "model_dump") else (weather_data if isinstance(weather_data, dict) else {})
+    m_data = _normalize_agent_result(marine_res, {})
+    w_data = _normalize_agent_result(weather_res, {})
 
     wave_h = float(m_data.get("wave_height") or w_data.get("wave_height") or 1.4)
     wind_spd = float(w_data.get("wind_speed") or 12.0)
     current_vel = float(m_data.get("ocean_current_velocity") or 1.2)
     sst = float(m_data.get("sea_surface_temperature") or 28.2)
 
+    # Compute 3x3 risk grid around this GPS fix
+    try:
+        heatmap_res = await generate_risk_heatmap(loc.latitude, loc.longitude)
+        risk_points = heatmap_res.get("risk_points", [])
+    except Exception as exc:
+        logger.warning("Failed to generate risk heatmap in /location: %s", exc)
+        risk_points = []
+
     return {
         "status": "success",
+        "user_location": loc.model_dump(),
         "location": loc.model_dump(),
         "gps": gps_data,
+        "risk_points": risk_points,
         "telemetry": {
             "fix": f"DGPS FIX: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
             "sog": "6.2 kt",
@@ -402,13 +446,71 @@ async def update_user_location(
 
 
 # --------------------------------------------------
+# DYNAMIC 3x3 RISK HEATMAP ENDPOINT
+# --------------------------------------------------
+class HeatmapRequest(BaseModel):
+    latitude: Optional[float] = Field(None, ge=-90, le=90, description="Center latitude of user GPS")
+    longitude: Optional[float] = Field(None, ge=-180, le=180, description="Center longitude of user GPS")
+    step: Optional[float] = Field(0.035, ge=0.005, le=0.5, description="Geographic step in degrees")
+
+
+@app.post("/heatmap")
+@app.get("/heatmap")
+@app.post("/api/v1/risk-analysis")
+@app.get("/api/v1/risk-analysis")
+async def get_risk_heatmap(
+    body: Optional[HeatmapRequest] = Body(None),
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None),
+    step: Optional[float] = Query(0.035)
+):
+    """
+    Computes dynamic 3x3 geographic risk grid centered on user GPS coordinates.
+    Returns:
+        {
+            "user_location": {"latitude": ..., "longitude": ...},
+            "risk_points": [
+                {"latitude": ..., "longitude": ..., "risk": ..., "risk_level": ...},
+                ... (9 points)
+            ]
+        }
+    """
+    target_lat = body.latitude if (body and body.latitude is not None) else (lat if lat is not None else None)
+    target_lon = body.longitude if (body and body.longitude is not None) else (lon if lon is not None else None)
+    target_step = body.step if (body and body.step is not None) else (step if step is not None else 0.035)
+
+    if target_lat is None or target_lon is None:
+        return {
+            "error": "latitude and longitude are required",
+            "user_location": None,
+            "risk_points": [],
+        }
+
+    try:
+        heatmap_data = await generate_risk_heatmap(target_lat, target_lon, step=target_step)
+        return heatmap_data
+    except Exception as exc:
+        logger.error("Heatmap generation failed: %s", type(exc).__name__)
+        return {
+            "user_location": {"latitude": target_lat, "longitude": target_lon},
+            "risk_points": [],
+            "error": "Unable to compute risk heatmap right now",
+        }
+
+
+# --------------------------------------------------
 # LIVE BULLETINS ENDPOINT
 # --------------------------------------------------
 @app.get("/bulletins")
 async def get_bulletins():
     """Returns live safety bulletins computed from marine and weather conditions."""
     loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
-    geo_info = await run_geospatial_agent(loc)
+    try:
+        geo_res = await run_geospatial_agent(loc)
+    except Exception as exc:
+        logger.warning("Geospatial agent error in /bulletins: %s", exc)
+        geo_res = None
+    geo_info = _normalize_agent_result(geo_res, {"inside_protected_area": False, "restrictions": []})
 
     bulletins = [
         {

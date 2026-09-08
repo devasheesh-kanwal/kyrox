@@ -12,11 +12,12 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GEOSPATIAL_URL = os.getenv("GEOSPATIAL_URL")
+_raw_geo_url = os.getenv("GEOSPATIAL_URL", "").strip()
+if not _raw_geo_url or "geoapify" in _raw_geo_url.lower():
+    GEOSPATIAL_URL = "https://overpass-api.de/api/interpreter"
+else:
+    GEOSPATIAL_URL = _raw_geo_url
 GEOSPATIAL_KEY = os.getenv("GEOSPATIAL_KEY")
-
-if not GEOSPATIAL_URL:
-    raise RuntimeError("GEOSPATIAL_URL environment variable is not set in .env")
 
 REQUEST_TIMEOUT = httpx.Timeout(25.0, connect=5.0)
 
@@ -72,14 +73,15 @@ def _restriction_label(tags: dict) -> str | None:
 
 async def _overpass_query(client: httpx.AsyncClient, query: str) -> dict:
     headers = {
-        "User-Agent": "Marine-AI/1.0",
+        "User-Agent": "KyroX-Marine-AI/1.0",
         "Content-Type": "application/x-www-form-urlencoded",
     }
-    if GEOSPATIAL_KEY:
+    is_overpass = "overpass" in GEOSPATIAL_URL.lower()
+    if GEOSPATIAL_KEY and not is_overpass:
         headers["X-API-Key"] = GEOSPATIAL_KEY
 
     params = {}
-    if GEOSPATIAL_KEY:
+    if GEOSPATIAL_KEY and not is_overpass:
         params["key"] = GEOSPATIAL_KEY
 
     try:

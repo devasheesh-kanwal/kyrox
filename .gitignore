@@ -1,3 +1,8 @@
  __pycache__/
 *.py[cod]
 *.class
+.env
+*.env
+.env.*
+env.js
+**/env.js

@@ -143,6 +143,15 @@ def calculate_risk(
     score = 0
     reasons = []
 
+    # Safe conversion if inputs are Pydantic models or None
+    m_dict = marine.model_dump() if hasattr(marine, "model_dump") else (marine if isinstance(marine, dict) else {})
+    w_dict = weather.model_dump() if hasattr(weather, "model_dump") else (weather if isinstance(weather, dict) else {})
+    g_dict = geospatial.model_dump() if hasattr(geospatial, "model_dump") else (geospatial if isinstance(geospatial, dict) else {})
+
+    marine = m_dict
+    weather = w_dict
+    geospatial = g_dict
+
     low_msg = (user_message or "").lower()
 
     # 1. EMERGENCY DISTRESS OVERRIDE
