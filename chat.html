@@ -3046,6 +3046,30 @@
     const BACKEND_API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && window.location.port === '8000' ? '' : 'http://localhost:8000';
     let isBackendConnected = false;
 
+    // --- Live Vessel Location (GPS) ---
+    let vesselLocation = null; // null = not yet resolved; backend uses its own default
+
+    function initVesselLocation() {
+      if (!navigator.geolocation) {
+        console.warn('[KyroX] Geolocation not supported by this browser');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          vesselLocation = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude
+          };
+          console.log('[KyroX] Vessel GPS fix:', vesselLocation.latitude, vesselLocation.longitude);
+        },
+        (err) => {
+          console.warn('[KyroX] Geolocation error:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+    initVesselLocation();
+
     // Fetch Live Telemetry from Backend on Load
     async function fetchLiveTelemetry() {
       try {
@@ -3142,7 +3166,10 @@
         const response = await fetch(`${BACKEND_API_BASE}/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            message: text,
+            location: vesselLocation
+          }),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
