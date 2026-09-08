@@ -3,111 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>ORCA • Marine AI Chat</title>
-  <meta name="description" content="Conversational AI marine safety and fishing assistant for coastal fishermen.">
+  <title>ORCA • Marine Bridge Console & Tactical Chart (मरीन ब्रिज कंसोल)</title>
+  <meta name="description" content="Commercial-grade marine navigational console, bathymetric cartography, INCOIS potential fishing zones, and coastal safety telemetry for fishermen.">
+  
   <style>
     /* ==========================================================================
-       ORCA MARINE CHAT DESIGN SYSTEM
-       Strict Earth & Nautical Weathered Palette (NO BLUE, NO CYAN, NO TEAL)
-       Tokens identical to companion alerts panel:
-       - Background: warm charcoal (#1C1815 / #161311)
-       - Card/bubble surface: slightly lighter warm grey (#2A241E / #241F1A)
-       - Border/hairline: #3D352C
-       - Text primary: warm off-white (#F0EAE0)
-       - Text secondary/muted: #A69A88
-       - Danger accent: rust red (#C4543A)
-       - Caution accent: ochre/amber (#C88A3E)
-       - Confirmed/safe accent: muted olive/moss green (#7A8450)
-       - Actively reasoning accent: dusty gold / warm clay (#B98450)
+       ORCA COMMERCIAL MARINE DESIGN SYSTEM — RUGGED BRIDGE SPECIFICATION
+       Strict Earth, Weathered Rope & Maritime Hardware Palette (ZERO BLUE)
+       - Canvas / Hull: Heavy bridge charcoal (#12100E, #181411)
+       - Surface / Console Bezels: Weathered timber-grey (#221C17, #2B231D)
+       - Framing / Etched Borders: Nautical iron (#3A3027, #524438)
+       - Primary Readout: Navigational chart bone / warm white (#EFEAE1)
+       - Muted Telemetry: Sun-bleached sail linen (#A89B88, #7E7262)
+       - Tactical Brass / Focus: Marine instrument brass & ochre (#C88A3E, #DC9B4A)
+       - Emergency Distress / Red Alert: Rust red (#C4543A, #DE6347)
+       - Precautionary Notice: Warm amber (#D4903B)
+       - Potential Fishing Zone (PFZ): Deep ocean moss / kelp green (#74804E, #8C9B5E)
+       - Bathymetric Soundings: Deep contour grey-tan (#4A3E33)
        ========================================================================== */
 
     :root {
-      /* Base Canvas & Surfaces */
-      --bg-canvas: #161311;
-      --bg-surface: #241F1A;
-      --bg-surface-raised: #2D2620;
-      --bg-surface-hover: #362E27;
-      --bg-user-bubble: #342C24;
+      --bg-hull: #12100E;
+      --bg-bridge: #181411;
+      --bg-console: #221C17;
+      --bg-console-raised: #2B231D;
+      --bg-console-active: #362D25;
+      --bg-input: #1C1713;
 
-      /* Hairlines & Borders */
-      --border-edge: #3D352C;
-      --border-strong: #574B3E;
+      --border-bezel: #3A3027;
+      --border-brass: #5E4E3D;
       --border-focus: #C88A3E;
 
-      /* Typography Tokens */
-      --text-main: #F0EAE0;
-      --text-muted: #A69A88;
-      --text-dim: #7A7061;
-      --text-inverse: #161311;
+      --text-chart: #EFEAE1;
+      --text-muted: #A89B88;
+      --text-dim: #786D5F;
+      --text-inverse: #12100E;
 
-      /* Danger Tokens (Rust / Coral - NOT bright red, NOT pink) */
+      --brass-base: #C88A3E;
+      --brass-glow: rgba(200, 138, 62, 0.18);
+      --brass-bright: #DC9B4A;
+
       --danger-base: #C4543A;
-      --danger-tint: rgba(196, 84, 58, 0.16);
-      --danger-border: #873825;
-      --danger-text: #E88068;
-      --danger-solid-text: #FFFFFF;
+      --danger-fill: rgba(196, 84, 58, 0.22);
+      --danger-border: #DE6347;
+      --danger-bright: #FF856B;
 
-      /* Caution Tokens (Warm Coastal Ochre / Amber) */
-      --caution-base: #C88A3E;
-      --caution-tint: rgba(200, 138, 62, 0.16);
-      --caution-border: #8D5E25;
-      --caution-text: #E5A85C;
-      --caution-solid-text: #1C1815;
+      --caution-base: #D4903B;
+      --caution-fill: rgba(212, 144, 59, 0.20);
+      --caution-border: #E8A44C;
 
-      /* Confirmed / Safe Tokens (Muted Olive / Sea Moss) */
-      --resolved-base: #7A8450;
-      --resolved-tint: rgba(122, 132, 80, 0.16);
-      --resolved-border: #565E36;
-      --resolved-text: #A7B476;
-      --resolved-solid-text: #FFFFFF;
+      --pfz-base: #74804E;
+      --pfz-fill: rgba(116, 128, 78, 0.26);
+      --pfz-border: #8C9B5E;
+      --pfz-bright: #A9BB73;
 
-      /* Actively Reasoning Accent (Dusty Gold / Raw Clay) */
-      --reasoning-base: #B98450;
-      --reasoning-tint: rgba(185, 132, 80, 0.18);
-      --reasoning-border: #7F5831;
-      --reasoning-text: #DCAB77;
-
-      /* Typography Stacks (No external CDNs - offline resilient) */
-      --font-bulletin: "Rockwell", "Georgia", "Iowan Old Style", "Times New Roman", serif;
-      --font-interface: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-nav: "Rockwell", "Georgia", "Iowan Old Style", "Times New Roman", serif;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --font-telemetry: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
 
-      /* Sizing & Tap Targets */
-      --min-tap: 46px;
-      --radius-sm: 4px;
-      --radius-md: 6px;
+      --radius-subtle: 3px;
+      --radius-bezel: 5px;
+      --header-h: 92px;
+      --dock-h: 56px;
     }
 
-    /* Sunlight High-Contrast Mode (for glaring sea sun) */
-    body.sunlight-boost {
-      --bg-canvas: #0A0807;
-      --bg-surface: #1E1A16;
-      --bg-surface-raised: #2A241E;
-      --bg-user-bubble: #3E342B;
-      --border-edge: #5E5244;
-      --border-strong: #877663;
-      --text-main: #FFFFFF;
-      --text-muted: #D9CFC1;
-      --text-dim: #A89B88;
-      --danger-base: #DE5E42;
-      --danger-tint: rgba(222, 94, 66, 0.24);
-      --danger-border: #A3402B;
-      --danger-text: #FFA58F;
-      --caution-base: #E29F47;
-      --caution-tint: rgba(226, 159, 71, 0.24);
-      --caution-border: #A6702C;
-      --caution-text: #FFCD85;
-      --resolved-base: #93A061;
-      --resolved-tint: rgba(147, 160, 97, 0.24);
-      --resolved-border: #6B7642;
-      --resolved-text: #C3D08D;
-      --reasoning-base: #CCA066;
-      --reasoning-tint: rgba(204, 160, 102, 0.24);
-      --reasoning-border: #9D7440;
-      --reasoning-text: #FFD49E;
+    /* Deck Sunlight High-Contrast Boost Mode */
+    body.deck-sunlight {
+      --bg-hull: #080706;
+      --bg-bridge: #100D0B;
+      --bg-console: #1C1713;
+      --bg-console-raised: #28211B;
+      --border-bezel: #635342;
+      --border-brass: #8E775F;
+      --text-chart: #FFFFFF;
+      --text-muted: #E0D5C7;
+      --text-dim: #B0A290;
+      --brass-base: #E8A44C;
+      --danger-base: #E05D42;
+      --danger-border: #FF7B60;
+      --pfz-base: #8EA05E;
+      --pfz-border: #AFC474;
     }
 
-    /* Reset & Core Setup */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -115,886 +92,1432 @@
     }
 
     html {
-      font-size: 16px;
-      background-color: var(--bg-canvas);
-      color: var(--text-main);
+      font-size: 15px;
+      background-color: var(--bg-hull);
+      color: var(--text-chart);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
     body {
-      font-family: var(--font-interface);
-      font-size: 16px;
-      line-height: 1.5;
-      background-color: var(--bg-canvas);
-      color: var(--text-main);
+      font-family: var(--font-ui);
+      background-color: var(--bg-hull);
+      color: var(--text-chart);
       min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 0;
-      overflow-x: hidden;
     }
 
-    /* App Shell Container */
-    .app-viewport {
+    /* Master Bridge Frame */
+    .bridge-frame {
       width: 100%;
-      max-width: 580px;
-      margin: 0 auto;
       height: 100vh;
       height: 100dvh;
       display: flex;
       flex-direction: column;
-      border-left: 1px solid var(--border-edge);
-      border-right: 1px solid var(--border-edge);
-      background-color: var(--bg-canvas);
+      background-color: var(--bg-hull);
       position: relative;
+      overflow: hidden;
     }
 
-    /* Top Masthead / Station Banner */
-    .masthead {
-      background-color: var(--bg-surface);
-      border-bottom: 2px solid var(--border-edge);
-      padding: 12px 16px;
+    /* ==========================================================================
+       1. BRIDGE MASTHEAD & LIVE TELEMETRY BAR (Commercial Grade)
+       ========================================================================== */
+    .bridge-masthead {
+      background-color: var(--bg-bridge);
+      border-bottom: 2px solid var(--border-bezel);
+      padding: 8px 14px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 5px;
       flex-shrink: 0;
-      z-index: 10;
+      z-index: 30;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
     }
 
-    .masthead-top {
+    .masthead-primary-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
     }
 
-    .brand-mark {
+    .ship-station-lockup {
       display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 10px;
       text-decoration: none;
     }
 
-    .brand-glyph {
-      width: 28px;
-      height: 28px;
+    .sextant-seal {
+      width: 32px;
+      height: 32px;
+      border: 1.5px solid var(--border-brass);
+      background-color: var(--bg-console);
+      border-radius: var(--radius-subtle);
       display: grid;
       place-items: center;
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-strong);
-      color: var(--caution-base);
+      color: var(--brass-base);
+      box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
     }
 
-    .brand-title {
-      font-family: var(--font-bulletin);
+    .station-identity {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+
+    .station-callsign {
+      font-family: var(--font-nav);
+      font-size: 19px;
       font-weight: 700;
-      font-size: 20px;
-      letter-spacing: 0.5px;
-      color: var(--text-main);
-      line-height: 1;
-    }
-
-    .brand-sub {
-      font-size: 11px;
-      font-family: var(--font-telemetry);
-      color: var(--text-muted);
-      letter-spacing: 0.5px;
-      margin-left: 3px;
-    }
-
-    .masthead-actions {
+      letter-spacing: 0.8px;
+      color: var(--text-chart);
       display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .tool-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      min-height: 36px;
-      padding: 6px 10px;
-      background-color: var(--bg-surface-raised);
-      border: 1px solid var(--border-edge);
-      border-radius: var(--radius-sm);
-      color: var(--text-main);
-      font-size: 13px;
-      font-family: var(--font-interface);
-      cursor: pointer;
-      user-select: none;
-      text-decoration: none;
-    }
-
-    .tool-btn:hover {
-      background-color: var(--bg-surface-hover);
-      border-color: var(--border-strong);
-    }
-
-    .tool-btn:focus-visible {
-      outline: 2px solid var(--border-focus);
-      outline-offset: 1px;
-    }
-
-    .tool-btn.active {
-      background-color: var(--caution-base);
-      color: var(--text-inverse);
-      border-color: var(--caution-base);
-      font-weight: 600;
-    }
-
-    .alerts-nav-link {
-      color: var(--danger-text);
-      border-color: var(--danger-border);
-      background-color: var(--danger-tint);
-      font-weight: 600;
-    }
-
-    .alerts-nav-link:hover {
-      background-color: rgba(196, 84, 58, 0.28);
-    }
-
-    /* Sector & Agent Telemetry Bar */
-    .telemetry-strip {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 6px 12px;
-      font-family: var(--font-telemetry);
-      font-size: 11.5px;
-      color: var(--text-muted);
-      border-top: 1px solid var(--border-edge);
-      padding-top: 6px;
-    }
-
-    .telemetry-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background-color: var(--resolved-base);
-      display: inline-block;
-    }
-
-    /* Chat Thread Scrollable Area */
-    .chat-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 14px 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Initial Greeting Card */
-    .greeting-card {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-edge);
-      border-left: 4px solid var(--reasoning-base);
-      border-radius: var(--radius-sm);
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .greeting-title {
-      font-family: var(--font-bulletin);
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .greeting-title svg {
-      color: var(--reasoning-base);
-    }
-
-    .greeting-body {
-      font-size: 14.5px;
-      line-height: 1.5;
-      color: var(--text-muted);
-    }
-
-    .greeting-sub {
-      font-size: 12.5px;
-      font-family: var(--font-telemetry);
-      color: var(--text-dim);
-    }
-
-    /* Message Wrapper (User vs ORCA) */
-    .message-row {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-    }
-
-    .message-row.user {
-      align-items: flex-end;
-    }
-
-    .message-row.orca {
-      align-items: flex-start;
-    }
-
-    /* User Message Bubble */
-    .bubble-user {
-      max-width: 85%;
-      background-color: var(--bg-user-bubble);
-      border: 1px solid var(--border-strong);
-      border-radius: 8px 8px 1px 8px;
-      padding: 12px 15px;
-      color: var(--text-main);
-      font-size: 15.5px;
-      line-height: 1.45;
-      word-break: break-word;
-    }
-
-    .user-meta {
-      font-family: var(--font-telemetry);
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-top: 4px;
-      text-align: right;
-    }
-
-    /* ORCA Response Bubble Card (Editorial Style) */
-    .bubble-orca {
-      max-width: 95%;
-      width: 100%;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-edge);
-      border-left: 4px solid var(--border-strong);
-      border-radius: 2px 8px 8px 8px;
-      padding: 15px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      position: relative;
-    }
-
-    .bubble-orca.risk-danger {
-      border-left-color: var(--danger-base);
-    }
-
-    .bubble-orca.risk-caution {
-      border-left-color: var(--caution-base);
-    }
-
-    .bubble-orca.risk-none {
-      border-left-color: var(--resolved-base);
-    }
-
-    /* ORCA Message Header */
-    .orca-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      border-bottom: 1px solid var(--border-edge);
-      padding-bottom: 8px;
-    }
-
-    .orca-tag {
-      font-family: var(--font-telemetry);
-      font-size: 11.5px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: var(--caution-text);
-      display: inline-flex;
       align-items: center;
       gap: 6px;
     }
 
-    .zone-chip {
+    .station-specs {
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      letter-spacing: 0.4px;
+    }
+
+    .masthead-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tactical Bezel Buttons */
+    .bezel-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 4px 10px;
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      color: var(--text-chart);
       font-family: var(--font-telemetry);
       font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+    }
+
+    .bezel-btn:hover {
+      background-color: var(--bg-console-raised);
+      border-color: var(--border-brass);
+    }
+
+    .bezel-btn.active {
+      background-color: var(--brass-base);
+      color: var(--text-inverse);
+      border-color: var(--brass-bright);
+    }
+
+    .lang-bezel-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border-brass);
+      background-color: var(--bg-console);
+      border-radius: var(--radius-subtle);
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .lang-opt-btn {
+      background: none;
+      border: none;
+      padding: 3px 8px;
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 700;
       color: var(--text-muted);
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-edge);
+      cursor: pointer;
+      border-radius: 2px;
+    }
+
+    .lang-opt-btn.selected {
+      background-color: var(--brass-base);
+      color: var(--text-inverse);
+    }
+
+    /* Device View Switcher Pill (PC / Phone) */
+    .view-bezel-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border-brass);
+      background-color: var(--bg-console);
+      border-radius: var(--radius-subtle);
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .view-opt-btn {
+      background: none;
+      border: none;
+      padding: 3px 8px;
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background-color 0.12s, color 0.12s;
+    }
+
+    .view-opt-btn:hover {
+      color: var(--text-chart);
+      background-color: var(--bg-console-raised);
+    }
+
+    .view-opt-btn.selected {
+      background-color: var(--brass-base);
+      color: var(--text-inverse);
+    }
+
+    /* Marine Bridge Telemetry Ticker */
+    .bridge-telemetry-ticker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      padding-top: 5px;
+      border-top: 1px solid var(--border-bezel);
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .telemetry-cluster {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .telemetry-node {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sensor-live-blip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--pfz-base);
+      box-shadow: 0 0 6px var(--pfz-border);
+      animation: sensorPulse 2.8s infinite;
+    }
+
+    @keyframes sensorPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    .clock-node {
+      color: var(--brass-bright);
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       2. BRIDGE CONSOLE COCKPIT LAYOUT (Widescreen PC & Mobile)
+       ========================================================================== */
+    .bridge-cockpit {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Desktop Widescreen: Simultaneous Integrated Dual Console */
+    @media (min-width: 960px) {
+      .bridge-cockpit {
+        grid-template-columns: minmax(540px, 1fr) 460px;
+      }
+    }
+
+    @media (min-width: 1300px) {
+      .bridge-cockpit {
+        grid-template-columns: minmax(700px, 1fr) 520px;
+      }
+    }
+
+    /* Left / Center Station: The Interactive Navigational Chart */
+    .tactical-chart-station {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-hull);
+      overflow: hidden;
+      border-right: 1px solid var(--border-bezel);
+      height: 100%;
+    }
+
+    .chart-viewport {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      background-color: #15120F;
+    }
+
+    .nautical-svg-chart {
+      width: 100%;
+      height: 100%;
+      display: block;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* Right Station: Tactical Safety Log & Advisory Terminal */
+    .tactical-side-station {
+      background-color: var(--bg-bridge);
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border-bezel);
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+      z-index: 20;
+    }
+
+    /* Station Sub-Navigation Header */
+    .station-tab-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background-color: var(--bg-console);
+      border-bottom: 2px solid var(--border-bezel);
+      flex-shrink: 0;
+    }
+
+    .station-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 42px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-telemetry);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      padding: 6px 10px;
+      position: relative;
+      border-right: 1px solid var(--border-bezel);
+      transition: background-color 0.12s, color 0.12s;
+    }
+
+    .station-tab-btn:last-child {
+      border-right: none;
+    }
+
+    .station-tab-btn:hover {
+      background-color: var(--bg-console-raised);
+      color: var(--text-chart);
+    }
+
+    .station-tab-btn.active {
+      color: var(--brass-bright);
+      background-color: var(--bg-bridge);
+      box-shadow: inset 0 -3px 0 var(--brass-base);
+    }
+
+    .station-badge-danger {
+      background-color: var(--danger-base);
+      color: #FFF;
+      font-size: 10px;
+      font-family: var(--font-telemetry);
+      padding: 1px 5px;
+      border-radius: 2px;
+      line-height: 1.2;
+    }
+
+    /* Content Area for Station Tabs */
+    .station-content-panel {
+      flex: 1;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+
+    .station-content-panel.active {
+      display: flex;
+    }
+
+    /* ==========================================================================
+       3. OFFICIAL MARITIME SAFETY ALERTS & BULLETINS FEED
+       ========================================================================== */
+    .alerts-feed-container {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bulletin-registry-header {
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-left: 3px solid var(--brass-base);
+      padding: 10px 12px;
+      border-radius: var(--radius-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bulletin-registry-title {
+      font-family: var(--font-nav);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-chart);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .bulletin-status-line {
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Alert Filter Tabs */
+    .bulletin-filter-bar {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .bulletin-filter-chip {
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      color: var(--text-muted);
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: var(--radius-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .bulletin-filter-chip.active {
+      background-color: var(--bg-console-raised);
+      border-color: var(--brass-base);
+      color: var(--brass-bright);
+    }
+
+    /* The Authentic NAVAREA / INCOIS Card */
+    .bulletin-card {
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .bulletin-card:hover {
+      border-color: var(--border-brass);
+    }
+
+    .bulletin-card.card-danger {
+      border-left: 4px solid var(--danger-base);
+      background: linear-gradient(90deg, rgba(196, 84, 58, 0.08) 0%, var(--bg-console) 35%);
+    }
+
+    .bulletin-card.card-caution {
+      border-left: 4px solid var(--caution-base);
+      background: linear-gradient(90deg, rgba(212, 144, 59, 0.08) 0%, var(--bg-console) 35%);
+    }
+
+    .bulletin-card.card-resolved {
+      border-left: 4px solid var(--pfz-base);
+      background: linear-gradient(90deg, rgba(116, 128, 78, 0.08) 0%, var(--bg-console) 35%);
+    }
+
+    .card-top-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 5px;
+    }
+
+    .classification-tag {
+      font-weight: 700;
       padding: 2px 6px;
-      border-radius: var(--radius-sm);
+      border-radius: 2px;
+      letter-spacing: 0.4px;
+    }
+
+    .tag-danger { background-color: var(--danger-base); color: #FFF; }
+    .tag-caution { background-color: var(--caution-base); color: #12100E; }
+    .tag-resolved { background-color: var(--pfz-base); color: #FFF; }
+
+    .bulletin-source-stamp {
+      color: var(--text-dim);
+    }
+
+    .bulletin-title {
+      font-family: var(--font-nav);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-chart);
+      line-height: 1.3;
+    }
+
+    .bulletin-body {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .protocol-box {
+      background-color: var(--bg-bridge);
+      border: 1px solid var(--border-bezel);
+      padding: 8px 10px;
+      border-radius: 2px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .protocol-label {
+      font-family: var(--font-telemetry);
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--brass-bright);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .protocol-text {
+      color: var(--text-chart);
+    }
+
+    .card-action-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .card-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-height: 32px;
+      padding: 4px 8px;
+      border-radius: var(--radius-subtle);
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-bezel);
+      background-color: var(--bg-console-raised);
+      color: var(--text-chart);
+    }
+
+    .card-btn:hover {
+      background-color: var(--bg-console-active);
+      border-color: var(--border-brass);
+    }
+
+    .card-btn.plot-btn {
+      background-color: var(--bg-console);
+      border-color: var(--border-brass);
+      color: var(--brass-bright);
+    }
+
+    /* ==========================================================================
+       4. TACTICAL ADVISORY LOG & BRIDGE COMMUNICATOR (CHAT)
+       ========================================================================== */
+    .tactical-log-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    .log-scroll-thread {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Mission Brief Header in Chat */
+    .mission-brief-card {
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-left: 3px solid var(--brass-base);
+      padding: 10px 12px;
+      border-radius: var(--radius-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .brief-title {
+      font-family: var(--font-nav);
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-chart);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brief-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Tactical Log Messages */
+    .dispatch-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 92%;
+    }
+
+    .dispatch-entry.operator {
+      align-self: flex-end;
+    }
+
+    .dispatch-entry.advisory {
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    .dispatch-bubble-operator {
+      background-color: var(--bg-console-raised);
+      border: 1px solid var(--border-brass);
+      border-radius: var(--radius-subtle);
+      padding: 9px 12px;
+      font-size: 13.5px;
+      color: var(--text-chart);
+    }
+
+    .dispatch-card-advisory {
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-left: 3px solid var(--brass-base);
+      border-radius: var(--radius-subtle);
+      padding: 11px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .advisory-stamp-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-telemetry);
+      font-size: 10px;
+      color: var(--text-dim);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 4px;
+    }
+
+    .advisory-station-code {
+      color: var(--brass-bright);
+      font-weight: 700;
+    }
+
+    .advisory-main-text {
+      font-size: 13.5px;
+      color: var(--text-chart);
+      line-height: 1.45;
+    }
+
+    .nautical-telemetry-grid {
+      background-color: var(--bg-bridge);
+      border: 1px solid var(--border-bezel);
+      padding: 7px 10px;
+      border-radius: 2px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 10px;
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+
+    .telemetry-val {
+      font-weight: 700;
+      color: var(--text-chart);
+    }
+
+    .advisory-action-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .advisory-plot-btn {
+      background: none;
+      border: 1px solid var(--border-brass);
+      color: var(--brass-bright);
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 2px;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      max-width: 260px;
+    }
+
+    .advisory-plot-btn:hover {
+      background-color: var(--bg-console-raised);
+    }
+
+    /* Radio Query Input Dock */
+    .tactical-input-dock {
+      background-color: var(--bg-console);
+      border-top: 2px solid var(--border-bezel);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Nautical Instant Tactical Query Buttons */
+    .tactical-queries-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 3px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tactical-query-chip {
+      background-color: var(--bg-bridge);
+      border: 1px solid var(--border-bezel);
+      color: var(--text-muted);
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: var(--radius-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+    }
+
+    .tactical-query-chip:hover {
+      background-color: var(--bg-console-raised);
+      border-color: var(--border-brass);
+      color: var(--text-chart);
+    }
+
+    .query-input-form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .marine-input-box {
+      flex: 1;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      padding: 8px 12px;
+      font-family: var(--font-ui);
+      font-size: 13.5px;
+      color: var(--text-chart);
+      outline: none;
+      min-height: 38px;
+    }
+
+    .marine-input-box:focus {
+      border-color: var(--brass-base);
+    }
+
+    .marine-input-box::placeholder {
+      color: var(--text-dim);
+      font-family: var(--font-telemetry);
+      font-size: 12px;
+    }
+
+    .tactical-submit-btn {
+      background-color: var(--brass-base);
+      border: 1px solid var(--brass-bright);
+      color: var(--text-inverse);
+      font-weight: 700;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: var(--radius-subtle);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: var(--font-telemetry);
+      font-size: 11.5px;
+    }
+
+    .tactical-submit-btn:hover {
+      background-color: var(--brass-bright);
+    }
+
+    /* ==========================================================================
+       5. NAUTICAL CARTOGRAPHY OVERLAYS (HUD, Scale, Legend, Popover)
+       ========================================================================== */
+    .chart-hud-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .hud-compass-dial {
+      background-color: rgba(24, 20, 17, 0.94);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    .compass-true-north {
+      color: var(--danger-border);
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .hud-scale-chip {
+      background-color: rgba(24, 20, 17, 0.94);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      padding: 3px 6px;
+      font-family: var(--font-telemetry);
+      font-size: 9.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .scale-bar-segment {
+      width: 30px;
+      height: 2px;
+      background-color: var(--text-muted);
+    }
+
+    /* Chart Legend */
+    .chart-legend-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .chart-legend-btn {
+      background-color: rgba(24, 20, 17, 0.94);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      color: var(--text-chart);
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 4px 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .chart-legend-panel {
+      background-color: rgba(24, 20, 17, 0.96);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 4px;
+      min-width: 175px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+    }
+
+    .chart-legend-panel.collapsed {
+      display: none;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-telemetry);
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      flex-shrink: 0;
+    }
+
+    .swatch-pfz { background-color: var(--pfz-fill); border-color: var(--pfz-border); }
+    .swatch-caution { background-color: var(--caution-fill); border-color: var(--caution-border); }
+    .swatch-danger { background-color: var(--danger-fill); border-color: var(--danger-border); }
+    .swatch-vessel { background-color: var(--text-chart); border-radius: 50%; }
+
+    /* Interactive Tactical Zone Detail Drawer */
+    .tactical-detail-drawer {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      max-width: 480px;
+      background-color: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-left: 4px solid var(--brass-base);
+      border-radius: var(--radius-subtle);
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 25;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+      animation: drawerRise 0.16s ease-out;
+    }
+
+    @keyframes drawerRise {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .tactical-detail-drawer.open {
+      display: flex;
+    }
+
+    .tactical-detail-drawer.theme-pfz { border-left-color: var(--pfz-border); }
+    .tactical-detail-drawer.theme-caution { border-left-color: var(--caution-border); }
+    .tactical-detail-drawer.theme-danger { border-left-color: var(--danger-border); }
+
+    .drawer-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .drawer-zone-title {
+      font-family: var(--font-nav);
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-chart);
+    }
+
+    .drawer-close-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .drawer-close-btn:hover { color: var(--text-chart); }
+
+    .drawer-zone-reason {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .drawer-action-dock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    /* ==========================================================================
+       6. MOBILE TACTICAL SHEET & BOTTOM DOCK (Small Viewports)
+       ========================================================================== */
+    .mobile-bridge-dock {
+      display: none;
+      background-color: var(--bg-console);
+      border-top: 2px solid var(--border-bezel);
+      grid-template-columns: 1fr 1fr 1fr;
+      flex-shrink: 0;
+      z-index: 35;
+      height: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .mobile-dock-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 600;
+      position: relative;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .mobile-dock-btn.active {
+      color: var(--brass-bright);
+      background-color: var(--bg-bridge);
+      box-shadow: inset 0 -3px 0 var(--brass-base);
+    }
+
+    @media (max-width: 959px) {
+      .mobile-bridge-dock {
+        display: grid;
+      }
+
+      .tactical-side-station {
+        display: none;
+      }
+
+      /* When user switches to alerts or chat on mobile */
+      .bridge-cockpit.view-alerts .tactical-chart-station { display: none; }
+      .bridge-cockpit.view-alerts .tactical-side-station { display: flex; width: 100%; border-left: none; }
+      
+      .bridge-cockpit.view-chat .tactical-chart-station { display: none; }
+      .bridge-cockpit.view-chat .tactical-side-station { display: flex; width: 100%; border-left: none; }
+
+      .tactical-detail-drawer {
+        bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px) + 8px);
+        left: 8px;
+        right: 8px;
+        max-width: 100%;
+      }
+
+      /* Prevent iOS Safari auto-zoom on mobile phone inputs */
+      .marine-input-box {
+        font-size: 16px;
+      }
+    }
+
+    /* Compact Phone Viewport Conversion (< 600px) */
+    @media (max-width: 600px) {
+      .bridge-masthead {
+        padding: 6px 10px;
+        gap: 4px;
+      }
+
+      .sextant-seal {
+        width: 28px;
+        height: 28px;
+      }
+
+      .station-callsign {
+        font-size: 16px;
+      }
+
+      .station-specs {
+        font-size: 9px;
+        max-width: 140px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bezel-btn {
+        min-height: 30px;
+        padding: 3px 7px;
+        font-size: 10px;
+      }
+
+      .lang-opt-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+      }
+
+      .view-opt-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+        gap: 3px;
+      }
+
+      .view-opt-btn svg {
+        width: 11px;
+        height: 11px;
+      }
+
+      .bridge-telemetry-ticker {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-top: 4px;
+        padding-bottom: 2px;
+      }
+
+      .bridge-telemetry-ticker::-webkit-scrollbar {
+        display: none;
+      }
+
+      .telemetry-cluster {
+        flex-wrap: nowrap;
+        gap: 10px;
+        white-space: nowrap;
+      }
+
+      .clock-node {
+        white-space: nowrap;
+        padding-left: 6px;
+      }
+
+      .chart-hud-overlay {
+        top: 6px;
+        left: 6px;
+        transform: scale(0.88);
+        transform-origin: top left;
+      }
+
+      .chart-legend-container {
+        top: 6px;
+        right: 6px;
+      }
+
+      .chart-legend-btn {
+        font-size: 9.5px;
+        padding: 3px 6px;
+      }
+
+      .bulletin-card {
+        padding: 10px;
+      }
+
+      .bulletin-badge-row {
+        gap: 5px;
+      }
+
+      .card-action-row {
+        flex-wrap: wrap;
+      }
+
+      .card-btn {
+        flex: 1 1 120px;
+      }
+    }
+
+    /* ==========================================================================
+       MANUAL DEVICE VIEW MODES (PC 🖥️ <-> PHONE 📱 TOGGLE)
+       ========================================================================== */
+    body.force-phone-view {
+      background-color: #0b0908;
+    }
+
+    body.force-phone-view .bridge-frame {
+      max-width: 440px;
+      margin: 0 auto;
+      border-left: 2px solid var(--border-bezel);
+      border-right: 2px solid var(--border-bezel);
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
+    }
+
+    body.force-phone-view .bridge-cockpit {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.force-phone-view .mobile-bridge-dock {
+      display: grid !important;
+    }
+
+    body.force-phone-view .tactical-side-station {
+      display: none !important;
+    }
+
+    body.force-phone-view .bridge-cockpit.view-alerts .tactical-chart-station {
+      display: none !important;
+    }
+    body.force-phone-view .bridge-cockpit.view-alerts .tactical-side-station {
+      display: flex !important;
+      width: 100% !important;
+      border-left: none !important;
+    }
+
+    body.force-phone-view .bridge-cockpit.view-chat .tactical-chart-station {
+      display: none !important;
+    }
+    body.force-phone-view .bridge-cockpit.view-chat .tactical-side-station {
+      display: flex !important;
+      width: 100% !important;
+      border-left: none !important;
+    }
+
+    body.force-phone-view .tactical-detail-drawer {
+      bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px) + 8px) !important;
+      left: 8px !important;
+      right: 8px !important;
+      max-width: 100% !important;
+    }
+
+    body.force-phone-view .marine-input-box {
+      font-size: 16px !important;
+    }
+
+    body.force-phone-view .station-specs {
+      font-size: 9px;
+      max-width: 130px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    /* Main Answer Text */
-    .orca-answer-text {
-      font-size: 15.5px;
-      line-height: 1.6;
-      color: var(--text-main);
-      font-weight: 400;
+    body.force-phone-view .bridge-telemetry-ticker {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-top: 4px;
+      padding-bottom: 2px;
     }
-
-    /* ==========================================================================
-       DISTINCT INLINE WARNING STRIP (RUST/OCHRE - STRICTLY DIFFERENT FROM WHY BOX)
-       ========================================================================== */
-    .inline-warning-strip {
-      display: flex;
-      align-items: flex-start;
+    body.force-phone-view .bridge-telemetry-ticker::-webkit-scrollbar {
+      display: none;
+    }
+    body.force-phone-view .telemetry-cluster {
+      flex-wrap: nowrap;
       gap: 10px;
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      border-left: 4px solid currentColor;
-      font-size: 14.5px;
-      line-height: 1.45;
-      font-weight: 500;
+      white-space: nowrap;
+    }
+    body.force-phone-view .clock-node {
+      white-space: nowrap;
+      padding-left: 6px;
     }
 
-    .inline-warning-strip.danger {
-      background-color: var(--danger-tint);
-      border-color: var(--danger-base);
-      color: var(--danger-text);
+    /* Force PC Mode */
+    body.force-pc-view .bridge-frame {
+      max-width: 100% !important;
+      margin: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+      box-shadow: none !important;
     }
 
-    .inline-warning-strip.caution {
-      background-color: var(--caution-tint);
-      border-color: var(--caution-base);
-      color: var(--caution-text);
+    body.force-pc-view .bridge-cockpit {
+      grid-template-columns: minmax(500px, 1fr) 460px !important;
+      overflow-x: auto !important;
     }
 
-    .warning-icon-wrap {
-      flex-shrink: 0;
-      margin-top: 1px;
+    body.force-pc-view .mobile-bridge-dock {
+      display: none !important;
     }
 
-    .warning-text-content {
-      color: var(--text-main);
-      font-size: 14px;
+    body.force-pc-view .tactical-chart-station {
+      display: flex !important;
+      min-width: 480px !important;
     }
 
-    .warning-text-content strong {
-      display: block;
-      margin-bottom: 2px;
+    body.force-pc-view .tactical-side-station {
+      display: flex !important;
+      width: 460px !important;
+      min-width: 420px !important;
+      border-left: 1px solid var(--border-bezel) !important;
+    }
+
+    /* Cartography SVG Styles */
+    .sea-water-base { fill: #13100D; }
+    .bathymetry-10m { stroke: #2E251E; stroke-width: 0.8; fill: none; }
+    .bathymetry-20m { stroke: #261F18; stroke-width: 0.8; fill: none; }
+    .bathymetry-50m { stroke: #1F1914; stroke-width: 0.8; fill: none; }
+    .bathymetry-100m { stroke: #191410; stroke-width: 1.1; stroke-dasharray: 4, 3; fill: none; }
+
+    .chart-graticule-line {
+      stroke: #2E261F;
+      stroke-width: 0.7;
+      stroke-dasharray: 3, 5;
+      opacity: 0.65;
+    }
+
+    .chart-graticule-text {
       font-family: var(--font-telemetry);
-      font-size: 12px;
-      letter-spacing: 0.3px;
+      font-size: 9px;
+      fill: #6E6254;
     }
 
-    .inline-warning-strip.danger .warning-text-content strong {
-      color: var(--danger-text);
-    }
-
-    .inline-warning-strip.caution .warning-text-content strong {
-      color: var(--caution-text);
-    }
-
-    /* ==========================================================================
-       "WHY" REASONING BOX (SECONDARY, REASONED, SUBTLE - NOT FIGHTING MAIN BUBBLE)
-       ========================================================================== */
-    .why-reasoning-box {
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-edge);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .why-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .sounding-depth-text {
       font-family: var(--font-telemetry);
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--reasoning-text);
-      text-transform: uppercase;
+      font-size: 8.5px;
+      fill: #5A4E40;
+    }
+
+    .coastal-landmass {
+      fill: #272019;
+      stroke: #3D3227;
+      stroke-width: 1.5;
+    }
+
+    .port-harbour-area {
+      fill: #342B22;
+      stroke: #4A3E31;
+      stroke-width: 1;
+    }
+
+    .coastal-label {
+      font-family: var(--font-nav);
+      font-size: 11px;
+      font-weight: 700;
+      fill: #C2B4A1;
       letter-spacing: 0.4px;
     }
 
-    .why-header svg {
-      color: var(--reasoning-base);
+    .lighthouse-symbol {
+      fill: #E5A85C;
+      stroke: #12100E;
+      stroke-width: 0.8;
     }
 
-    .why-text {
-      font-size: 13.5px;
-      line-height: 1.45;
-      color: var(--text-muted);
-    }
-
-    /* Card Action Bar (Audio Readout) */
-    .bubble-actions-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding-top: 4px;
-      border-top: 1px solid var(--border-edge);
-      font-size: 12px;
-    }
-
-    .btn-audio-speak {
-      background: none;
-      border: 1px solid var(--border-edge);
-      background-color: var(--bg-surface-raised);
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      font-size: 12.5px;
-      padding: 5px 9px;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
+    .map-zone-path {
       cursor: pointer;
+      transition: fill-opacity 0.2s, stroke-width 0.2s;
     }
 
-    .btn-audio-speak:hover {
-      background-color: var(--bg-surface-hover);
-      color: var(--text-main);
-      border-color: var(--border-strong);
+    .map-zone-path:hover, .map-zone-path.selected {
+      stroke-width: 2.5;
+      filter: drop-shadow(0 0 8px rgba(200, 138, 62, 0.4));
     }
 
-    .btn-audio-speak.speaking {
-      background-color: var(--caution-tint);
-      border-color: var(--caution-border);
-      color: var(--caution-text);
-      font-weight: 600;
+    .zone-pfz-style {
+      fill: var(--pfz-fill);
+      stroke: var(--pfz-border);
+      stroke-width: 1.4;
     }
 
-    .response-timestamp {
-      font-family: var(--font-telemetry);
-      font-size: 11px;
-      color: var(--text-dim);
+    .zone-caution-style {
+      fill: var(--caution-fill);
+      stroke: var(--caution-border);
+      stroke-width: 1.4;
+      stroke-dasharray: 6, 3;
     }
 
-    /* ==========================================================================
-       AGENT REASONING PIPELINE VISUALIZATION (COMPACT, STEP-BY-STEP INLINE PIPELINE)
-       ========================================================================== */
-    .pipeline-container {
-      width: 100%;
-      max-width: 95%;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-edge);
-      border-left: 4px solid var(--reasoning-base);
-      border-radius: 2px 8px 8px 8px;
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    .zone-danger-style {
+      fill: var(--danger-fill);
+      stroke: var(--danger-border);
+      stroke-width: 1.8;
+      stroke-dasharray: 5, 3;
     }
 
-    .pipeline-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      border-bottom: 1px solid var(--border-edge);
-      padding-bottom: 8px;
+    /* Marker Pulse */
+    .vessel-ping-ring {
+      animation: pingVessel 2.6s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+      transform-origin: center;
     }
 
-    .pipeline-title {
-      font-family: var(--font-telemetry);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--reasoning-text);
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      letter-spacing: 0.3px;
-    }
-
-    /* Live Reasoning Pulse Indicator */
-    .pulsing-orb {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--reasoning-base);
-      box-shadow: 0 0 0 0 rgba(185, 132, 80, 0.7);
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-      .pulsing-orb {
-        animation: pulseReasoning 1.4s infinite;
-      }
-    }
-
-    @keyframes pulseReasoning {
-      0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(185, 132, 80, 0.7);
-      }
-      70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 6px rgba(185, 132, 80, 0);
-      }
-      100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(185, 132, 80, 0);
-      }
-    }
-
-    .pipeline-step-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      list-style: none;
-    }
-
-    .pipeline-step {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 13.5px;
-      color: var(--text-dim);
-      padding: 4px 6px;
-      border-radius: var(--radius-sm);
-      transition: background-color 0.15s ease, color 0.15s ease;
-    }
-
-    .step-left {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .step-badge {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-family: var(--font-telemetry);
-      font-size: 11px;
-      font-weight: 700;
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-edge);
-      color: var(--text-dim);
-      flex-shrink: 0;
-    }
-
-    .step-name {
-      color: var(--text-dim);
-    }
-
-    .step-status {
-      font-family: var(--font-telemetry);
-      font-size: 11px;
-      color: var(--text-dim);
-    }
-
-    /* Active Step */
-    .pipeline-step.active {
-      background-color: var(--reasoning-tint);
-      color: var(--text-main);
-    }
-
-    .pipeline-step.active .step-badge {
-      border-color: var(--reasoning-base);
-      color: var(--reasoning-text);
-      background-color: var(--bg-surface-raised);
-    }
-
-    .pipeline-step.active .step-name {
-      color: var(--text-main);
-      font-weight: 500;
-    }
-
-    .pipeline-step.active .step-status {
-      color: var(--reasoning-text);
-      font-weight: 600;
-    }
-
-    /* Completed Step */
-    .pipeline-step.completed .step-badge {
-      border-color: var(--resolved-border);
-      color: var(--resolved-text);
-      background-color: var(--resolved-tint);
-    }
-
-    .pipeline-step.completed .step-name {
-      color: var(--text-muted);
-    }
-
-    .pipeline-step.completed .step-status {
-      color: var(--resolved-text);
-      font-weight: 600;
-    }
-
-    /* ==========================================================================
-       BOTTOM CONTROLS & SUGGESTION CHIPS
-       ========================================================================== */
-    .chat-bottom-dock {
-      flex-shrink: 0;
-      background-color: var(--bg-surface);
-      border-top: 1px solid var(--border-edge);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 10px 14px 14px 14px;
-      z-index: 10;
-    }
-
-    /* Suggestion Chips Row */
-    .chips-carousel {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 3px;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-
-    .chips-carousel::-webkit-scrollbar {
-      display: none;
-    }
-
-    .suggestion-chip {
-      min-height: 40px;
-      padding: 6px 12px;
-      background-color: var(--bg-surface-raised);
-      border: 1px solid var(--border-edge);
-      border-radius: var(--radius-sm);
-      color: var(--text-main);
-      font-size: 13px;
-      font-family: var(--font-interface);
-      white-space: nowrap;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background-color 0.12s ease, border-color 0.12s ease;
-    }
-
-    .suggestion-chip:hover {
-      background-color: var(--bg-surface-hover);
-      border-color: var(--border-strong);
-    }
-
-    .suggestion-chip:focus-visible {
-      outline: 2px solid var(--border-focus);
-      outline-offset: 1px;
-    }
-
-    /* Main Input Bar */
-    .input-form {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .input-wrapper {
-      flex: 1;
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-
-    .chat-input {
-      width: 100%;
-      min-height: var(--min-tap);
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-edge);
-      border-radius: var(--radius-sm);
-      padding: 10px 14px;
-      color: var(--text-main);
-      font-size: 15.5px;
-      font-family: var(--font-interface);
-      outline: none;
-      transition: border-color 0.15s ease;
-    }
-
-    .chat-input::placeholder {
-      color: var(--text-dim);
-      font-size: 14.5px;
-    }
-
-    .chat-input:focus {
-      border-color: var(--caution-base);
-    }
-
-    /* Voice Mic Button */
-    .btn-mic {
-      width: var(--min-tap);
-      height: var(--min-tap);
-      display: grid;
-      place-items: center;
-      background-color: var(--bg-surface-raised);
-      border: 1px solid var(--border-edge);
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-    }
-
-    .btn-mic:hover {
-      background-color: var(--bg-surface-hover);
-      color: var(--text-main);
-      border-color: var(--border-strong);
-    }
-
-    .btn-mic:focus-visible {
-      outline: 2px solid var(--border-focus);
-      outline-offset: 1px;
-    }
-
-    .btn-mic.listening {
-      background-color: var(--danger-tint);
-      border-color: var(--danger-base);
-      color: var(--danger-text);
-      animation: pulseListening 1.2s infinite;
-    }
-
-    @keyframes pulseListening {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.06); }
-      100% { transform: scale(1); }
-    }
-
-    /* Send Button */
-    .btn-send {
-      width: var(--min-tap);
-      height: var(--min-tap);
-      display: grid;
-      place-items: center;
-      background-color: var(--caution-base);
-      border: 1px solid var(--caution-border);
-      border-radius: var(--radius-sm);
-      color: var(--caution-solid-text);
-      cursor: pointer;
-      flex-shrink: 0;
-      font-weight: 700;
-      transition: opacity 0.15s ease;
-    }
-
-    .btn-send:hover {
-      opacity: 0.92;
-    }
-
-    .btn-send:focus-visible {
-      outline: 2px solid var(--text-main);
-      outline-offset: 1px;
-    }
-
-    .btn-send:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    /* Voice Status Banner (Displayed when mic is active) */
-    .voice-status-bar {
-      display: none;
-      font-size: 12.5px;
-      font-family: var(--font-telemetry);
-      color: var(--danger-text);
-      align-items: center;
-      gap: 6px;
-      padding-top: 2px;
-    }
-
-    .voice-status-bar.active {
-      display: flex;
-    }
-
-    /* Entrance Animation (Strictly respects prefers-reduced-motion) */
-    @keyframes singleFadeUp {
-      from {
-        opacity: 0;
-        transform: translateY(4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-      .bubble-orca, .bubble-user, .pipeline-container {
-        animation: singleFadeUp 0.16s ease-out backwards;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .bubble-orca, .bubble-user, .pipeline-container, .pulsing-orb, .btn-mic {
-        animation: none !important;
-        transition: none !important;
-      }
-    }
-
-    /* Mobile Viewport Constraints (~360px) */
-    @media (max-width: 400px) {
-      .masthead {
-        padding: 10px 12px;
-      }
-      .chat-container {
-        padding: 12px 10px;
-      }
-      .bubble-user {
-        max-width: 90%;
-        font-size: 15px;
-      }
-      .bubble-orca {
-        padding: 13px 12px;
-      }
-      .orca-answer-text {
-        font-size: 15px;
-      }
-      .chat-bottom-dock {
-        padding: 8px 10px 12px 10px;
-      }
+    @keyframes pingVessel {
+      0% { r: 8; opacity: 0.85; }
+      70% { r: 24; opacity: 0; }
+      100% { r: 24; opacity: 0; }
     }
   </style>
 </head>
 <body>
 
-  <!-- App Shell -->
-  <div class="app-viewport">
+  <!-- Master Bridge Console -->
+  <div class="bridge-frame">
 
-    <!-- Top Masthead: System Identification & Operational Status -->
-    <header class="masthead" role="banner">
-      <div class="masthead-top">
-        <div class="brand-mark">
-          <div class="brand-glyph" aria-hidden="true">
-            <!-- Maritime Compass / Beacon Glyph (Inline SVG) -->
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square">
-              <polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9 12 2"></polygon>
-              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+    <!-- ====================================================================
+         1. TOP BRIDGE MASTHEAD & REAL-TIME TELEMETRY BAR
+         ==================================================================== -->
+    <header class="bridge-masthead" role="banner">
+      <div class="masthead-primary-row">
+        
+        <div class="ship-station-lockup">
+          <div class="sextant-seal" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="9"></circle>
+              <line x1="12" y1="3" x2="12" y2="21"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <polygon points="12 4 14 10 20 12 14 14 12 20 10 14 4 12 10 10" fill="currentColor"></polygon>
             </svg>
           </div>
-          <div>
-            <span class="brand-title">ORCA</span>
-            <span class="brand-sub">AI SAHAYAK</span>
+          <div class="station-identity">
+            <div class="station-callsign">
+              <span>ORCA</span>
+              <span style="font-size: 11px; font-weight: 600; color: var(--brass-bright); font-family: var(--font-telemetry);">ECM-88</span>
+            </div>
+            <div class="station-specs" id="txtBridgeSubtitle">
+              COMMERCIAL MARINE BRIDGE TERMINAL • GOA–KARWAR SECTOR
+            </div>
           </div>
         </div>
 
-        <div class="masthead-actions">
-          <!-- Direct Link to Companion Alerts Panel -->
-          <a href="../Alerts/alerts.html" class="tool-btn alerts-nav-link" title="Active marine alerts">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            <span>Alerts</span>
-          </a>
-
-          <!-- Direct Link to Unified Suite -->
-          <a href="../index.html" class="tool-btn" style="text-decoration: none;" title="Unified ORCA App">
-            <span>Suite ⊞</span>
-          </a>
-
-          <!-- Sunlight High-Contrast Toggle -->
-          <button id="sunlightToggle" class="tool-btn" type="button" title="High contrast for harsh sunlight on open boat deck" aria-pressed="false">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <div class="masthead-controls">
+          <!-- Sunlight Deck Mode Button -->
+          <button id="btnSunlightToggle" class="bezel-btn" type="button" title="High contrast boost for bright sunlight">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="5"></circle>
               <line x1="12" y1="1" x2="12" y2="3"></line>
               <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -1003,652 +1526,1385 @@
               <line x1="1" y1="12" x2="3" y2="12"></line>
               <line x1="21" y1="12" x2="23" y2="12"></line>
             </svg>
-            <span id="sunlightLabel">Sunlight</span>
+            <span id="txtSunlightLabel">SUNLIGHT</span>
           </button>
+
+          <!-- Rugged Device View Switcher (PC 🖥️ / Phone 📱) -->
+          <div class="view-bezel-pill" role="group" aria-label="Switch Device View">
+            <button id="btnViewPC" class="view-opt-btn selected" type="button" title="PC Widescreen Dual Console View">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span id="txtViewPC">PC</span>
+            </button>
+            <button id="btnViewPhone" class="view-opt-btn" type="button" title="Phone Handheld Navigator View">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+              </svg>
+              <span id="txtViewPhone">PHONE</span>
+            </button>
+          </div>
+
+          <!-- Rugged Language Selector Pill -->
+          <div class="lang-bezel-pill" role="group" aria-label="Select Language">
+            <button id="btnLangHI" class="lang-opt-btn selected" type="button">HI</button>
+            <button id="btnLangEN" class="lang-opt-btn" type="button">EN</button>
+          </div>
         </div>
+
       </div>
 
-      <!-- Sector & Multi-Agent Telemetry Bar -->
-      <div class="telemetry-strip" aria-label="System status">
-        <span class="telemetry-item">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>Multi-Agent Mesh Active • West Coast</span>
-        </span>
-        <span class="telemetry-item">
-          <span>INCOIS • IMD • Radar Feeds</span>
-        </span>
+      <!-- Live Marine Telemetry Strip -->
+      <div class="bridge-telemetry-ticker">
+        <div class="telemetry-cluster">
+          <span class="telemetry-node">
+            <span class="sensor-live-blip"></span>
+            <span id="txtTelemetryFix">DGPS FIX: 15°24.6'N, 73°48.2'E</span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemSog">SOG: <strong>6.2 kt</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemCog">COG: <strong>218° SW</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemDepth">DEPTH: <strong>34m</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemBaro">BARO: <strong>1008.4 hPa ↓</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemVhf" style="color: var(--brass-bright); font-weight: 700;">VHF CH 16 GUARD</span>
+          </span>
+        </div>
+        <div class="telemetry-node clock-node" id="bridgeMasterClock">
+          --:--:-- IST
+        </div>
       </div>
     </header>
 
-    <!-- Main Chat Scrollable Container -->
-    <main class="chat-container" id="chatThread" role="log" aria-live="polite">
-      
-      <!-- Welcome Greeting Card -->
-      <div class="greeting-card">
-        <div class="greeting-title">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 16v-4"></path>
-            <path d="M12 8h.01"></path>
+    <!-- ====================================================================
+         2. MASTER COCKPIT (Left: Nav Chart | Right: Live Bulletins & Radio Log)
+         ==================================================================== -->
+    <main class="bridge-cockpit" id="bridgeCockpit">
+
+      <!-- LEFT / CENTER: TACTICAL NAVIGATIONAL CHART -->
+      <section class="tactical-chart-station" aria-label="Nautical Navigation Chart">
+        
+        <div class="chart-viewport" id="chartViewport">
+
+          <!-- Compass & Scale HUD -->
+          <div class="chart-hud-overlay">
+            <div class="hud-compass-dial">
+              <span class="compass-true-north">N ▲ 000°</span>
+              <span>W • E</span>
+              <span style="color: var(--text-dim); font-size: 8.5px;">S ▼ 180°</span>
+            </div>
+            <div class="hud-scale-chip">
+              <div class="scale-bar-segment"></div>
+              <span>10 NM (18.5 km)</span>
+            </div>
+          </div>
+
+          <!-- Chart Legend Panel -->
+          <div class="chart-legend-container">
+            <button id="btnToggleLegend" class="chart-legend-btn" type="button" aria-expanded="true">
+              <span id="txtLegendTitle">नॉटिकल संकेत (Legend)</span>
+              <span id="legendArrow">▾</span>
+            </button>
+            <div class="chart-legend-panel" id="chartLegendPanel">
+              <div class="legend-row">
+                <span class="legend-swatch swatch-pfz"></span>
+                <span id="legPfz">मत्स्य क्षेत्र (INCOIS PFZ)</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-swatch swatch-caution"></span>
+                <span id="legCaution">सावधानी क्षेत्र (हवा/लहर)</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-swatch swatch-danger"></span>
+                <span id="legDanger">प्रतिबंधित खतरा (रेड अलर्ट)</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-swatch swatch-vessel"></span>
+                <span id="legVessel">नाव की स्थिति (GPS)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- THE AUTHENTIC NAUTICAL CHART SVG -->
+          <svg class="nautical-svg-chart" id="marineSvgChart" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <pattern id="marineHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="0" y2="8" stroke="#3A2C21" stroke-width="1.2" opacity="0.4" />
+              </pattern>
+            </defs>
+
+            <!-- Base Deep Coastal Waters -->
+            <rect width="1000" height="700" class="sea-water-base" id="baseWaterRect" />
+
+            <!-- Latitude & Longitude Graticule Grid -->
+            <!-- Longitudes -->
+            <line x1="180" y1="0" x2="180" y2="700" class="chart-graticule-line" />
+            <text x="184" y="692" class="chart-graticule-text">073°30'E</text>
+
+            <line x1="420" y1="0" x2="420" y2="700" class="chart-graticule-line" />
+            <text x="424" y="692" class="chart-graticule-text">073°45'E</text>
+
+            <line x1="680" y1="0" x2="680" y2="700" class="chart-graticule-line" />
+            <text x="684" y="692" class="chart-graticule-text">074°00'E</text>
+
+            <line x1="900" y1="0" x2="900" y2="700" class="chart-graticule-line" />
+            <text x="904" y="692" class="chart-graticule-text">074°15'E</text>
+
+            <!-- Latitudes -->
+            <line x1="0" y1="120" x2="1000" y2="120" class="chart-graticule-line" />
+            <text x="10" y="115" class="chart-graticule-text">15°30'N</text>
+
+            <line x1="0" y1="280" x2="1000" y2="280" class="chart-graticule-line" />
+            <text x="10" y="275" class="chart-graticule-text">15°15'N</text>
+
+            <line x1="0" y1="460" x2="1000" y2="460" class="chart-graticule-line" />
+            <text x="10" y="455" class="chart-graticule-text">15°00'N</text>
+
+            <line x1="0" y1="620" x2="1000" y2="620" class="chart-graticule-line" />
+            <text x="10" y="615" class="chart-graticule-text">14°45'N</text>
+
+            <!-- Bathymetry Depth Contours (Real Marine Depth Curves) -->
+            <!-- 100m Continental Shelf Edge -->
+            <path d="M 80 0 C 110 200, 160 420, 240 700" class="bathymetry-100m" />
+            <text x="135" y="320" class="sounding-depth-text">100m SHELF BREAK</text>
+
+            <!-- 50m Mid-Depth Contour -->
+            <path d="M 230 0 C 260 180, 310 390, 420 700" class="bathymetry-50m" />
+            <text x="285" y="240" class="sounding-depth-text">50m</text>
+            <text x="350" y="480" class="sounding-depth-text">50m</text>
+
+            <!-- 20m Inshore Contour -->
+            <path d="M 440 0 C 470 160, 520 340, 620 700" class="bathymetry-20m" />
+            <text x="490" y="210" class="sounding-depth-text">20m</text>
+            <text x="560" y="440" class="sounding-depth-text">20m</text>
+
+            <!-- 10m Coastal Contour -->
+            <path d="M 570 0 C 600 140, 640 320, 730 700" class="bathymetry-10m" />
+            <text x="610" y="160" class="sounding-depth-text">10m</text>
+            <text x="680" y="470" class="sounding-depth-text">10m</text>
+
+            <!-- Soundings (Real Depth Numbers stamped across charts in meters) -->
+            <text x="190" y="140" class="sounding-depth-text">64</text>
+            <text x="140" y="480" class="sounding-depth-text">88</text>
+            <text x="280" y="360" class="sounding-depth-text">42</text>
+            <text x="340" y="190" class="sounding-depth-text">38</text>
+            <text x="390" y="580" class="sounding-depth-text">44</text>
+            <text x="480" y="290" class="sounding-depth-text">26</text>
+            <text x="530" y="130" class="sounding-depth-text">18</text>
+            <text x="540" y="520" class="sounding-depth-text">22</text>
+            <text x="630" y="320" class="sounding-depth-text">14</text>
+            <text x="660" y="240" class="sounding-depth-text">12</text>
+            <text x="700" y="590" class="sounding-depth-text">11</text>
+            <text x="710" y="110" class="sounding-depth-text">8</text>
+
+            <!-- Realistic Goa - Karwar Coastline Geometry -->
+            <!-- Coastal Mainland Landmass -->
+            <path d="
+              M 640 0
+              L 650 30
+              C 645 60, 630 80, 625 100
+              L 615 110
+              C 605 125, 620 135, 640 130
+              L 665 125
+              C 655 145, 630 155, 610 160
+              L 590 170
+              C 580 185, 595 200, 615 195
+              L 650 190
+              C 635 210, 615 220, 600 235
+              L 580 250
+              C 565 265, 580 280, 610 275
+              L 640 270
+              C 630 290, 640 310, 660 325
+              L 680 340
+              C 670 370, 655 400, 640 430
+              L 630 450
+              C 625 470, 645 490, 675 495
+              L 710 500
+              C 700 520, 690 540, 695 560
+              L 715 580
+              C 710 600, 725 620, 750 630
+              L 770 650
+              C 760 670, 770 690, 790 700
+              L 1000 700
+              L 1000 0
+              Z
+            " class="coastal-landmass" />
+
+            <!-- Mormugao Harbour Breakwater & Port -->
+            <path d="M 580 250 L 555 245 L 565 258 Z" class="port-harbour-area" />
+
+            <!-- Anjadip Island & Oyster Rocks -->
+            <ellipse cx="685" cy="565" rx="7" ry="4" class="port-harbour-area" />
+            <circle cx="660" cy="545" r="4" class="port-harbour-area" />
+
+            <!-- Major Navigation Lighthouses -->
+            <!-- Aguada Lighthouse -->
+            <circle cx="612" cy="162" r="3.5" class="lighthouse-symbol" />
+            <!-- Mormugao Headland Light -->
+            <circle cx="578" cy="248" r="3.5" class="lighthouse-symbol" />
+            <!-- Betul Cape Light -->
+            <circle cx="638" cy="432" r="3.5" class="lighthouse-symbol" />
+            <!-- Oyster Rocks Karwar Light -->
+            <circle cx="659" cy="544" r="3.5" class="lighthouse-symbol" />
+
+            <!-- Geographic Chart Labels -->
+            <text x="660" y="100" class="coastal-label">GOA (NORTH)</text>
+            <text x="625" y="165" class="coastal-label" font-size="9.5">AGUADA</text>
+            <text x="625" y="245" class="coastal-label" font-size="10">MORMUGAO</text>
+            <text x="660" y="265" class="coastal-label" font-size="9">ZUARI ESTUARY</text>
+            <text x="680" y="380" class="coastal-label">GOA (SOUTH)</text>
+            <text x="650" y="440" class="coastal-label" font-size="9.5">BETUL CAPE</text>
+            <text x="730" y="575" class="coastal-label">KARWAR</text>
+            <text x="675" y="542" class="coastal-label" font-size="8.5">OYSTER ROCKS</text>
+
+            <!-- 32-Point Vintage Mariner's Compass Rose -->
+            <g transform="translate(190, 530)" opacity="0.6">
+              <circle cx="0" cy="0" r="54" stroke="#4A3D30" stroke-width="1.2" fill="none" />
+              <circle cx="0" cy="0" r="48" stroke="#3A2F25" stroke-width="0.8" fill="none" />
+              <!-- Points -->
+              <polygon points="0,-48 4,-12 0,0 -4,-12" fill="#DE6347" />
+              <polygon points="0,48 4,12 0,0 -4,12" fill="#7E6E5C" />
+              <polygon points="-48,0 -12,-4 0,0 -12,4" fill="#7E6E5C" />
+              <polygon points="48,0 12,-4 0,0 12,4" fill="#7E6E5C" />
+              <polygon points="34,-34 8,-8 0,0 3,-10" fill="#5A4E40" />
+              <polygon points="-34,-34 -8,-8 0,0 -10,-3" fill="#5A4E40" />
+              <polygon points="34,34 8,8 0,0 10,3" fill="#5A4E40" />
+              <polygon points="-34,34 -8,8 0,0 -3,10" fill="#5A4E40" />
+              <text x="-4" y="-52" fill="#DE6347" font-family="var(--font-telemetry)" font-size="10" font-weight="700">N</text>
+              <text x="52" y="3" fill="#A89B88" font-family="var(--font-telemetry)" font-size="9">E</text>
+              <text x="-3" y="60" fill="#A89B88" font-family="var(--font-telemetry)" font-size="9">S</text>
+              <text x="-62" y="3" fill="#A89B88" font-family="var(--font-telemetry)" font-size="9">W</text>
+              <text x="-35" y="70" fill="#6E6050" font-family="var(--font-telemetry)" font-size="8">Var 1°15'W (2026)</text>
+            </g>
+
+            <!-- DYNAMIC INTERACTIVE MARINE SAFETY ZONES -->
+            <g id="svgMarineZonesContainer">
+              <!-- Rendered via JavaScript with exact nautical coordinates -->
+            </g>
+
+            <!-- DYNAMIC VESSEL & TELEMETRY MARKERS -->
+            <g id="svgMarineMarkersContainer">
+              <!-- Rendered via JavaScript -->
+            </g>
           </svg>
-          <span>नमस्कार, नाविक बंधु!</span>
+
+          <!-- Tactical Zone Detail Drawer (Opens when tapping on zones or markers) -->
+          <div class="tactical-detail-drawer" id="tacticalDrawer">
+            <div class="drawer-header-row">
+              <span class="drawer-zone-title" id="drawerTitle">Zone Briefing</span>
+              <button class="drawer-close-btn" id="btnDismissDrawer" type="button" aria-label="Close">✕</button>
+            </div>
+            <p class="drawer-zone-reason" id="drawerReason">Nautical description...</p>
+            <div style="font-family: var(--font-telemetry); font-size: 11px; color: var(--text-dim);" id="drawerCoordinates">
+              Sector: Offshore SW
+            </div>
+            <div class="drawer-action-dock">
+              <button class="card-btn" id="btnDrawerAskChat" type="button" style="background-color: var(--brass-base); color: var(--text-inverse); font-weight: 700; border-color: var(--brass-bright);">
+                <span id="txtDrawerAsk">रेडियो परामर्श में पूछें 💬</span>
+              </button>
+              <button class="card-btn" id="btnDrawerCloseOnly" type="button">
+                <span id="txtDrawerDismiss">बंद करें</span>
+              </button>
+            </div>
+          </div>
+
         </div>
-        <p class="greeting-body">
-          मैं <strong>ORCA</strong> हूँ — समुद्र में आपका सुरक्षा व मछली सलाहकार। आप मुझसे मछली पकड़ने के संभावित क्षेत्र (PFZ), मौसम, हवा-लहर और चक्रवात अलर्ट के बारे में बोलकर या लिखकर पूछ सकते हैं।
-        </p>
-        <span class="greeting-sub">
-          उदाहरण के लिए नीचे दिए गए सुझावों में से किसी एक पर टैप करें:
-        </span>
-      </div>
+
+      </section>
+
+      <!-- RIGHT / COMPANION STATION: BULLETINS & RADIO COMMUNICATOR -->
+      <aside class="tactical-side-station" aria-label="Tactical Safety Log and Advisory">
+        
+        <!-- Station Header Tabs (Never separating them, allowing instant switch) -->
+        <nav class="station-tab-bar" role="tablist">
+          <button class="station-tab-btn active" id="tabBtnAlerts" type="button" role="tab" aria-selected="true" aria-controls="panelAlerts">
+            <span id="txtTabAlertsLabel">⚠️ सुरक्षा अलर्ट बुलेटिन</span>
+            <span class="station-badge-danger" id="badgeDangerCount">1</span>
+          </button>
+          <button class="station-tab-btn" id="tabBtnChat" type="button" role="tab" aria-selected="false" aria-controls="panelChat">
+            <span id="txtTabChatLabel">💬 सामरिक परामर्श लॉग</span>
+          </button>
+        </nav>
+
+        <!-- PANEL 1: OFFICIAL MARINE BULLETINS (Alerts Feed) -->
+        <div class="station-content-panel active" id="panelAlerts" role="tabpanel" aria-labelledby="tabBtnAlerts">
+          <div class="alerts-feed-container">
+            
+            <div class="bulletin-registry-header">
+              <div class="bulletin-registry-title">
+                <span id="txtRegistryTitle">तटीय सुरक्षा सूचनाएं</span>
+                <span style="font-family: var(--font-telemetry); font-size: 10.5px; color: var(--brass-bright);" id="txtRegistrySector">SECTOR: GOA-KARWAR</span>
+              </div>
+              <p class="bulletin-status-line" id="txtRegistryStatusSummary">
+                सक्रिय बुलेटिन: 1 अति गंभीर (RED), 1 चेतावनी (CAUTION)
+              </p>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="bulletin-filter-bar">
+              <button class="bulletin-filter-chip active" data-filter="all" id="btnFiltAll">सभी सूचनाएं (3)</button>
+              <button class="bulletin-filter-chip" data-filter="danger" id="btnFiltDanger">खतरा (1)</button>
+              <button class="bulletin-filter-chip" data-filter="caution" id="btnFiltCaution">सावधानी (1)</button>
+              <button class="bulletin-filter-chip" data-filter="resolved" id="btnFiltResolved">सामान्य (1)</button>
+            </div>
+
+            <!-- The Live Cards List -->
+            <div id="bulletinCardsList" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Rendered dynamically -->
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANEL 2: TACTICAL ADVISORY COMMUNICATOR (Chat) -->
+        <div class="station-content-panel" id="panelChat" role="tabpanel" aria-labelledby="tabBtnChat">
+          <div class="tactical-log-container">
+            
+            <!-- Thread -->
+            <div class="log-scroll-thread" id="tacticalChatThread">
+              
+              <div class="mission-brief-card">
+                <div class="brief-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 16v-4"></path>
+                    <path d="M12 8h.01"></path>
+                  </svg>
+                  <span id="txtBriefTitle">नाविक सामरिक सहायता केंद्र</span>
+                </div>
+                <p class="brief-desc" id="txtBriefBody">
+                  INCOIS व तटरक्षक बल से लिंक सक्रिय है। मछली पकड़ने के संभावित क्षेत्र (PFZ), ज्वार-भाटा समय या वर्तमान मौसम के लिए त्वरित बटन दबाएं या प्रश्न लिखें।
+                </p>
+              </div>
+
+            </div>
+
+            <!-- Radio Input Dock -->
+            <div class="tactical-input-dock">
+              
+              <!-- Nautical Quick Query Chips -->
+              <div class="tactical-queries-row" id="quickQueriesRow">
+                <!-- Populated dynamically based on language -->
+              </div>
+
+              <!-- Input Form -->
+              <form class="query-input-form" id="tacticalQueryForm" onsubmit="return false;">
+                <input 
+                  type="text" 
+                  id="tacticalQueryInput" 
+                  class="marine-input-box" 
+                  placeholder="सामरिक प्रश्न दर्ज करें (उदा: क्या आज हवा सुरक्षित है?)" 
+                  autocomplete="off"
+                />
+                <button class="tactical-submit-btn" id="btnSubmitQuery" type="submit">
+                  <span>पूछें</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </form>
+
+            </div>
+
+          </div>
+        </div>
+
+      </aside>
 
     </main>
 
-    <!-- Bottom Controls & Input Bar -->
-    <footer class="chat-bottom-dock">
-      
-      <!-- Quick Tappable Suggestion Chips -->
-      <div class="chips-carousel" aria-label="त्वरित सुझाव">
-        <button class="suggestion-chip" type="button" data-prompt="Aaj machli pakadne ke liye achi jagah kahan hai?">
-          <span>🐟 आज मछली पकड़ने की अच्छी जगह?</span>
-        </button>
-        <button class="suggestion-chip" type="button" data-prompt="Kal subah samundar mein jaana safe hai kya?">
-          <span>⛵ कल सुबह समुद्र में जाना सुरक्षित है?</span>
-        </button>
-        <button class="suggestion-chip" type="button" data-prompt="Mere area mein koi cyclone ya lightning alert hai kya?">
-          <span>⚡ कोई चक्रवात या बिजली का अलर्ट है?</span>
-        </button>
-      </div>
+    <!-- ====================================================================
+         3. MOBILE NAVIGATION DOCK (Displays only on viewports < 960px)
+         ==================================================================== -->
+    <nav class="mobile-bridge-dock" id="mobileBridgeDock" aria-label="Mobile Navigation">
+      <button class="mobile-dock-btn active" id="mobNavChart" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+          <line x1="8" y1="2" x2="8" y2="18"></line>
+          <line x1="16" y1="6" x2="16" y2="22"></line>
+        </svg>
+        <span id="txtMobChart">नॉटिकल चार्ट</span>
+      </button>
 
-      <!-- Live Voice Listening Status Bar -->
-      <div class="voice-status-bar" id="voiceStatusBar">
-        <span class="pulsing-orb" style="background-color: var(--danger-base);"></span>
-        <span id="voiceStatusText">आवाज़ सुन रहे हैं... कृपया अपना सवाल बोलें</span>
-      </div>
-
-      <!-- Main Input Bar Form -->
-      <form class="input-form" id="chatForm" onsubmit="return false;">
-        <!-- Voice Input Mic Button -->
-        <button id="micBtn" class="btn-mic" type="button" title="बोलकर सवाल पूछें (Voice input for boat deck)" aria-label="बोलकर सवाल पूछें">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="23"></line>
-            <line x1="8" y1="23" x2="16" y2="23"></line>
-          </svg>
-        </button>
-
-        <!-- Text Input Field -->
-        <div class="input-wrapper">
-          <input 
-            type="text" 
-            id="queryInput" 
-            class="chat-input" 
-            placeholder="सवाल पूछें (उदा: कल समुद्र सुरक्षित है?)" 
-            autocomplete="off"
-            aria-label="समुद्री सवाल इनपुट"
-          />
-        </div>
-
-        <!-- Send Button -->
-        <button id="sendBtn" class="btn-send" type="submit" aria-label="संदेश भेजें">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
-      </form>
-    </footer>
-
-  </div>
-
-  <!-- SCRIPT LOGIC -->
-  <script>
-    // ==========================================================================
-    // ===== MOCK AGENT RESPONSES — replace this block with a real API call later =====
-    // ==========================================================================
-    const MOCK_RESPONSES = {
-      // 1. Fishing Zone Recommendation (Positive/Informational, risk: none)
-      "fish_zone": {
-        "answer_text": "आज दक्षिण-पश्चिम (SW) दिशा में तट से लगभग 14-16 किमी दूर 'संभावित मत्स्य क्षेत्र' (PFZ) बन रहा है। यहाँ समुद्र की सतह का तापमान 28°C और क्लोरोफिल की मात्रा अच्छी दर्ज हुई है, जिससे बांगड़ा (Mackerel) और सुरमई के झुंड मिलने की बहुत अच्छी संभावना है।",
-        "reasoning_text": "INCOIS सैटेलाइट और ओशन-कलर डेटा से पता चला है कि इस ज़ोन में प्लवक (plankton) का भारी जमाव है और वर्तमान हवा की गति 11–13 समुद्री मील के साथ सामान्य है।",
-        "risk_level": "none",
-        "warning_text": null,
-        "zone_label": "South-West zone, ~15km offshore (Bearing 220°)"
-      },
-
-      // 2. Safety Check (Mostly safe, but with caution window, risk: caution)
-      "sea_safety": {
-        "answer_text": "कल सुबह 5:00 बजे से 10:30 बजे तक समुद्र में जाना सुरक्षित है, पानी शांत रहेगा। लेकिन दोपहर 12:30 बजे के बाद दक्षिण दिशा से 35 किमी/घंटा की तेज़ हवाएं और 2.8 से 3.2 मीटर की ऊंची लहरें उठने का अनुमान है। इसलिए दोपहर से पहले बंदरगाह लौटना आवश्यक है।",
-        "reasoning_text": "मौसम मॉडल और टाइड चार्ट के अनुसार दोपहर में दक्षिण दिशा से एक स्थानीय उथला दबाव बन रहा है, जो दोपहर के हाई-टाइड के समय समुद्र को अशांत कर देगा।",
-        "risk_level": "caution",
-        "warning_text": "सावधानी (CAUTION WINDOW): दोपहर 12:00 बजे तक हर हाल में वापस किनारे लौट आएं। छोटी फाइबर नौकाओं को दोपहर में खुले समुद्र में नहीं रुकना चाहिए।",
-        "zone_label": "Coastal & Mid-waters, 10–25km offshore"
-      },
-
-      // 3. Alert Lookup (Danger-level warning present, risk: danger)
-      "alert_lookup": {
-        "answer_text": "गंभीर चेतावनी: आपके क्षेत्र (गोवा-कारवार तट) से लगभग 18 किमी दूर अरब सागर में 'गंभीर चक्रवाती दबाव' (Deep Depression) सक्रिय है। साथ ही अगले 90 मिनट में भयंकर आकाशीय बिजली और 65 किमी/घंटा की तूफानी आंधी चलने का रेड अलर्ट है। समुद्र में बिल्कुल न जाएं।",
-        "reasoning_text": "IMD और INCOIS के नवीनतम डॉप्लर रडार से एक तीव्र संवहनी तूफानी सेल (storm cell) पूर्व दिशा में तट की ओर 22 समुद्री मील की रफ्तार से बढ़ता हुआ ट्रैक किया गया है।",
-        "risk_level": "danger",
-        "warning_text": "खतरा (DANGER ALERT): सभी नावें तुरंत पास के सुरक्षित बंदरगाह (कारवार या मालपे) लौटें। अपने रेडियो एंटीना नीचे कर लें और धातु के विंच से दूर रहें।",
-        "zone_label": "South-West zone, ~18km offshore (Urgent Bulletin)"
-      },
-
-      // Fallback for demo mode
-      "fallback": {
-        "answer_text": "नमस्ते नाविक बंधु! यह ORCA का प्रोटोटाइप डेमो है। वर्तमान में सिस्टम पश्चिम तट (गोवा-कारवार) के तीन मुख्य सवालों के लाइव एजेंट पाइपलाइन से जुड़ा हुआ है: मछली पकड़ने के क्षेत्र, कल की सुरक्षा, या आपातकालीन चक्रवात अलर्ट।",
-        "reasoning_text": "विशिष्ट एजेंट ऑर्केस्ट्रेशन केवल मान्य समुद्री क्वेरीज़ (PFZ, मौसम, या नौका सुरक्षा) पर सक्रिय होता है।",
-        "risk_level": "none",
-        "warning_text": null,
-        "zone_label": "West Coast Sector (Demo Mode)"
-      }
-    };
-    // ===== END MOCK DATA =====
-
-    // Single required entry point for agent responses:
-    async function getAgentResponse(userQuery) {
-      // TODO: replace with real call, e.g.:
-      // const res = await fetch('/api/agent-query', { method: 'POST', body: JSON.stringify({ query: userQuery }) });
-      // return await res.json();
-      const matched = matchMockIntent(userQuery); // simple keyword matching against MOCK_RESPONSES
-      return matched;
-    }
-
-    // Keyword matching helper (Hindi & English keywords):
-    function matchMockIntent(text) {
-      const q = (text || '').toLowerCase().trim();
-
-      // Fish / Machli intent
-      if (
-        q.includes('machli') || 
-        q.includes('machhli') || 
-        q.includes('fish') || 
-        q.includes('मछली') || 
-        q.includes('shikar') || 
-        q.includes('pfz') ||
-        q.includes('pakadne')
-      ) {
-        return MOCK_RESPONSES["fish_zone"];
-      }
-
-      // Sea safety / Kal subah / Mausam intent
-      if (
-        q.includes('safe') || 
-        q.includes('surakshit') || 
-        q.includes('सुरक्षित') || 
-        q.includes('kal') || 
-        q.includes('कल') || 
-        q.includes('subah') || 
-        q.includes('weather') || 
-        q.includes('mausam') || 
-        q.includes('lahar') ||
-        q.includes('jaana')
-      ) {
-        return MOCK_RESPONSES["sea_safety"];
-      }
-
-      // Cyclone / Alert / Bijli / Lightning intent
-      if (
-        q.includes('cyclone') || 
-        q.includes('lightning') || 
-        q.includes('alert') || 
-        q.includes('चक्रवात') || 
-        q.includes('तूफान') || 
-        q.includes('bijli') || 
-        q.includes('बिजली') || 
-        q.includes('danger') || 
-        q.includes('khatra') || 
-        q.includes('warning')
-      ) {
-        return MOCK_RESPONSES["alert_lookup"];
-      }
-
-      // Fallback
-      return MOCK_RESPONSES["fallback"];
-    }
-
-    // DOM Elements
-    const chatThread = document.getElementById('chatThread');
-    const queryInput = document.getElementById('queryInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const micBtn = document.getElementById('micBtn');
-    const sunlightToggle = document.getElementById('sunlightToggle');
-    const sunlightLabel = document.getElementById('sunlightLabel');
-    const voiceStatusBar = document.getElementById('voiceStatusBar');
-    const voiceStatusText = document.getElementById('voiceStatusText');
-
-    let isProcessing = false;
-    let isListening = false;
-    let speechRecognitionInstance = null;
-
-    // Helper: Current time string (e.g. 14:40)
-    function getCurrentTimeStr() {
-      const d = new Date();
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) + ' IST';
-    }
-
-    // Scroll to bottom
-    function scrollToBottom() {
-      chatThread.scrollTop = chatThread.scrollHeight;
-    }
-
-    // Render User Message
-    function appendUserMessage(text) {
-      const row = document.createElement('div');
-      row.className = 'message-row user';
-
-      row.innerHTML = `
-        <div class="bubble-user">
-          ${escapeHtml(text)}
-          <div class="user-meta">${getCurrentTimeStr()}</div>
-        </div>
-      `;
-
-      chatThread.appendChild(row);
-      scrollToBottom();
-    }
-
-    // Escape HTML utility
-    function escapeHtml(string) {
-      const div = document.createElement('div');
-      div.innerText = string;
-      return div.innerHTML;
-    }
-
-    // ==========================================================================
-    // AGENT REASONING VISUALIZATION PIPELINE
-    // Sequential activation: Intent -> Ocean Feeds -> Safety Rules -> Explanation
-    // ==========================================================================
-    function createReasoningPipelineElement() {
-      const container = document.createElement('div');
-      container.className = 'pipeline-container';
-      container.id = 'activePipeline';
-
-      container.innerHTML = `
-        <div class="pipeline-header">
-          <span class="pipeline-title">
-            <span class="pulsing-orb"></span>
-            ORCA मल्टी-एजेंट तर्क पाइपलाइन (Active Reasoning)
-          </span>
-          <span style="font-family: var(--font-telemetry); font-size: 11px; color: var(--reasoning-text);" id="pipelineStepCounter">कदम 1 / 4</span>
-        </div>
-
-        <ul class="pipeline-step-list">
-          <li class="pipeline-step active" id="pStep1">
-            <div class="step-left">
-              <span class="step-badge">1</span>
-              <span class="step-name">नाविक के सवाल व इरादे का विश्लेषण (Intent Parsing)</span>
-            </div>
-            <span class="step-status">प्रक्रिया जारी...</span>
-          </li>
-
-          <li class="pipeline-step" id="pStep2">
-            <div class="step-left">
-              <span class="step-badge">2</span>
-              <span class="step-name">INCOIS व सैटेलाइट डेटा फेच (Ocean & SST Feeds)</span>
-            </div>
-            <span class="step-status">प्रतीक्षा में</span>
-          </li>
-
-          <li class="pipeline-step" id="pStep3">
-            <div class="step-left">
-              <span class="step-badge">3</span>
-              <span class="step-name">समुद्री सुरक्षा नियमों व अलर्ट की जांच (Safety Cross-Check)</span>
-            </div>
-            <span class="step-status">प्रतीक्षा में</span>
-          </li>
-
-          <li class="pipeline-step" id="pStep4">
-            <div class="step-left">
-              <span class="step-badge">4</span>
-              <span class="step-name">सरल हिंदी भाषा में उत्तर संश्लेषण (Explainer Agent)</span>
-            </div>
-            <span class="step-status">प्रतीक्षा में</span>
-          </li>
-        </ul>
-      `;
-
-      return container;
-    }
-
-    // Animate pipeline sequence through async stages:
-    async function runReasoningPipeline(pipelineEl) {
-      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-      const counter = pipelineEl.querySelector('#pipelineStepCounter');
-
-      const s1 = pipelineEl.querySelector('#pStep1');
-      const s2 = pipelineEl.querySelector('#pStep2');
-      const s3 = pipelineEl.querySelector('#pStep3');
-      const s4 = pipelineEl.querySelector('#pStep4');
-
-      // Step 1: Active
-      counter.textContent = "कदम 1 / 4";
-      await wait(450);
-      s1.classList.remove('active');
-      s1.classList.add('completed');
-      s1.querySelector('.step-status').textContent = 'पूर्ण ✓';
-      s1.querySelector('.step-badge').textContent = '✓';
-
-      // Step 2: Ocean Data
-      s2.classList.add('active');
-      s2.querySelector('.step-status').textContent = 'डेटा प्राप्त हो रहा है...';
-      counter.textContent = "कदम 2 / 4";
-      scrollToBottom();
-      await wait(550);
-      s2.classList.remove('active');
-      s2.classList.add('completed');
-      s2.querySelector('.step-status').textContent = 'सिंक हुआ ✓';
-      s2.querySelector('.step-badge').textContent = '✓';
-
-      // Step 3: Safety Cross-Check
-      s3.classList.add('active');
-      s3.querySelector('.step-status').textContent = 'नियमों की पुष्टि...';
-      counter.textContent = "कदम 3 / 4";
-      scrollToBottom();
-      await wait(500);
-      s3.classList.remove('active');
-      s3.classList.add('completed');
-      s3.querySelector('.step-status').textContent = 'सत्यापित ✓';
-      s3.querySelector('.step-badge').textContent = '✓';
-
-      // Step 4: Explainer
-      s4.classList.add('active');
-      s4.querySelector('.step-status').textContent = 'तैयार कर रहे हैं...';
-      counter.textContent = "कदम 4 / 4";
-      scrollToBottom();
-      await wait(400);
-      s4.classList.remove('active');
-      s4.classList.add('completed');
-      s4.querySelector('.step-status').textContent = 'पूर्ण ✓';
-      s4.querySelector('.step-badge').textContent = '✓';
-      await wait(200);
-    }
-
-    // Render ORCA Response Bubble
-    function appendOrcaMessage(data) {
-      const row = document.createElement('div');
-      row.className = 'message-row orca';
-
-      const riskClass = data.risk_level === 'danger' ? 'risk-danger' : 
-                         data.risk_level === 'caution' ? 'risk-caution' : 'risk-none';
-
-      const warningIconSvg = data.risk_level === 'danger' ? `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button class="mobile-dock-btn" id="mobNavAlerts" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-      ` : `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="12 2 22 12 12 22 2 12 12 2"></polygon>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        <span id="txtMobAlerts">सुरक्षा अलर्ट (1)</span>
+      </button>
+
+      <button class="mobile-dock-btn" id="mobNavChat" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-      `;
+        <span id="txtMobChat">परामर्श रेडियो</span>
+      </button>
+    </nav>
 
-      row.innerHTML = `
-        <div class="bubble-orca ${riskClass}">
-          
-          <!-- Card Meta Header -->
-          <div class="orca-card-header">
-            <span class="orca-tag">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square">
-                <polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9 12 2"></polygon>
-              </svg>
-              ORCA AI ASSISTANT
-            </span>
+  </div>
 
-            ${data.zone_label ? `
-              <span class="zone-chip" title="${data.zone_label}">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                ${data.zone_label}
-              </span>
-            ` : ''}
+  <!-- ====================================================================
+       4. CLIENT APPLICATION LOGIC & REALISTIC MARITIME DATA ENGINE
+       ==================================================================== -->
+  <script>
+    // State management
+    let currentLang = localStorage.getItem('orca_marine_lang') || 'hi';
+    let currentAlertFilter = 'all';
+    let activeZoneId = null;
+    let currentDeviceMode = localStorage.getItem('orca_marine_device_mode') || ((window.innerWidth < 960) ? 'phone' : 'pc');
+
+    // Bilingual Maritime Translations
+    const I18N = {
+      hi: {
+        bridgeSubtitle: "व्यावसायिक समुद्री नेविगेशन प्रणाली • गोवा-कारवार सेक्टर",
+        sunlight: "SUNLIGHT",
+        sunlightActive: "DECK HIGH-CONTRAST",
+        telemetryFix: "DGPS FIX: 15°24.6'N, 73°48.2'E",
+        telemTopBar: {
+          fix: "DGPS स्थिति: 15°24.6'N, 73°48.2'E",
+          sog: "गति (SOG): <strong>6.2 kt</strong>",
+          cog: "दिशा (COG): <strong>218° SW</strong>",
+          depth: "गहराई (DEPTH): <strong>34m</strong>",
+          baro: "वायुदाब (BARO): <strong>1008.4 hPa ↓</strong>",
+          vhf: "VHF CH 16 निगरानी"
+        },
+        telemLabels: {
+          bearing: "दिशा (BEARING)",
+          depth: "गहराई (DEPTH)",
+          wave: "लहरें (WAVE)",
+          current: "जलधारा (CURRENT)",
+          wind: "हवा (WIND)",
+          highTide: "उच्च ज्वार (HIGH TIDE)",
+          lowTide: "भाटा (LOW TIDE)",
+          visibility: "दृश्यता (VISIBILITY)",
+          clearance: "सुरक्षा स्थिति",
+          vhfGuard: "VHF निगरानी",
+          mrccPhone: "तटरक्षक फोन",
+          gpsBeacon: "जीपीएस लॉक",
+          patrolVessel: "गश्ती पोत"
+        },
+        legendTitle: "नॉटिकल संकेत (Legend)",
+        legPfz: "मत्स्य क्षेत्र (INCOIS PFZ)",
+        legCaution: "सावधानी क्षेत्र (हवा/लहर)",
+        legDanger: "प्रतिबंधित खतरा (रेड अलर्ट)",
+        legVessel: "नाव की स्थिति (GPS)",
+        tabAlerts: "⚠️ सुरक्षा अलर्ट बुलेटिन",
+        tabChat: "💬 सामरिक परामर्श लॉग",
+        registryTitle: "तटीय सुरक्षा सूचनाएं",
+        registrySector: "सेक्टर: गोवा–कारवार",
+        statusSummary: (d, c) => `सक्रिय बुलेटिन: ${d} अति गंभीर (RED), ${c} चेतावनी (CAUTION)`,
+        filtAll: "सभी सूचनाएं",
+        filtDanger: "खतरा",
+        filtCaution: "सावधानी",
+        filtResolved: "सामान्य",
+        plotOnChart: "🗺️ चार्ट पर देखें",
+        askInRadio: "💬 रेडियो में पूछें",
+        briefTitle: "नाविक सामरिक सहायता केंद्र",
+        briefBody: "INCOIS व तटरक्षक बल से लिंक सक्रिय है। मछली पकड़ने के संभावित क्षेत्र (PFZ), ज्वार-भाटा समय या वर्तमान मौसम के लिए त्वरित बटन दबाएं या प्रश्न लिखें।",
+        inputPlaceholder: "सामरिक प्रश्न दर्ज करें (उदा: क्या आज हवा सुरक्षित है?)",
+        submitBtn: "पूछें",
+        drawerAsk: "रेडियो परामर्श में पूछें 💬",
+        drawerDismiss: "बंद करें",
+        mobChart: "नॉटिकल चार्ट",
+        mobAlerts: "सुरक्षा अलर्ट",
+        mobChat: "परामर्श रेडियो",
+        viewPC: "PC",
+        viewPhone: "फोन",
+        queries: [
+          { label: "🐟 उत्तम मत्स्य क्षेत्र (PFZ)", query: "Aaj machli pakadne ke liye sabse achi jagah kahan hai?" },
+          { label: "🌊 हवा व 3m लहरें", query: "Kya 35 km/h ki tez hawa aur unchi lehron ka khatra hai?" },
+          { label: "⚓ बंदरगाह वापसी समय", query: "Kal subah samundar mein jaana safe hai kya?" },
+          { label: "🆘 तटरक्षक आपातकाल", query: "Emergency distress assistance VHF Ch 16 contact" }
+        ]
+      },
+      en: {
+        bridgeSubtitle: "COMMERCIAL MARINE BRIDGE TERMINAL • GOA–KARWAR SECTOR",
+        sunlight: "SUNLIGHT",
+        sunlightActive: "DECK HIGH-CONTRAST",
+        telemetryFix: "DGPS FIX: 15°24.6'N, 73°48.2'E",
+        telemTopBar: {
+          fix: "DGPS FIX: 15°24.6'N, 73°48.2'E",
+          sog: "SOG: <strong>6.2 kt</strong>",
+          cog: "COG: <strong>218° SW</strong>",
+          depth: "DEPTH: <strong>34m</strong>",
+          baro: "BARO: <strong>1008.4 hPa ↓</strong>",
+          vhf: "VHF CH 16 GUARD"
+        },
+        telemLabels: {
+          bearing: "BEARING",
+          depth: "DEPTH",
+          wave: "WAVE",
+          current: "CURRENT",
+          wind: "WIND",
+          highTide: "HIGH TIDE",
+          lowTide: "LOW TIDE",
+          visibility: "VISIBILITY",
+          clearance: "CLEARANCE",
+          vhfGuard: "VHF GUARD",
+          mrccPhone: "MRCC PHONE",
+          gpsBeacon: "GPS BEACON",
+          patrolVessel: "PATROL VESSEL"
+        },
+        legendTitle: "Nautical Legend",
+        legPfz: "Fishing Zone (INCOIS PFZ)",
+        legCaution: "Caution Zone (Wind/Swell)",
+        legDanger: "Restricted Danger (Red Alert)",
+        legVessel: "Vessel Position (GPS)",
+        tabAlerts: "⚠️ Marine Bulletins",
+        tabChat: "💬 Tactical Advisory Log",
+        registryTitle: "Coastal Safety Notices",
+        registrySector: "SECTOR: GOA-KARWAR",
+        statusSummary: (d, c) => `Active Bulletins: ${d} Danger (RED), ${c} Caution Notices`,
+        filtAll: "All Notices",
+        filtDanger: "Danger",
+        filtCaution: "Caution",
+        filtResolved: "Nominal",
+        plotOnChart: "🗺️ Plot on Chart",
+        askInRadio: "💬 Query Radio",
+        briefTitle: "Navigational Advisory Dispatch",
+        briefBody: "INCOIS and Coast Guard satellite link online. Access potential fishing zones (PFZ), tidal windows, or squall warnings via quick tactical keys below.",
+        inputPlaceholder: "Enter tactical query (e.g., Is wind safe for trawling?)",
+        submitBtn: "Query",
+        drawerAsk: "Ask in Tactical Log 💬",
+        drawerDismiss: "Dismiss",
+        mobChart: "Nautical Chart",
+        mobAlerts: "Safety Bulletins",
+        mobChat: "Advisory Radio",
+        viewPC: "PC",
+        viewPhone: "PHONE",
+        queries: [
+          { label: "🐟 Recommended PFZ Spot", query: "Where is the best potential fishing zone today?" },
+          { label: "🌊 Swell & High Wind Warning", query: "Is there high wind and rough swell risk today?" },
+          { label: "⚓ Return Tide Window", query: "Is it safe to venture out tomorrow morning?" },
+          { label: "🆘 Coast Guard Emergency", query: "Emergency distress assistance VHF Ch 16 contact" }
+        ]
+      }
+    };
+
+    // Authentic Coastal Safety Bulletins (NAVAREA / INCOIS Standard)
+    const BULLETINS = [
+      {
+        id: "NAVAREA-VIII-0492",
+        type: "danger",
+        source_hi: "तटरक्षक बल (ICG) व IMD पणजी",
+        source_en: "Coast Guard MRCC & IMD Panaji",
+        title_hi: "चक्रवाती दबाव व तीव्र तड़ित झंझा (Squall Warning)",
+        title_en: "Severe Squall Line & Lightning Cell (Red Alert)",
+        desc_hi: "दक्षिण-पूर्व तटीय जलक्षेत्र में 45 समुद्री मील प्रति घंटे की तीव्र झंझावाती हवाएं और सक्रिय बिजली का केंद्र। नावों के पलटने का गंभीर जोखिम।",
+        desc_en: "Active squall line generating 45 knot gusts and intense lightning strikes SE offshore. Extreme capsize risk for mechanized craft.",
+        action_hi: "सभी छोटी नौकाएं तत्काल 14:00 बजे तक बेतुल या मोरमुगाओ बंदरगाह लौटें।",
+        action_en: "All craft < 20m OAL must return to Mormugao or Betul harbour by 14:00 IST.",
+        zone_id: "zone-danger-se",
+        coords: "14°50'N, 73°58'E (18 NM SE)"
+      },
+      {
+        id: "INCOIS-SWH-8821",
+        type: "caution",
+        source_hi: "INCOIS महासागर चेतावनी प्रभाग",
+        source_en: "INCOIS Ocean State Forecast",
+        title_hi: "उत्तर-पूर्वी तटीय क्षेत्र: 2.8m ऊंची लहरें",
+        title_en: "NE Sector: 2.8m Rough Swell Advisory",
+        desc_hi: "दोपहर 13:30 से 18:00 बजे के बीच जलधारा गति 2.4 नॉट और 2.8 मीटर ऊंची लहरें। ज्वार-भाटे के दौरान चैनल में प्रवेश जोखिमपूर्ण।",
+        desc_en: "Strong tidal currents up to 2.4 kts with 2.8m swells between 13:30 and 18:00 IST. Channel transit dangerous during ebb tide.",
+        action_hi: "तट से 5 किमी के भीतर रहें और लाइफ-जैकट अनिवार्य रूप से पहनें।",
+        action_en: "Maintain within 3 NM inshore. Lifejackets mandatory for all deck crew.",
+        zone_id: "zone-wind-ne",
+        coords: "15°26'N, 73°44'E (8 NM NE)"
+      },
+      {
+        id: "INCOIS-PFZ-0926",
+        type: "resolved",
+        source_hi: "INCOIS उपग्रह मत्स्य डेटा",
+        source_en: "INCOIS Marine Fishery Advisory",
+        title_hi: "अनुकूल मत्स्य क्षेत्र (PFZ Alpha) सामान्य",
+        title_en: "Potential Fishing Zone (PFZ Alpha) Clear",
+        desc_hi: "दक्षिण-पश्चिम सागर में शांत समुद्री स्थिति, समुद्री सतह तापमान 28.2°C और उच्च क्लोरोफिल सघनता।",
+        desc_en: "Sea Surface Temp 28.2°C with optimal chlorophyll front. Calm sea state Douglas 2, optimal for Indian Mackerel.",
+        action_hi: "अनुशंसित बिंदु 15°12'N, 73°32'E पर सामान्य मत्स्य संचालन की अनुमति।",
+        action_en: "Normal fishing permitted at waypoint 15°12'N, 73°32'E.",
+        zone_id: "zone-pfz-sw",
+        coords: "15°12'N, 73°32'E (15 NM SW)"
+      }
+    ];
+
+    // Nautical Cartography Geometric Coordinates & Geographies
+    const MAP_ZONES = [
+      {
+        id: "zone-pfz-sw",
+        type: "pfz",
+        path: "M 180 340 C 260 300, 380 340, 410 420 C 430 490, 360 560, 270 570 C 180 580, 140 500, 150 430 Z",
+        label_hi: "INCOIS PFZ (उत्तम मत्स्य क्षेत्र)",
+        label_en: "INCOIS PFZ (Optimal Fishing)",
+        sub_hi: "SST 28.2°C • Chlorophyll 0.42mg/m³",
+        sub_en: "SST 28.2°C • Chlorophyll 0.42mg/m³",
+        textPos: { x: 200, y: 440 },
+        reason_hi: "उच्च क्लोरोफिल व अनुकूल तापीय प्रवणता। बांगड़ा और सुरमई के झुंड सक्रिय। हवा मात्र 12 किमी/घंटा, समुद्र पूर्णतः शांत।",
+        reason_en: "High chlorophyll density with thermal front. Strong pelagic fish schools (Mackerel & Kingfish). Winds light at 6 kts.",
+        coords: "15°12'N, 73°32'E (Bearing 215° SW, 14 NM)"
+      },
+      {
+        id: "zone-wind-ne",
+        type: "caution",
+        path: "M 380 80 C 470 60, 560 90, 580 160 C 590 230, 510 270, 440 260 C 370 250, 340 180, 350 120 Z",
+        label_hi: "सावधानी क्षेत्र (तीव्र लहर)",
+        label_en: "Caution Area (Rough Swell)",
+        sub_hi: "Swell 2.8m • Winds 35 km/h",
+        sub_en: "Swell 2.8m • Winds 19 kts",
+        textPos: { x: 395, y: 170 },
+        reason_hi: "दोपहर 2:00 बजे के बाद 35 किमी/घंटे की हवाएं और 2.8m ऊंची लहरें संभव। छोटी डोंगियों के लिए असुरक्षित।",
+        reason_en: "Wind picking up to 19 kts with 2.8m cross-swells after 14:00 IST. Unsafe for open motorized canoes.",
+        coords: "15°26'N, 73°44'E (Bearing 030° NE, 8 NM)"
+      },
+      {
+        id: "zone-danger-se",
+        type: "danger",
+        path: "M 480 440 C 560 410, 630 450, 620 530 C 610 600, 540 640, 470 620 C 420 600, 430 510, 460 460 Z",
+        label_hi: "प्रतिबंधित खतरा क्षेत्र (रेड अलर्ट)",
+        label_en: "Restricted Danger Zone (Red Alert)",
+        sub_hi: "Squall 45 kt • Lightning Radar Lock",
+        sub_en: "Squall 45 kt • Lightning Radar Lock",
+        textPos: { x: 470, y: 535 },
+        reason_hi: "तटरक्षक बल व मौसम विभाग द्वारा रेड अलर्ट जारी। 45 नॉट की तूफानी हवाएं और सक्रिय आकाशीय बिजली का केंद्र। नौका संचालन प्रतिबंधित।",
+        reason_en: "IMD / Coast Guard Red Alert squall line. Active lightning strikes and 45 knot cyclonic gusts. Entry strictly prohibited.",
+        coords: "14°50'N, 73°58'E (Bearing 140° SE, 18 NM)"
+      }
+    ];
+
+    const MAP_MARKERS = [
+      {
+        id: "mkr-vessel",
+        kind: "vessel",
+        x: 480,
+        y: 350,
+        label_hi: "आपकी नाव (Your Boat)",
+        label_en: "Your Vessel (GPS Lock)",
+        coords: "15°24.6'N, 73°48.2'E",
+        reason_hi: "वर्तमान नाव स्थिति। गति: 6.2 नॉट, दिशा: 218° दक्षिण-पश्चिम। सुरक्षित पानी में।",
+        reason_en: "Active GPS position. SOG: 6.2 kt, COG: 218° SW. Vessel currently in safe waters."
+      },
+      {
+        id: "mkr-pfz-target",
+        kind: "pfz",
+        x: 270,
+        y: 470,
+        zone_id: "zone-pfz-sw",
+        label_hi: "PFZ-ALPHA (उत्तम बिंदु)",
+        label_en: "PFZ-ALPHA (Target Waypoint)",
+        coords: "15°12'N, 73°32'E",
+        reason_hi: "अनुशंसित जाल डालने का बिंदु। बांगड़ा और सुरमई के भारी झुंड। गहराई: 42 मीटर।",
+        reason_en: "Optimal net casting coordinates. Heavy Mackerel schools detected at 42m depth."
+      },
+      {
+        id: "mkr-squall-center",
+        kind: "danger",
+        x: 550,
+        y: 520,
+        zone_id: "zone-danger-se",
+        label_hi: "तूफान केंद्र (Doppler Eye)",
+        label_en: "Squall Core (Doppler Eye)",
+        coords: "14°50'N, 73°58'E",
+        reason_hi: "डॉपलर रडार द्वारा ट्रैक किया गया चक्रवाती केंद्र। उत्तर-पूर्व दिशा में 18 नॉट की गति से बढ़ रहा है।",
+        reason_en: "Doppler tracked cyclonic squall core propagating 045° NE at 18 knots."
+      }
+    ];
+
+    // Maritime Responses Repository with explicit bilingual depth, bearing, wave, current
+    const ADVISORY_RESPONSES = {
+      fishing: {
+        keywords: ["machli", "pfz", "kahan", "fishing", "fish", "spot", "best"],
+        station: "INCOIS-HYD / MRCC-GOA",
+        text_hi: "उपग्रह डेटा के अनुसार आज दक्षिण-पश्चिम क्षेत्र (15°12'N, 73°32'E) में **उत्तम मत्स्य क्षेत्र (PFZ Alpha)** सक्रिय है। समुद्री सतह तापमान 28.2°C और क्लोरोफिल प्रचुर मात्रा में है। बांगड़ा और सुरमई मिलने की 85% संभावना है।",
+        text_en: "Satellite telemetry confirms active **Potential Fishing Zone (PFZ Alpha)** at 15°12'N, 73°32'E. Sea surface temperature 28.2°C with strong chlorophyll concentration. 85% probability for Indian Mackerel and Kingfish.",
+        telemetry_en: {
+          bearing: "215° SW (14 NM)",
+          depth: "42 Meters",
+          wave: "1.1m (Calm)",
+          current: "0.8 kt SSE"
+        },
+        telemetry_hi: {
+          bearing: "215° SW (14 समुद्री मील / NM)",
+          depth: "42 मीटर",
+          wave: "1.1 मीटर (शांत लहरें)",
+          current: "0.8 नॉट SSE (शांत बहाव)"
+        },
+        zone_id: "zone-pfz-sw"
+      },
+      weather: {
+        keywords: ["hawa", "lehar", "wind", "swell", "khatra", "rough", "wave"],
+        station: "IMD-MAUSAM / COASTGUARD",
+        text_hi: "चेतावनी: दोपहर 13:30 के बाद दक्षिण-पूर्व क्षेत्र में **35 से 45 नॉट की तूफानी हवाएं** और 2.8m ऊंची लहरें उठने का पूर्वानुमान है। दक्षिण-पूर्व क्षेत्र में रेड अलर्ट सक्रिय है। उत्तर-पूर्व में तटीय सीमा में ही रहें।",
+        text_en: "Warning: Doppler radar projects **35 to 45 knot squall gusts** and 2.8m swells after 13:30 IST in SE offshore sector. SE Sector is under Red Alert. Inshore transit recommended.",
+        telemetry_en: {
+          bearing: "Sector SE & NE (18 NM)",
+          depth: "30–50 Meters",
+          wave: "2.8m Steep Swell",
+          current: "2.4 kt Strong Drift",
+          wind: "35–45 kt Gusts"
+        },
+        telemetry_hi: {
+          bearing: "सेक्टर SE व NE (18 समुद्री मील)",
+          depth: "30–50 मीटर",
+          wave: "2.8 मीटर ऊंची लहरें",
+          current: "2.4 नॉट तीव्र बहाव",
+          wind: "35–45 नॉट झंझावात"
+        },
+        zone_id: "zone-danger-se"
+      },
+      safety: {
+        keywords: ["safe", "kal", "subah", "lautna", "tomorrow", "tide", "entry", "harbour"],
+        station: "NHO-DEHRADUN / MPT-PORT",
+        text_hi: "कल सुबह 05:30 से 10:30 बजे तक समुद्र सामान्य रहेगा (हवा 12 km/h, लहर 1.0m)। मोरमुगाओ व बेतुल चैनल में उच्च ज्वार (High Tide) 06:45 IST पर रहेगा जो बंदरगाह में सुरक्षित प्रवेश के लिए सर्वोत्तम है।",
+        text_en: "Tomorrow morning 05:30 to 10:30 IST conditions are nominal (wind 6 kts, swell 1.0m). High tide at Mormugao & Betul channel peaks at 06:45 IST, optimal for safe bar entry.",
+        telemetry_en: {
+          bearing: "Channel Course 095° E",
+          depth: "Harbour Bar 8.5m",
+          wave: "1.0m (Smooth Sea)",
+          current: "0.6 kt Flood Tide",
+          highTide: "06:45 IST (+2.1m)"
+        },
+        telemetry_hi: {
+          bearing: "चैनल दिशा 095° E",
+          depth: "बंदरगाह बार 8.5 मीटर",
+          wave: "1.0 मीटर (सामान्य लहरें)",
+          current: "0.6 नॉट अनुकूल धारा",
+          highTide: "06:45 IST (+2.1m)"
+        },
+        zone_id: "zone-pfz-sw"
+      },
+      emergency: {
+        keywords: ["sos", "emergency", "help", "madad", "vhf", "coastguard", "distress"],
+        station: "MRCC-MUMBAI / COASTGUARD-GOA",
+        text_hi: "तटरक्षक बल आपातकालीन बचाव चैनल: **VHF Channel 16 (156.800 MHz)** अथवा तटरक्षक टोल-फ्री नंबर **1554** पर तुरंत कॉल करें। आपकी स्थिति (15°24.6'N, 73°48.2'E) गोवा स्टेशन द्वारा लॉक है।",
+        text_en: "Coast Guard Search & Rescue protocol: Standby on **VHF Channel 16 (156.800 MHz)** or emergency toll-free **1554**. Your position 15°24.6'N, 73°48.2'E is logged at MRCC Goa.",
+        telemetry_en: {
+          bearing: "MRCC Goa Bearing 085° E",
+          depth: "Vessel Depth 34m",
+          wave: "1.5m Swell",
+          current: "1.0 kt Drift",
+          vhfGuard: "CH 16 / 08 Active"
+        },
+        telemetry_hi: {
+          bearing: "तटरक्षक दिशा 085° E",
+          depth: "नाव गहराई 34 मीटर",
+          wave: "1.5 मीटर लहरें",
+          current: "1.0 नॉट बहाव",
+          vhfGuard: "VHF CH 16 / 08 सक्रिय"
+        },
+        zone_id: "zone-danger-se"
+      }
+    };
+
+    // Master Clock Updater (IST / UTC)
+    function updateBridgeClock() {
+      const now = new Date();
+      const istStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false });
+      const el = document.getElementById('bridgeMasterClock');
+      if (el) el.textContent = `${istStr} IST`;
+    }
+    setInterval(updateBridgeClock, 1000);
+    updateBridgeClock();
+
+    // Render Marine Zones on SVG Chart
+    function renderMapZones() {
+      const container = document.getElementById('svgMarineZonesContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      MAP_ZONES.forEach(z => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'map-zone-group');
+        g.setAttribute('data-zone-id', z.id);
+        g.setAttribute('role', 'button');
+        g.setAttribute('tabindex', '0');
+
+        const label = (currentLang === 'hi') ? z.label_hi : z.label_en;
+        const sub = (currentLang === 'hi') ? z.sub_hi : z.sub_en;
+        const cls = z.type === 'pfz' ? 'zone-pfz-style' : (z.type === 'caution' ? 'zone-caution-style' : 'zone-danger-style');
+
+        g.innerHTML = `
+          <path d="${z.path}" class="map-zone-path ${cls}" />
+          <text x="${z.textPos.x}" y="${z.textPos.y}" fill="var(--text-chart)" font-family="var(--font-telemetry)" font-size="11.5" font-weight="700">${label}</text>
+          <text x="${z.textPos.x}" y="${z.textPos.y + 16}" fill="var(--text-muted)" font-family="var(--font-telemetry)" font-size="9.5">${sub}</text>
+        `;
+
+        g.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectMapZone(z.id);
+        });
+
+        container.appendChild(g);
+      });
+    }
+
+    // Render Markers on SVG Chart
+    function renderMapMarkers() {
+      const container = document.getElementById('svgMarineMarkersContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      MAP_MARKERS.forEach(m => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'map-marker-group');
+        g.setAttribute('data-marker-id', m.id);
+        g.setAttribute('transform', `translate(${m.x}, ${m.y})`);
+        g.setAttribute('role', 'button');
+        g.setAttribute('tabindex', '0');
+        g.style.cursor = 'pointer';
+
+        const label = (currentLang === 'hi') ? m.label_hi : m.label_en;
+
+        let innerSvg = '';
+        if (m.kind === 'vessel') {
+          innerSvg = `
+            <circle cx="0" cy="0" r="14" class="vessel-ping-ring" fill="none" stroke="var(--text-chart)" stroke-width="1.8" />
+            <polygon points="0,-10 6,8 0,4 -6,8" fill="var(--text-chart)" stroke="var(--brass-base)" stroke-width="1.5" transform="rotate(218)" />
+            <circle cx="0" cy="0" r="2.5" fill="var(--text-inverse)" />
+            <text x="12" y="4" fill="var(--text-chart)" font-family="var(--font-telemetry)" font-size="11" font-weight="700">${label}</text>
+          `;
+        } else if (m.kind === 'pfz') {
+          innerSvg = `
+            <circle cx="0" cy="0" r="14" class="vessel-ping-ring" fill="none" stroke="var(--pfz-border)" stroke-width="1.6" />
+            <circle cx="0" cy="0" r="8" fill="var(--pfz-border)" stroke="var(--bg-hull)" stroke-width="2" />
+            <polygon points="0,-4 3,3 -3,3" fill="#FFF" />
+            <text x="12" y="4" fill="var(--pfz-bright)" font-family="var(--font-telemetry)" font-size="11" font-weight="700">${label}</text>
+          `;
+        } else if (m.kind === 'danger') {
+          innerSvg = `
+            <circle cx="0" cy="0" r="16" class="vessel-ping-ring" fill="none" stroke="var(--danger-border)" stroke-width="1.8" />
+            <circle cx="0" cy="0" r="9" fill="var(--danger-base)" stroke="var(--bg-hull)" stroke-width="2" />
+            <polygon points="-2,-4 2,-1 -1,1 1,5 -3,1 -1,0" fill="#FFF" />
+            <text x="14" y="4" fill="var(--danger-border)" font-family="var(--font-telemetry)" font-size="11" font-weight="700">${label}</text>
+          `;
+        }
+
+        g.innerHTML = innerSvg;
+
+        g.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const theme = m.kind === 'danger' ? 'danger' : (m.kind === 'pfz' ? 'pfz' : 'caution');
+          const reason = (currentLang === 'hi') ? m.reason_hi : m.reason_en;
+          showTacticalDrawer(label, reason, m.coords, theme, m.zone_id || 'zone-pfz-sw');
+        });
+
+        container.appendChild(g);
+      });
+
+      // Tap on empty water dismisses drawer
+      const baseRect = document.getElementById('baseWaterRect');
+      if (baseRect) {
+        baseRect.addEventListener('click', () => closeTacticalDrawer());
+      }
+    }
+
+    // Select and focus zone on map
+    function selectMapZone(zoneId) {
+      activeZoneId = zoneId;
+      document.querySelectorAll('.map-zone-path').forEach(p => p.classList.remove('selected'));
+      
+      const zoneGroup = document.querySelector(`[data-zone-id="${zoneId}"]`);
+      if (zoneGroup) {
+        const path = zoneGroup.querySelector('.map-zone-path');
+        if (path) path.classList.add('selected');
+      }
+
+      const z = MAP_ZONES.find(item => item.id === zoneId);
+      if (z) {
+        const title = (currentLang === 'hi') ? z.label_hi : z.label_en;
+        const reason = (currentLang === 'hi') ? z.reason_hi : z.reason_en;
+        showTacticalDrawer(title, reason, z.coords, z.type, z.id);
+      }
+    }
+
+    // Show tactical inspection drawer on chart
+    const tacticalDrawer = document.getElementById('tacticalDrawer');
+    const drawerTitle = document.getElementById('drawerTitle');
+    const drawerReason = document.getElementById('drawerReason');
+    const drawerCoords = document.getElementById('drawerCoordinates');
+    let drawerTargetZoneId = null;
+
+    function showTacticalDrawer(title, reason, coords, theme, zoneId) {
+      drawerTitle.textContent = title;
+      drawerReason.textContent = reason;
+      drawerCoords.textContent = `COORDINATES / POSITION: ${coords}`;
+      drawerTargetZoneId = zoneId;
+      
+      tacticalDrawer.className = `tactical-detail-drawer open theme-${theme}`;
+    }
+
+    function closeTacticalDrawer() {
+      tacticalDrawer.classList.remove('open');
+      document.querySelectorAll('.map-zone-path').forEach(p => p.classList.remove('selected'));
+    }
+
+    document.getElementById('btnDismissDrawer').addEventListener('click', closeTacticalDrawer);
+    document.getElementById('btnDrawerCloseOnly').addEventListener('click', closeTacticalDrawer);
+    document.getElementById('btnDrawerAskChat').addEventListener('click', () => {
+      closeTacticalDrawer();
+      if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+        switchMobileView('chat');
+      } else {
+        switchStationTab('chat');
+      }
+      const z = MAP_ZONES.find(item => item.id === drawerTargetZoneId);
+      const query = (currentLang === 'hi') ? 
+        `Is kshetr ke baare mein jankari dein: ${z ? z.label_hi : 'Goa Offshore'}` : 
+        `Provide tactical briefing for area: ${z ? z.label_en : 'Goa Offshore'}`;
+      triggerTacticalQuery(query);
+    });
+
+    // Render Bulletins List
+    function renderBulletinsList() {
+      const container = document.getElementById('bulletinCardsList');
+      if (!container) return;
+      const t = I18N[currentLang];
+      container.innerHTML = '';
+
+      let list = BULLETINS;
+      if (currentAlertFilter !== 'all') {
+        list = BULLETINS.filter(b => b.type === currentAlertFilter);
+      }
+
+      list.forEach(b => {
+        const card = document.createElement('article');
+        card.className = `bulletin-card card-${b.type}`;
+        
+        const title = (currentLang === 'hi') ? b.title_hi : b.title_en;
+        const desc = (currentLang === 'hi') ? b.desc_hi : b.desc_en;
+        const action = (currentLang === 'hi') ? b.action_hi : b.action_en;
+        const source = (currentLang === 'hi') ? b.source_hi : b.source_en;
+        const tagText = (currentLang === 'hi') ? 
+          (b.type === 'danger' ? 'अति गंभीर (RED)' : (b.type === 'caution' ? 'सतर्कता (CAUTION)' : 'सामान्य (NOMINAL)')) : 
+          b.type.toUpperCase();
+
+        card.innerHTML = `
+          <div class="card-top-header">
+            <span class="classification-tag tag-${b.type}">${tagText}</span>
+            <span class="bulletin-source-stamp">${source} • <code>${b.id}</code></span>
           </div>
-
-          <!-- Main Answer in Plain Conversational Hindi -->
-          <p class="orca-answer-text">${data.answer_text}</p>
-
-          <!-- Distinct Inline Warning Strip (Rendered only if risk_level is not 'none') -->
-          ${data.warning_text ? `
-            <div class="inline-warning-strip ${data.risk_level}" role="alert">
-              <div class="warning-icon-wrap">
-                ${warningIconSvg}
-              </div>
-              <div class="warning-text-content">
-                <strong>सुरक्षा चेतावनी (${data.risk_level.toUpperCase()})</strong>
-                <span>${data.warning_text}</span>
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Small Separate 'Why' Reasoning Box (Secondary, subtle, distinct) -->
-          <div class="why-reasoning-box">
-            <div class="why-header">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-              </svg>
-              <span>कारण व वैज्ञानिक आधार (Why ORCA says this):</span>
-            </div>
-            <p class="why-text">${data.reasoning_text}</p>
+          <h2 class="bulletin-title">${title}</h2>
+          <p class="bulletin-body">${desc}</p>
+          <div class="protocol-box">
+            <span class="protocol-label">NAV PROTOCOL / अनिवार्य कार्रवाई:</span>
+            <p class="protocol-text">${action}</p>
           </div>
-
-          <!-- Action Bar: Voice Readout for Fisherman -->
-          <div class="bubble-actions-bar">
-            <button class="btn-audio-speak" type="button" aria-label="उत्तर को बोलकर सुनें">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          <div style="font-family: var(--font-telemetry); font-size: 10px; color: var(--text-dim);">
+            LOCATION: ${b.coords}
+          </div>
+          <div class="card-action-bar">
+            <button class="card-btn plot-btn" type="button" data-zone="${b.zone_id}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9"></circle>
+                <polygon points="12 3 14 9 20 12 14 15 12 21 10 15 4 12 10 9" fill="currentColor"></polygon>
               </svg>
-              <span>सुनें (Audio)</span>
+              <span>${t.plotOnChart}</span>
             </button>
-            <span class="response-timestamp">${getCurrentTimeStr()}</span>
+            <button class="card-btn ask-radio-btn" type="button" data-title="${title}">
+              <span>${t.askInRadio}</span>
+            </button>
           </div>
+        `;
 
+        // 1-Click Plot on Chart
+        card.querySelector('.plot-btn').addEventListener('click', () => {
+          if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+            switchMobileView('chart');
+          }
+          selectMapZone(b.zone_id);
+        });
+
+        // 1-Click Ask in Tactical Log
+        card.querySelector('.ask-radio-btn').addEventListener('click', () => {
+          if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+            switchMobileView('chat');
+          } else {
+            switchStationTab('chat');
+          }
+          const q = (currentLang === 'hi') ? 
+            `Kya meri boat is alert se prabhavit hai: ${title}?` : 
+            `Is my vessel in danger from: ${title}?`;
+          triggerTacticalQuery(q);
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    // Filter Buttons in Alerts
+    document.querySelectorAll('.bulletin-filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.bulletin-filter-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentAlertFilter = btn.getAttribute('data-filter');
+        renderBulletinsList();
+      });
+    });
+
+    // Render Tactical Instant Quick Query Chips
+    function renderQuickQueries() {
+      const row = document.getElementById('quickQueriesRow');
+      if (!row) return;
+      row.innerHTML = '';
+      const chips = I18N[currentLang].queries;
+
+      chips.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'tactical-query-chip';
+        btn.type = 'button';
+        btn.textContent = c.label;
+        btn.addEventListener('click', () => triggerTacticalQuery(c.query));
+        row.appendChild(btn);
+      });
+    }
+
+    // Tactical Chat Dispatch Engine
+    const chatThread = document.getElementById('tacticalChatThread');
+    const queryInput = document.getElementById('tacticalQueryInput');
+
+    function scrollChatToBottom() {
+      chatThread.scrollTop = chatThread.scrollHeight;
+    }
+
+    function triggerTacticalQuery(text) {
+      if (!text || !text.trim()) return;
+
+      // Append operator message
+      const operatorDiv = document.createElement('div');
+      operatorDiv.className = 'dispatch-entry operator';
+      operatorDiv.innerHTML = `
+        <div class="dispatch-bubble-operator">
+          ${escapeHtml(text)}
+          <div style="font-family: var(--font-telemetry); font-size: 10px; color: var(--text-dim); text-align: right; margin-top: 2px;">
+            ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} IST
+          </div>
         </div>
       `;
+      chatThread.appendChild(operatorDiv);
+      scrollChatToBottom();
 
-      // Wire Voice Readout
-      const speakBtn = row.querySelector('.btn-audio-speak');
-      speakBtn.addEventListener('click', () => {
-        speakResponse(data, speakBtn);
-      });
-
-      chatThread.appendChild(row);
-      scrollToBottom();
-    }
-
-    // Voice Speech Synthesis (Reads Hindi Response Aloud)
-    function speakResponse(data, btn) {
-      if (!('speechSynthesis' in window)) {
-        alert("Audio readout browser par uplabdh nahi hai.");
-        return;
+      // Find matching tactical advisory response
+      const lower = text.toLowerCase();
+      let matchedKey = 'fishing';
+      let matched = ADVISORY_RESPONSES.fishing;
+      if (ADVISORY_RESPONSES.weather.keywords.some(k => lower.includes(k))) {
+        matchedKey = 'weather';
+        matched = ADVISORY_RESPONSES.weather;
+      } else if (ADVISORY_RESPONSES.safety.keywords.some(k => lower.includes(k))) {
+        matchedKey = 'safety';
+        matched = ADVISORY_RESPONSES.safety;
+      } else if (ADVISORY_RESPONSES.emergency.keywords.some(k => lower.includes(k))) {
+        matchedKey = 'emergency';
+        matched = ADVISORY_RESPONSES.emergency;
       }
 
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-        document.querySelectorAll('.btn-audio-speak').forEach(b => {
-          b.classList.remove('speaking');
-          b.querySelector('span').textContent = 'सुनें (Audio)';
-        });
-        if (btn.classList.contains('speaking')) return;
-      }
+      // Simulated radio transmission latency (350ms)
+      setTimeout(() => {
+        const advisoryDiv = document.createElement('div');
+        advisoryDiv.className = 'dispatch-entry advisory';
+        advisoryDiv.setAttribute('data-response-key', matchedKey);
+        
+        const ans = (currentLang === 'hi') ? matched.text_hi : matched.text_en;
+        const t = I18N[currentLang];
+        const telemData = (currentLang === 'hi') ? (matched.telemetry_hi || matched.telemetry) : (matched.telemetry_en || matched.telemetry);
 
-      let spokenScript = data.answer_text;
-      if (data.warning_text) {
-        spokenScript += " ध्यान दें: " + data.warning_text;
-      }
+        let telemRows = '';
+        for (const [k, v] of Object.entries(telemData)) {
+          const label = (t.telemLabels && t.telemLabels[k]) ? t.telemLabels[k] : k.toUpperCase();
+          telemRows += `<div>${label}: <span class="telemetry-val">${v}</span></div>`;
+        }
 
-      const utterance = new SpeechSynthesisUtterance(spokenScript);
-      utterance.lang = 'hi-IN'; // Natural Hindi
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
+        advisoryDiv.innerHTML = `
+          <div class="dispatch-card-advisory">
+            <div class="advisory-stamp-bar">
+              <span class="advisory-station-code">STATION: ${matched.station}</span>
+              <span>VERIFIED • DGPS</span>
+            </div>
+            <div class="advisory-main-text">${formatMarkdown(ans)}</div>
+            <div class="nautical-telemetry-grid">
+              ${telemRows}
+            </div>
+            <div class="advisory-action-row">
+              <button class="advisory-plot-btn" type="button" data-zone="${matched.zone_id}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9 12 2"></polygon>
+                </svg>
+                <span>${t.plotOnChart}</span>
+              </button>
+            </div>
+          </div>
+        `;
 
-      utterance.onstart = () => {
-        btn.classList.add('speaking');
-        btn.querySelector('span').textContent = 'आवाज़ बंद करें';
-      };
-
-      utterance.onend = () => {
-        btn.classList.remove('speaking');
-        btn.querySelector('span').textContent = 'सुनें (Audio)';
-      };
-
-      utterance.onerror = () => {
-        btn.classList.remove('speaking');
-        btn.querySelector('span').textContent = 'सुनें (Audio)';
-      };
-
-      window.speechSynthesis.speak(utterance);
-    }
-
-    // Core Conversation Dispatcher
-    async function handleUserQuery(queryText) {
-      const q = (queryText || '').trim();
-      if (!q || isProcessing) return;
-
-      isProcessing = true;
-      queryInput.value = '';
-      sendBtn.disabled = true;
-
-      // 1. Show User Bubble
-      appendUserMessage(q);
-
-      // 2. Show Live Reasoning Pipeline Inline in Chat
-      const pipelineEl = createReasoningPipelineElement();
-      chatThread.appendChild(pipelineEl);
-      scrollToBottom();
-
-      // 3. Step-by-step pipeline animation (Visibly shows agent mesh at work)
-      await runReasoningPipeline(pipelineEl);
-
-      // 4. Fetch Structured Agent Response (Via required getAgentResponse function)
-      const agentResult = await getAgentResponse(q);
-
-      // 5. Remove pipeline and append final rich ORCA response
-      pipelineEl.remove();
-      appendOrcaMessage(agentResult);
-
-      isProcessing = false;
-      sendBtn.disabled = false;
-      queryInput.focus();
-    }
-
-    // Voice Input Mic Setup (Speech Recognition)
-    function setupVoiceInput() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (!SpeechRecognition) {
-        // Fallback for browsers without speech recognition
-        micBtn.addEventListener('click', () => {
-          // Fill a sample spoken query for demonstration
-          queryInput.value = "Kal subah samundar mein jaana safe hai kya?";
-          queryInput.focus();
-          voiceStatusBar.classList.add('active');
-          voiceStatusText.textContent = "सैंपल सवाल इनपुट में भरा गया (ब्राउज़र माइक समर्थित नहीं है)";
-          setTimeout(() => voiceStatusBar.classList.remove('active'), 3500);
-        });
-        return;
-      }
-
-      speechRecognitionInstance = new SpeechRecognition();
-      speechRecognitionInstance.continuous = false;
-      speechRecognitionInstance.interimResults = false;
-      speechRecognitionInstance.lang = 'hi-IN'; // Hindi recognition
-
-      speechRecognitionInstance.onstart = () => {
-        isListening = true;
-        micBtn.classList.add('listening');
-        voiceStatusBar.classList.add('active');
-        voiceStatusText.textContent = "आवाज़ सुन रहे हैं... कृपया अपना सवाल बोलें (Listening in Hindi/English)";
-      };
-
-      speechRecognitionInstance.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        queryInput.value = transcript;
-        voiceStatusBar.classList.remove('active');
-        handleUserQuery(transcript);
-      };
-
-      speechRecognitionInstance.onerror = () => {
-        isListening = false;
-        micBtn.classList.remove('listening');
-        voiceStatusBar.classList.remove('active');
-      };
-
-      speechRecognitionInstance.onend = () => {
-        isListening = false;
-        micBtn.classList.remove('listening');
-        voiceStatusBar.classList.remove('active');
-      };
-
-      micBtn.addEventListener('click', () => {
-        if (isListening) {
-          speechRecognitionInstance.stop();
-        } else {
-          try {
-            speechRecognitionInstance.start();
-          } catch (e) {
-            speechRecognitionInstance.stop();
+        advisoryDiv.querySelector('.advisory-plot-btn').addEventListener('click', () => {
+          if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+            switchMobileView('chart');
           }
-        }
-      });
-    }
-
-    // Quick Suggestion Chips Setup
-    function setupChips() {
-      const chips = document.querySelectorAll('.suggestion-chip');
-      chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          const prompt = chip.getAttribute('data-prompt');
-          handleUserQuery(prompt);
+          selectMapZone(matched.zone_id);
         });
-      });
+
+        chatThread.appendChild(advisoryDiv);
+        scrollChatToBottom();
+      }, 350);
     }
 
-    // Sunlight High-Contrast Toggle Setup (Matches alerts.html exactly)
-    function setupSunlightToggle() {
-      sunlightToggle.addEventListener('click', () => {
-        const isBoosted = document.body.classList.toggle('sunlight-boost');
-        sunlightToggle.classList.toggle('active', isBoosted);
-        sunlightToggle.setAttribute('aria-pressed', isBoosted ? 'true' : 'false');
-        sunlightLabel.textContent = isBoosted ? 'Sunlight Active' : 'Sunlight';
-      });
+    document.getElementById('tacticalQueryForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = queryInput.value.trim();
+      if (val) {
+        triggerTacticalQuery(val);
+        queryInput.value = '';
+      }
+    });
+
+    // Sub-Navigation Tab Switching (Alerts <-> Chat) in Companion Station
+    const tabBtnAlerts = document.getElementById('tabBtnAlerts');
+    const tabBtnChat = document.getElementById('tabBtnChat');
+    const panelAlerts = document.getElementById('panelAlerts');
+    const panelChat = document.getElementById('panelChat');
+
+    function switchStationTab(target) {
+      currentStationTab = target;
+      tabBtnAlerts.classList.toggle('active', target === 'alerts');
+      tabBtnChat.classList.toggle('active', target === 'chat');
+      tabBtnAlerts.setAttribute('aria-selected', target === 'alerts' ? 'true' : 'false');
+      tabBtnChat.setAttribute('aria-selected', target === 'chat' ? 'true' : 'false');
+
+      panelAlerts.classList.toggle('active', target === 'alerts');
+      panelChat.classList.toggle('active', target === 'chat');
+
+      // Keep mobile bottom dock in sync when switching station tabs
+      if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+        mobNavChart.classList.remove('active');
+        mobNavAlerts.classList.toggle('active', target === 'alerts');
+        mobNavChat.classList.toggle('active', target === 'chat');
+      }
     }
 
-    // Form Submit Event
-    function setupForm() {
-      sendBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        handleUserQuery(queryInput.value);
-      });
+    tabBtnAlerts.addEventListener('click', () => switchStationTab('alerts'));
+    tabBtnChat.addEventListener('click', () => switchStationTab('chat'));
 
-      queryInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleUserQuery(queryInput.value);
+    // Mobile Dock Tab Switching (< 960px Viewports)
+    const bridgeCockpit = document.getElementById('bridgeCockpit');
+    const mobNavChart = document.getElementById('mobNavChart');
+    const mobNavAlerts = document.getElementById('mobNavAlerts');
+    const mobNavChat = document.getElementById('mobNavChat');
+
+    function switchMobileView(view) {
+      mobNavChart.classList.toggle('active', view === 'chart');
+      mobNavAlerts.classList.toggle('active', view === 'alerts');
+      mobNavChat.classList.toggle('active', view === 'chat');
+
+      bridgeCockpit.classList.remove('view-alerts', 'view-chat');
+      if (view === 'alerts') {
+        bridgeCockpit.classList.add('view-alerts');
+        switchStationTab('alerts');
+      } else if (view === 'chat') {
+        bridgeCockpit.classList.add('view-chat');
+        switchStationTab('chat');
+      }
+    }
+
+    mobNavChart.addEventListener('click', () => switchMobileView('chart'));
+    mobNavAlerts.addEventListener('click', () => switchMobileView('alerts'));
+    mobNavChat.addEventListener('click', () => switchMobileView('chat'));
+
+    // Legend Toggle
+    const btnToggleLegend = document.getElementById('btnToggleLegend');
+    const chartLegendPanel = document.getElementById('chartLegendPanel');
+    const legendArrow = document.getElementById('legendArrow');
+
+    btnToggleLegend.addEventListener('click', () => {
+      const isCol = chartLegendPanel.classList.toggle('collapsed');
+      legendArrow.textContent = isCol ? '▸' : '▾';
+      btnToggleLegend.setAttribute('aria-expanded', isCol ? 'false' : 'true');
+    });
+
+    // Deck Sunlight Boost Mode
+    const btnSunlightToggle = document.getElementById('btnSunlightToggle');
+    const txtSunlightLabel = document.getElementById('txtSunlightLabel');
+
+    btnSunlightToggle.addEventListener('click', () => {
+      const isSun = document.body.classList.toggle('deck-sunlight');
+      btnSunlightToggle.classList.toggle('active', isSun);
+      const t = I18N[currentLang];
+      txtSunlightLabel.textContent = isSun ? t.sunlightActive : t.sunlight;
+    });
+
+    // Language Toggle
+    const btnLangHI = document.getElementById('btnLangHI');
+    const btnLangEN = document.getElementById('btnLangEN');
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('orca_marine_lang', lang);
+      document.documentElement.lang = lang;
+
+      btnLangHI.classList.toggle('selected', lang === 'hi');
+      btnLangEN.classList.toggle('selected', lang === 'en');
+
+      const t = I18N[lang];
+      document.getElementById('txtBridgeSubtitle').textContent = t.bridgeSubtitle;
+      document.getElementById('txtTelemetryFix').textContent = t.telemetryFix;
+
+      // Update top bar telemetry nodes (SOG, COG, DEPTH, BARO, VHF)
+      const elFix = document.getElementById('txtTelemetryFix');
+      const elSog = document.getElementById('txtTelemSog');
+      const elCog = document.getElementById('txtTelemCog');
+      const elDepth = document.getElementById('txtTelemDepth');
+      const elBaro = document.getElementById('txtTelemBaro');
+      const elVhf = document.getElementById('txtTelemVhf');
+      if (elFix && t.telemTopBar) elFix.textContent = t.telemTopBar.fix;
+      if (elSog && t.telemTopBar) elSog.innerHTML = t.telemTopBar.sog;
+      if (elCog && t.telemTopBar) elCog.innerHTML = t.telemTopBar.cog;
+      if (elDepth && t.telemTopBar) elDepth.innerHTML = t.telemTopBar.depth;
+      if (elBaro && t.telemTopBar) elBaro.innerHTML = t.telemTopBar.baro;
+      if (elVhf && t.telemTopBar) elVhf.textContent = t.telemTopBar.vhf;
+
+      document.getElementById('txtLegendTitle').textContent = t.legendTitle;
+      document.getElementById('legPfz').textContent = t.legPfz;
+      document.getElementById('legCaution').textContent = t.legCaution;
+      document.getElementById('legDanger').textContent = t.legDanger;
+      document.getElementById('legVessel').textContent = t.legVessel;
+
+      document.getElementById('txtTabAlertsLabel').textContent = t.tabAlerts;
+      document.getElementById('txtTabChatLabel').textContent = t.tabChat;
+      document.getElementById('txtRegistryTitle').textContent = t.registryTitle;
+      document.getElementById('txtRegistrySector').textContent = t.registrySector;
+      document.getElementById('txtRegistryStatusSummary').textContent = t.statusSummary(1, 1);
+
+      document.getElementById('btnFiltAll').textContent = `${t.filtAll} (3)`;
+      document.getElementById('btnFiltDanger').textContent = `${t.filtDanger} (1)`;
+      document.getElementById('btnFiltCaution').textContent = `${t.filtCaution} (1)`;
+      document.getElementById('btnFiltResolved').textContent = `${t.filtResolved} (1)`;
+
+      document.getElementById('txtBriefTitle').textContent = t.briefTitle;
+      document.getElementById('txtBriefBody').textContent = t.briefBody;
+      queryInput.placeholder = t.inputPlaceholder;
+      document.getElementById('btnSubmitQuery').querySelector('span').textContent = t.submitBtn;
+
+      document.getElementById('txtDrawerAsk').textContent = t.drawerAsk;
+      document.getElementById('txtDrawerDismiss').textContent = t.drawerDismiss;
+
+      document.getElementById('txtMobChart').textContent = t.mobChart;
+      document.getElementById('txtMobAlerts').textContent = `${t.mobAlerts} (1)`;
+      document.getElementById('txtMobChat').textContent = t.mobChat;
+      if (document.getElementById('txtViewPC')) document.getElementById('txtViewPC').textContent = t.viewPC;
+      if (document.getElementById('txtViewPhone')) document.getElementById('txtViewPhone').textContent = t.viewPhone;
+
+      const isSun = document.body.classList.contains('deck-sunlight');
+      txtSunlightLabel.textContent = isSun ? t.sunlightActive : t.sunlight;
+
+      // Update any existing advisory dispatches in chat thread
+      document.querySelectorAll('.dispatch-entry.advisory[data-response-key]').forEach(entry => {
+        const key = entry.getAttribute('data-response-key');
+        const matched = ADVISORY_RESPONSES[key];
+        if (matched) {
+          const ansText = (lang === 'hi') ? matched.text_hi : matched.text_en;
+          const mainTextEl = entry.querySelector('.advisory-main-text');
+          if (mainTextEl) mainTextEl.innerHTML = formatMarkdown(ansText);
+
+          const telemGrid = entry.querySelector('.nautical-telemetry-grid');
+          if (telemGrid) {
+            const telemData = (lang === 'hi') ? (matched.telemetry_hi || matched.telemetry) : (matched.telemetry_en || matched.telemetry);
+            let rows = '';
+            for (const [k, v] of Object.entries(telemData)) {
+              const label = (t.telemLabels && t.telemLabels[k]) ? t.telemLabels[k] : k.toUpperCase();
+              rows += `<div>${label}: <span class="telemetry-val">${v}</span></div>`;
+            }
+            telemGrid.innerHTML = rows;
+          }
+
+          const plotBtnSpan = entry.querySelector('.advisory-plot-btn span');
+          if (plotBtnSpan) plotBtnSpan.textContent = t.plotOnChart;
         }
       });
+
+
+      renderMapZones();
+      renderMapMarkers();
+      renderBulletinsList();
+      renderQuickQueries();
     }
 
-    // Initialize App
-    function init() {
-      setupChips();
-      setupVoiceInput();
-      setupSunlightToggle();
-      setupForm();
+    btnLangHI.addEventListener('click', () => setLanguage('hi'));
+    btnLangEN.addEventListener('click', () => setLanguage('en'));
+
+    // Device View Mode Toggle (PC 🖥️ <-> PHONE 📱)
+    const btnViewPC = document.getElementById('btnViewPC');
+    const btnViewPhone = document.getElementById('btnViewPhone');
+
+    function setDeviceMode(mode) {
+      currentDeviceMode = mode;
+      localStorage.setItem('orca_marine_device_mode', mode);
+
+      document.body.classList.remove('force-phone-view', 'force-pc-view');
+      if (mode === 'phone') {
+        document.body.classList.add('force-phone-view');
+        btnViewPhone.classList.add('selected');
+        btnViewPC.classList.remove('selected');
+        if (!bridgeCockpit.classList.contains('view-alerts') && !bridgeCockpit.classList.contains('view-chat')) {
+          switchMobileView('chart');
+        }
+      } else {
+        document.body.classList.add('force-pc-view');
+        btnViewPC.classList.add('selected');
+        btnViewPhone.classList.remove('selected');
+        bridgeCockpit.classList.remove('view-alerts', 'view-chat');
+      }
     }
 
-    // Run on ready
+    btnViewPC.addEventListener('click', () => setDeviceMode('pc'));
+    btnViewPhone.addEventListener('click', () => setDeviceMode('phone'));
+
+    // Utilities
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function formatMarkdown(str) {
+      return str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    // Initialize application
+    function initBridge() {
+      setLanguage(currentLang);
+      setDeviceMode(currentDeviceMode);
+      if (window.innerWidth < 640 || currentDeviceMode === 'phone') {
+        chartLegendPanel.classList.add('collapsed');
+        legendArrow.textContent = '▸';
+        btnToggleLegend.setAttribute('aria-expanded', 'false');
+      }
+
+      // Auto-focus respective station when opened directly from /Alerts or /Chat
+      const loc = (window.location.pathname || '').toLowerCase();
+      if (loc.includes('alert')) {
+        switchStationTab('alerts');
+        if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+          switchMobileView('alerts');
+        }
+      } else if (loc.includes('chat')) {
+        switchStationTab('chat');
+        if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+          switchMobileView('chat');
+        }
+      }
+    }
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
+      document.addEventListener('DOMContentLoaded', initBridge);
     } else {
-      init();
+      initBridge();
     }
   </script>
 </body>
