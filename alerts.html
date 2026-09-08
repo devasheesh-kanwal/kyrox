@@ -3046,27 +3046,224 @@
     const BACKEND_API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && window.location.port === '8000' ? '' : 'http://localhost:8000';
     let isBackendConnected = false;
 
-    // --- Live Vessel Location (GPS) ---
+    // --- Live Vessel Location (GPS Agent Client) ---
     let vesselLocation = null; // null = not yet resolved; backend uses its own default
+    let gpsWatchId = null;
+
+    // Cartographic Projection: Map Latitude & Longitude to SVG Chart (viewBox 0 0 1000 700)
+    function projectCoordsToSvg(lat, lon) {
+      // Reference Nautical Graticule:
+      // lat 14.75°N (y=620) to 15.50°N (y=120)
+      // lon 73.50°E (x=180) to 74.25°E (x=900)
+      const latMin = 14.75, latMax = 15.50, yMin = 620, yMax = 120;
+      const lonMin = 73.50, lonMax = 74.25, xMin = 180, xMax = 900;
+
+      let x = xMin + ((lon - lonMin) / (lonMax - lonMin)) * (xMax - xMin);
+      let y = yMin + ((lat - latMin) / (latMax - latMin)) * (yMax - yMin);
+
+      // Clamp gracefully within SVG boundaries so pin remains visible with safe margin
+      x = Math.max(40, Math.min(960, x));
+      y = Math.max(40, Math.min(660, y));
+      return { x: Math.round(x), y: Math.round(y) };
+    }
+
+    // Pin User Location on Frontend Navigational Chart
+    function pinUserLocationOnMap(gpsData) {
+      if (!gpsData || typeof gpsData.latitude !== 'number' || typeof gpsData.longitude !== 'number') return;
+      const lat = gpsData.latitude;
+      const lon = gpsData.longitude;
+      const proj = projectCoordsToSvg(lat, lon);
+
+      const latDeg = Math.floor(Math.abs(lat));
+      const latMin = ((Math.abs(lat) - latDeg) * 60).toFixed(1);
+      const lonDeg = Math.floor(Math.abs(lon));
+      const lonMin = ((Math.abs(lon) - lonDeg) * 60).toFixed(1);
+      const coordsStr = `${latDeg}°${latMin}'${lat >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonMin}'${lon >= 0 ? 'E' : 'W'}`;
+
+      let mkr = MAP_MARKERS.find(m => m.id === 'user_location' || m.id === 'mkr-vessel');
+      if (!mkr) {
+        mkr = {
+          id: 'user_location',
+          kind: 'vessel',
+          x: proj.x,
+          y: proj.y,
+          label_hi: '📍 आपकी वर्तमान स्थिति',
+          label_en: '📍 Your Current Location',
+          label_ta: '📍 உங்கள் தற்போதைய அமைவிடம்',
+          coords: coordsStr,
+          reason_hi: `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।`,
+          reason_en: `Live GPS-verified device coordinates (${coordsStr}). Weather, marine conditions, and risk analyses synced to this position.`,
+          reason_ta: `நேரலை GPS மூலம் பெறப்பட்ட படகு அமைவிடம் (${coordsStr}).`
+        };
+        MAP_MARKERS.unshift(mkr);
+      } else {
+        mkr.id = 'user_location';
+        mkr.x = proj.x;
+        mkr.y = proj.y;
+        mkr.coords = coordsStr;
+        mkr.label_hi = '📍 आपकी वर्तमान स्थिति';
+        mkr.label_en = '📍 Your Current Location';
+        mkr.label_ta = '📍 உங்கள் தற்போதைய அமைவிடம்';
+        mkr.reason_hi = `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।`;
+        mkr.reason_en = `Live GPS-verified device coordinates (${coordsStr}). Weather, marine conditions, and risk analyses synced to this position.`,
+        mkr.reason_ta = `நேரலை GPS மூலம் பெறப்பட்ட படகு அமைவிடம் (${coordsStr}).`;
+      }
+
+      // Update masthead telemetry bar
+      const elFix = document.getElementById('txtTelemetryFix');
+      if (elFix) elFix.textContent = `DGPS FIX: ${coordsStr}`;
+
+      renderMapMarkers();
+      focusMapOnUserLocation(proj.x, proj.y);
+    }
+
+    // Center or Move Map Viewport to User Location
+    function focusMapOnUserLocation(x, y) {
+      const viewport = document.getElementById('chartViewport');
+      if (!viewport) return;
+      const scrollX = Math.max(0, (x / 1000) * viewport.scrollWidth - viewport.clientWidth / 2);
+      const scrollY = Math.max(0, (y / 700) * viewport.scrollHeight - viewport.clientHeight / 2);
+      viewport.scrollTo({ left: scrollX, top: scrollY, behavior: 'smooth' });
+    }
+
+    // Update Bridge Telemetry Strip UI
+    function updateBridgeTelemetryUI(data) {
+      if (!data) return;
+      if (data.sog) {
+        const el = document.getElementById('txtTelemSog');
+        if (el) el.innerHTML = `SOG: <strong>${data.sog}</strong>`;
+      }
+      if (data.cog) {
+        const el = document.getElementById('txtTelemCog');
+        if (el) el.innerHTML = `COG: <strong>${data.cog}</strong>`;
+      }
+      if (data.depth) {
+        const el = document.getElementById('txtTelemDepth');
+        if (el) el.innerHTML = `DEPTH: <strong>${data.depth}</strong>`;
+      }
+      if (data.wave) {
+        const el = document.getElementById('txtTelemBaro');
+        if (el) el.innerHTML = `WAVE: <strong>${data.wave}</strong> • BARO: <strong>${data.baro || '1008.4 hPa'}</strong>`;
+      }
+      if (data.fix) {
+        const el = document.getElementById('txtTelemetryFix');
+        if (el) el.textContent = data.fix;
+      }
+    }
+
+    // Transmit User GPS Location to Backend GPS Agent & Trigger Telemetry
+    async function sendLocationToBackend(lat, lon) {
+      try {
+        const res = await fetch(`${BACKEND_API_BASE}/location`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude: lat, longitude: lon })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.gps) {
+            pinUserLocationOnMap(data.gps);
+            if (data.telemetry) updateBridgeTelemetryUI(data.telemetry);
+            return data;
+          }
+        }
+      } catch (err) {
+        console.warn('[KyroX] Backend /location sync offline, using local GPS pin:', err);
+      }
+      // Fallback local pin if backend server offline
+      pinUserLocationOnMap({
+        id: 'user_location',
+        name: 'Your Current Location',
+        latitude: lat,
+        longitude: lon,
+        type: 'CURRENT_LOCATION',
+        marker_type: 'USER'
+      });
+    }
+
+    // Geolocation Error Handling (Clear User Guidance, No Silent Fake Locations)
+    function handleGeolocationError(err) {
+      let msg = '';
+      switch (err.code) {
+        case err.PERMISSION_DENIED:
+          msg = (currentLang === 'hi') ? 
+            'जीपीएस अनुमति अस्वीकृत: कृपया ब्राउज़र में स्थान (Location) अनुमति दें।' : 
+            (currentLang === 'ta' ? 
+              'GPS அனுமதி மறுக்கப்பட்டது: உலாவி அமைப்புகளில் இருப்பிட அனுமதியை இயக்கவும்.' : 
+              'GPS Permission Denied: Please allow location access in your browser settings.');
+          break;
+        case err.POSITION_UNAVAILABLE:
+          msg = (currentLang === 'hi') ? 
+            'जीपीएस सिग्नल अनुपलब्ध: वास्तविक डिवाइस स्थान प्राप्त नहीं हो सका।' : 
+            (currentLang === 'ta' ? 
+              'GPS சிக்னல் கிடைக்கவில்லை: சாதனத்தின் இருப்பிடத்தைப் பெற முடியவில்லை.' : 
+              'GPS Signal Unavailable: Could not obtain actual device coordinates.');
+          break;
+        case err.TIMEOUT:
+          msg = (currentLang === 'hi') ? 
+            'जीपीएस टाइमआउट: स्थान प्राप्त करने में समय समाप्त हो गया।' : 
+            (currentLang === 'ta' ? 
+              'GPS நேரம் முடிந்தது: மீண்டும் முயற்சிக்கவும்.' : 
+              'GPS Timeout: Location request timed out.');
+          break;
+        default:
+          msg = `GPS Error: ${err.message}`;
+      }
+      console.warn('[KyroX GPS]', msg);
+      const elFix = document.getElementById('txtTelemetryFix');
+      if (elFix) {
+        elFix.innerHTML = `<span style="color:var(--danger-bright);" title="${escapeHtml(msg)}">⚠ GPS FIX PENDING (ALLOW PERMISSION)</span>`;
+      }
+    }
 
     function initVesselLocation() {
       if (!navigator.geolocation) {
-        console.warn('[KyroX] Geolocation not supported by this browser');
+        const msg = (currentLang === 'hi') ? 
+          'इस ब्राउज़र में जीपीएस जिओलोकेशन समर्थित नहीं है।' : 
+          'Geolocation is not supported by this browser.';
+        console.warn('[KyroX GPS]', msg);
+        const elFix = document.getElementById('txtTelemetryFix');
+        if (elFix) {
+          elFix.innerHTML = `<span style="color:var(--danger-bright);">⚠ ${msg}</span>`;
+        }
         return;
       }
+
+      // 1. Initial One-time GPS Fix
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          vesselLocation = {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude
-          };
-          console.log('[KyroX] Vessel GPS fix:', vesselLocation.latitude, vesselLocation.longitude);
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          vesselLocation = { latitude: lat, longitude: lon };
+          console.log('[KyroX GPS] Verified fix:', lat, lon);
+          sendLocationToBackend(lat, lon);
         },
-        (err) => {
-          console.warn('[KyroX] Geolocation error:', err.message);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        handleGeolocationError,
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
       );
+
+      // 2. Continuous Location Watch for moving vessel
+      try {
+        if (gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            // Update if moved more than ~10m
+            if (!vesselLocation || Math.abs(vesselLocation.latitude - lat) > 0.0001 || Math.abs(vesselLocation.longitude - lon) > 0.0001) {
+              vesselLocation = { latitude: lat, longitude: lon };
+              console.log('[KyroX GPS] Live position update:', lat, lon);
+              sendLocationToBackend(lat, lon);
+            }
+          },
+          (err) => {
+            console.warn('[KyroX GPS Watch]', err.message);
+          },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
+        );
+      } catch (e) {
+        console.warn('[KyroX] watchPosition not available:', e);
+      }
     }
     initVesselLocation();
 
@@ -3077,26 +3274,10 @@
         if (!res.ok) return;
         const data = await res.json();
         isBackendConnected = true;
-        if (data.sog) {
-          const el = document.getElementById('txtTelemSog');
-          if (el) el.innerHTML = `SOG: <strong>${data.sog}</strong>`;
+        if (data.gps) {
+          pinUserLocationOnMap(data.gps);
         }
-        if (data.cog) {
-          const el = document.getElementById('txtTelemCog');
-          if (el) el.innerHTML = `COG: <strong>${data.cog}</strong>`;
-        }
-        if (data.depth) {
-          const el = document.getElementById('txtTelemDepth');
-          if (el) el.innerHTML = `DEPTH: <strong>${data.depth}</strong>`;
-        }
-        if (data.wave) {
-          const el = document.getElementById('txtTelemBaro');
-          if (el) el.innerHTML = `WAVE: <strong>${data.wave}</strong> • BARO: <strong>${data.baro}</strong>`;
-        }
-        if (data.fix) {
-          const el = document.getElementById('txtTelemetryFix');
-          if (el) el.textContent = data.fix;
-        }
+        updateBridgeTelemetryUI(data);
       } catch (err) {
         // Backend offline or local file, continue with baseline telemetry
       }
@@ -3178,6 +3359,11 @@
           if (data && data.recommendation) {
             backendSuccess = true;
             if (thinkingDiv.parentNode) thinkingDiv.remove();
+
+            // Pin user location from GPS Agent verification
+            if (data.gps) {
+              pinUserLocationOnMap(data.gps);
+            }
 
             const rec = data.recommendation;
             const t = I18N[currentLang] || I18N.en;
@@ -3747,6 +3933,19 @@
         legendArrow.textContent = '▸';
         btnToggleLegend.setAttribute('aria-expanded', 'false');
       }
+      // Click on DGPS fix in masthead to recenter on user location
+      const elFix = document.getElementById('txtTelemetryFix');
+      if (elFix) {
+        elFix.style.cursor = 'pointer';
+        elFix.title = 'Click to focus chart on current GPS location';
+        elFix.addEventListener('click', () => {
+          if (vesselLocation) {
+            const proj = projectCoordsToSvg(vesselLocation.latitude, vesselLocation.longitude);
+            focusMapOnUserLocation(proj.x, proj.y);
+          }
+        });
+      }
+
       // Load live telemetry and safety bulletins from backend
       fetchLiveTelemetry();
       fetchLiveBulletins();

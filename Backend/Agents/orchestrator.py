@@ -9,6 +9,7 @@ from Agents.weather_agent import weather_agent
 from Agents.marine_agent import marine_agent
 from Agents.geospatial_Agent import geospatial_agent
 from Agents.recommendation_agent import recommendation_agent
+from Agents.gps_agent import gps_agent
 from Models.schemas import Location
 
 logger = logging.getLogger(__name__)
@@ -293,6 +294,9 @@ async def orchestrate(
         # Default vessel operational location (Goa coastal waters)
         loc_obj = Location(latitude=15.246, longitude=73.803)
 
+    # Process validated GPS pin via GPS Agent
+    gps_data = gps_agent(loc_obj.latitude, loc_obj.longitude)
+
     # Run domain agents concurrently
     marine_task = marine_agent(loc_obj)
     weather_task = weather_agent(loc_obj)
@@ -374,6 +378,7 @@ async def orchestrate(
         "intent": intent,
         "conversation": conversation,
         "location": {"latitude": loc_obj.latitude, "longitude": loc_obj.longitude},
+        "gps": gps_data,
         "zone_id": effective_zone,
         "marine_data": marine_data,
         "weather_data": weather_data,
