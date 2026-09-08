@@ -65,4 +65,3 @@ def _safe_get(data: dict, path: list[str], default=None):
             return default
         current = current[key]
     return current if isinstance(current, (int, float)) else default
-
