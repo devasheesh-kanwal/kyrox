@@ -19,6 +19,17 @@ class Location(BaseModel):
     )
 
 # =========================================================
+# GPS DATA
+# =========================================================
+class GPSData(BaseModel):
+    id: str = Field("user_location", description="Identifier for user GPS pin")
+    name: str = Field("Your Current Location", description="Display name for location")
+    latitude: float = Field(..., ge=-90, le=90, description="Latitude of the vessel")
+    longitude: float = Field(..., ge=-180, le=180, description="Longitude of the vessel")
+    type: str = Field("CURRENT_LOCATION", description="Type classification")
+    marker_type: str = Field("USER", description="Cartographic marker symbol type")
+
+# =========================================================
 # WEATHER DATA
 # =========================================================
 class WeatherData(BaseModel):
@@ -67,6 +78,7 @@ class Recommendation(BaseModel):
 # =========================================================
 class SafetyAnalysisResponse(BaseModel):
     location: Location
+    gps: Optional[GPSData] = None
     weather: WeatherData
     marine: MarineData
     geospatial: GeoData

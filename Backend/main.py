@@ -35,6 +35,7 @@ from Agents.weather_agent import weather_agent as run_weather_agent
 from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
 from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
+from Agents.gps_agent import gps_agent
 from Agents.orchestrator import (
     calculate_risk,
     orchestrate,
@@ -270,12 +271,16 @@ async def process_query(request: UserRequest):
         "patrolVessel": "ICGS SAMARTH (Sector Charlie)",
     }
 
+    # Generate standardized GPS user location marker via GPS Agent
+    gps_data = gps_agent(loc.latitude, loc.longitude)
+
     return {
         "status": "success",
         "user_query": request.message,
         "intent": conv_data.get("intent", "GENERAL_QUERY"),
         "conversation": conv_data,
         "location": loc.model_dump(),
+        "gps": gps_data,
         "zone_id": effective_zone,
         "marine_data": marine_data,
         "weather_data": weather_data,
@@ -313,9 +318,10 @@ async def get_live_telemetry(
     wind_spd = float(w_data.get("wind_speed") or 12.0)
     current_vel = float(m_data.get("ocean_current_velocity") or 1.2)
     sst = float(m_data.get("sea_surface_temperature") or 28.2)
+    gps_data = gps_agent(loc.latitude, loc.longitude)
 
     return {
-        "fix": f"DGPS: {loc.latitude:.3f}°N, {loc.longitude:.3f}°E",
+        "fix": f"DGPS: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
         "sog": "6.2 kt",
         "cog": "218° SW",
         "depth": "34m",
@@ -329,6 +335,69 @@ async def get_live_telemetry(
         "lowTide": "17:50 IST (0.4m)",
         "visibility": "GOOD (>10 NM)",
         "clearance": "SAFE" if wave_h < 2.0 and wind_spd < 20 else "PROCEED_WITH_CAUTION",
+        "location": loc.model_dump(),
+        "gps": gps_data,
+    }
+
+
+# --------------------------------------------------
+# GPS LOCATION PIN & UPDATE ENDPOINT
+# --------------------------------------------------
+class LocationUpdateRequest(BaseModel):
+    latitude: float = Field(..., ge=-90, le=90, description="Latitude of user device")
+    longitude: float = Field(..., ge=-180, le=180, description="Longitude of user device")
+
+
+@app.post("/location")
+@app.get("/location")
+async def update_user_location(
+    body: Optional[LocationUpdateRequest] = None,
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None)
+):
+    """
+    Receives user's current GPS coordinates from device/browser.
+    Validates via GPS Agent and updates multi-agent telemetry analysis.
+    """
+    target_lat = body.latitude if body else (lat if lat is not None else DEFAULT_LATITUDE)
+    target_lon = body.longitude if body else (lon if lon is not None else DEFAULT_LONGITUDE)
+
+    gps_data = gps_agent(target_lat, target_lon)
+    loc = Location(latitude=gps_data["latitude"], longitude=gps_data["longitude"])
+
+    try:
+        marine_data, weather_data = await asyncio.gather(
+            run_marine_agent(loc),
+            run_weather_agent(loc),
+            return_exceptions=True
+        )
+    except Exception:
+        marine_data, weather_data = {}, {}
+
+    m_data = marine_data if isinstance(marine_data, dict) else {}
+    w_data = weather_data.model_dump() if hasattr(weather_data, "model_dump") else (weather_data if isinstance(weather_data, dict) else {})
+
+    wave_h = float(m_data.get("wave_height") or w_data.get("wave_height") or 1.4)
+    wind_spd = float(w_data.get("wind_speed") or 12.0)
+    current_vel = float(m_data.get("ocean_current_velocity") or 1.2)
+    sst = float(m_data.get("sea_surface_temperature") or 28.2)
+
+    return {
+        "status": "success",
+        "location": loc.model_dump(),
+        "gps": gps_data,
+        "telemetry": {
+            "fix": f"DGPS FIX: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
+            "sog": "6.2 kt",
+            "cog": "218° SW",
+            "depth": "34m",
+            "baro": "1008.4 hPa",
+            "wave": f"{wave_h:.1f}m",
+            "wind": f"{wind_spd:.1f} kts",
+            "current": f"{current_vel:.1f} kts",
+            "sst": f"{sst:.1f}°C",
+            "clearance": "SAFE" if wave_h < 2.0 and wind_spd < 20 else "PROCEED_WITH_CAUTION",
+        }
     }
 
 
