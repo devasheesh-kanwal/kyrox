@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>ORCA • Marine Safety Alerts</title>
+  <meta name="description" content="High-contrast marine safety alerts panel for fishermen and sea vessels operating in coastal waters.">
+  <style>
+    /* ==========================================================================
+       ORCA MARINE SAFETY DESIGN SYSTEM
+       Strictly Earth & Weathered Marine Palette:
+       - No ocean blue, no cyan, no teal
+       - Warm charcoal, weathered timber, sun-bleached rope, rust red, ochre amber, moss olive
+       - Designed for readability in direct bright sunlight on sea
+       ========================================================================== */
+
+    :root {
+      /* Base Canvas & Surfaces */
+      --bg-canvas: #161311;
+      --bg-surface: #241F1A;
+      --bg-surface-raised: #2D2620;
+      --bg-surface-hover: #362E27;
+      
+      /* Hairlines & Borders */
+      --border-edge: #3D352C;
+      --border-strong: #574B3E;
+      --border-focus: #C88A3E;
+
+      /* Typography Tokens */
+      --text-main: #F0EAE0;
+      --text-muted: #A69A88;
+      --text-dim: #7A7061;
+      --text-inverse: #161311;
+
+      /* Danger Tokens (Rust / Coral - NOT bright red, NOT pink) */
+      --danger-base: #C4543A;
+      --danger-tint: rgba(196, 84, 58, 0.14);
+      --danger-border: #7A3323;
+      --danger-text: #E57960;
+      --danger-solid-text: #FFFFFF;
+
+      /* Caution Tokens (Warm Ochre / Amber) */
+      --caution-base: #C88A3E;
+      --caution-tint: rgba(200, 138, 62, 0.14);
+      --caution-border: #805724;
+      --caution-text: #E5A85C;
+      --caution-solid-text: #1C1815;
+
+      /* Resolved Tokens (Muted Olive / Moss Green) */
+      --resolved-base: #7A8450;
+      --resolved-tint: rgba(122, 132, 80, 0.14);
+      --resolved-border: #4D5432;
+      --resolved-text: #A2AE72;
+      --resolved-solid-text: #FFFFFF;
+
+      /* Typography Stacks (No external CDN dependencies) */
+      --font-bulletin: "Rockwell", "Georgia", "Iowan Old Style", "Times New Roman", serif;
+      --font-interface: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-telemetry: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+
+      /* Sizing & Tap Targets */
+      --min-tap: 46px;
+      --radius-sm: 3px;
+      --radius-md: 5px;
+    }
+
+    /* Sunlight High-Contrast Mode (for blazing midday glare on open water) */
+    body.sunlight-boost {
+      --bg-canvas: #0A0807;
+      --bg-surface: #1E1A16;
+      --bg-surface-raised: #2A241E;
+      --border-edge: #5E5244;
+      --border-strong: #877663;
+      --text-main: #FFFFFF;
+      --text-muted: #D9CFC1;
+      --text-dim: #A89B88;
+      --danger-base: #DE5E42;
+      --danger-tint: rgba(222, 94, 66, 0.22);
+      --danger-border: #A3402B;
+      --danger-text: #FFA58F;
+      --caution-base: #E29F47;
+      --caution-tint: rgba(226, 159, 71, 0.22);
+      --caution-border: #A6702C;
+      --caution-text: #FFCD85;
+      --resolved-base: #93A061;
+      --resolved-tint: rgba(147, 160, 97, 0.22);
+      --resolved-border: #6B7642;
+      --resolved-text: #C3D08D;
+    }
+
+    /* Reset & Core Setup */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-interface);
+      font-size: 16px;
+      line-height: 1.5;
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    /* App Shell Container */
+    .app-viewport {
+      width: 100%;
+      max-width: 580px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border-edge);
+      border-right: 1px solid var(--border-edge);
+      background-color: var(--bg-canvas);
+      position: relative;
+    }
+
+    /* Top Masthead / Station Banner */
+    .masthead {
+      background-color: var(--bg-surface);
+      border-bottom: 2px solid var(--border-edge);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .masthead-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+    }
+
+    .brand-glyph {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-strong);
+      color: var(--caution-base);
+    }
+
+    .brand-title {
+      font-family: var(--font-bulletin);
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 0.5px;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-family: var(--font-telemetry);
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-left: 2px;
+    }
+
+    .masthead-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 6px 10px;
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-size: 13px;
+      font-family: var(--font-interface);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tool-btn:hover {
+      background-color: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .tool-btn:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 1px;
+    }
+
+    .tool-btn.active {
+      background-color: var(--caution-base);
+      color: var(--text-inverse);
+      border-color: var(--caution-base);
+      font-weight: 600;
+    }
+
+    .tool-btn.active svg {
+      fill: currentColor;
+    }
+
+    /* Sector & Telemetry Bar */
+    .telemetry-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      font-family: var(--font-telemetry);
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-edge);
+      padding-top: 6px;
+    }
+
+    .telemetry-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--resolved-base);
+      display: inline-block;
+    }
+
+    .status-dot.danger {
+      background-color: var(--danger-base);
+    }
+
+    /* Main Content Area */
+    main {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Section Header: Weather Authority Bulletin Style */
+    .bulletin-header {
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-edge);
+    }
+
+    .bulletin-title-wrap {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    h1.bulletin-title {
+      font-family: var(--font-bulletin);
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+
+    .bulletin-status-summary {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .summary-counts {
+      display: inline-flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .count-pill {
+      font-family: var(--font-telemetry);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-edge);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .count-pill.pill-danger {
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+      background-color: var(--danger-tint);
+    }
+
+    .count-pill.pill-caution {
+      border-color: var(--caution-border);
+      color: var(--caution-text);
+      background-color: var(--caution-tint);
+    }
+
+    .count-pill.pill-resolved {
+      border-color: var(--resolved-border);
+      color: var(--resolved-text);
+      background-color: var(--resolved-tint);
+    }
+
+    /* Filter & Controls Bar */
+    .filter-bar {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .filter-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-tab {
+      min-height: var(--min-tap);
+      padding: 0 14px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 14.5px;
+      font-family: var(--font-interface);
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .filter-tab:hover {
+      background-color: var(--bg-surface-raised);
+      color: var(--text-main);
+      border-color: var(--border-strong);
+    }
+
+    .filter-tab:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 1px;
+    }
+
+    .filter-tab.active {
+      background-color: var(--bg-surface-raised);
+      color: var(--text-main);
+      border-color: var(--text-main);
+      font-weight: 600;
+      box-shadow: inset 0 -2px 0 var(--caution-base);
+    }
+
+    .filter-tab .tab-badge {
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      margin-left: 6px;
+      padding: 1px 5px;
+      border-radius: 2px;
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-edge);
+    }
+
+    /* Simulation & Quick Actions Row */
+    .controls-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .sim-toggle-btn {
+      background: none;
+      border: 1px dashed var(--border-strong);
+      color: var(--caution-text);
+      font-family: var(--font-telemetry);
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sim-toggle-btn:hover {
+      background-color: var(--bg-surface-raised);
+      border-color: var(--caution-base);
+    }
+
+    /* Alert Feed List */
+    .alert-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      list-style: none;
+    }
+
+    /* Card Component: Editorial Marine Bulletin */
+    .alert-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      padding: 16px 14px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      /* Left severity device: 5px solid stripe */
+      border-left-width: 5px;
+      transition: background-color 0.12s ease;
+    }
+
+    .alert-card:hover {
+      background-color: var(--bg-surface-raised);
+    }
+
+    /* Left Stripe per Severity */
+    .alert-card.type-danger {
+      border-left-color: var(--danger-base);
+    }
+
+    .alert-card.type-caution {
+      border-left-color: var(--caution-base);
+    }
+
+    .alert-card.type-resolved {
+      border-left-color: var(--resolved-base);
+    }
+
+    /* Card Header Meta */
+    .card-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Severity Tag */
+    .severity-tag {
+      font-family: var(--font-telemetry);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      line-height: 1.1;
+    }
+
+    .severity-tag.danger {
+      background-color: var(--danger-base);
+      color: var(--danger-solid-text);
+    }
+
+    .severity-tag.caution {
+      background-color: var(--caution-base);
+      color: var(--caution-solid-text);
+    }
+
+    .severity-tag.resolved {
+      background-color: var(--resolved-base);
+      color: var(--resolved-solid-text);
+    }
+
+    .source-tag {
+      font-family: var(--font-interface);
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 1px solid var(--border-edge);
+      padding-left: 8px;
+      white-space: nowrap;
+    }
+
+    /* Time Validity Badge */
+    .validity-chip {
+      font-family: var(--font-telemetry);
+      font-size: 12px;
+      color: var(--text-main);
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-edge);
+      padding: 3px 7px;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .validity-chip.urgent {
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+      background-color: var(--danger-tint);
+      font-weight: 600;
+    }
+
+    /* Alert Title */
+    .alert-title {
+      font-family: var(--font-bulletin);
+      font-size: 18.5px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text-main);
+      letter-spacing: -0.1px;
+    }
+
+    /* Alert Body / Plain Language Description */
+    .alert-description {
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text-main);
+    }
+
+    /* Actionable Fisherman Directives */
+    .action-guidance {
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .action-guidance-label {
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--caution-text);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .action-guidance.danger-guidance .action-guidance-label {
+      color: var(--danger-text);
+    }
+
+    .action-guidance.resolved-guidance .action-guidance-label {
+      color: var(--resolved-text);
+    }
+
+    .action-guidance-text {
+      font-size: 14.5px;
+      font-weight: 500;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
+    /* Zone & Time Details Grid */
+    .card-footer-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-edge);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    @media (min-width: 440px) {
+      .card-footer-grid {
+        grid-template-columns: 1.2fr 1fr;
+      }
+    }
+
+    .footer-data-item {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .footer-data-item svg {
+      flex-shrink: 0;
+      color: var(--text-dim);
+      position: relative;
+      top: 2px;
+    }
+
+    .footer-data-val {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Card Interactive Action Bar */
+    .card-actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 6px;
+    }
+
+    .action-btn-sm {
+      min-height: 38px;
+      padding: 6px 12px;
+      background-color: var(--bg-surface-raised);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-family: var(--font-interface);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-btn-sm:hover {
+      background-color: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .action-btn-sm:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 1px;
+    }
+
+    .action-btn-sm.speaking {
+      background-color: var(--caution-tint);
+      border-color: var(--caution-border);
+      color: var(--caution-text);
+    }
+
+    .details-toggle-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 6px 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .details-toggle-btn:hover {
+      color: var(--text-main);
+      text-decoration: underline;
+    }
+
+    /* Expandable Emergency Protocols Drawer */
+    .card-extra-details {
+      display: none;
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+
+    .card-extra-details.open {
+      display: block;
+    }
+
+    .extra-detail-line {
+      margin-bottom: 5px;
+    }
+
+    .extra-detail-line:last-child {
+      margin-bottom: 0;
+    }
+
+    .extra-detail-line strong {
+      color: var(--text-main);
+    }
+
+    /* ==========================================================================
+       EMPTY STATE COMPONENT (CALM & REASSURING)
+       ========================================================================== */
+    .empty-state-panel {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-edge);
+      border-left: 5px solid var(--resolved-base);
+      border-radius: var(--radius-sm);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+      margin: 8px 0;
+    }
+
+    .empty-state-icon-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background-color: var(--resolved-tint);
+      border: 1px solid var(--resolved-border);
+      display: grid;
+      place-items: center;
+      color: var(--resolved-base);
+    }
+
+    .empty-state-title {
+      font-family: var(--font-bulletin);
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+
+    .empty-state-desc {
+      font-size: 15px;
+      color: var(--text-muted);
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    .empty-state-card-status {
+      width: 100%;
+      max-width: 420px;
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .empty-status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .empty-status-label {
+      color: var(--text-dim);
+    }
+
+    .empty-status-val {
+      color: var(--text-main);
+      font-family: var(--font-telemetry);
+      font-weight: 500;
+    }
+
+    /* Emergency Contact Footer Banner */
+    .emergency-footer {
+      background-color: var(--bg-surface);
+      border-top: 2px solid var(--border-edge);
+      padding: 16px;
+      margin-top: auto;
+    }
+
+    .emergency-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .emergency-box {
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-edge);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .emergency-box-title {
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .emergency-box-val {
+      font-family: var(--font-bulletin);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--caution-text);
+      line-height: 1.2;
+    }
+
+    .emergency-box-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Subtle Entry Animation (Respects prefers-reduced-motion) */
+    @keyframes subtleFadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .alert-card {
+        animation: subtleFadeUp 0.18s ease-out backwards;
+      }
+      .empty-state-panel {
+        animation: subtleFadeUp 0.22s ease-out backwards;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .alert-card, .empty-state-panel {
+        animation: none !important;
+      }
+      * {
+        transition: none !important;
+      }
+    }
+
+    /* Narrow Screen Adjustments (Down to ~360px viewport) */
+    @media (max-width: 400px) {
+      .masthead {
+        padding: 10px 12px;
+      }
+      main {
+        padding: 12px 10px;
+      }
+      h1.bulletin-title {
+        font-size: 20px;
+      }
+      .alert-card {
+        padding: 14px 12px 12px 12px;
+      }
+      .alert-title {
+        font-size: 17.5px;
+      }
+      .emergency-grid {
+        grid-template-columns: 1fr;
+      }
+      .card-actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .action-btn-sm {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- App Shell: Constrained for Phone Screens while at sea -->
+  <div class="app-viewport">
+
+    <!-- Top Masthead: System Identification & Operational Status -->
+    <header class="masthead" role="banner">
+      <div class="masthead-top">
+        <div class="brand-mark">
+          <div class="brand-glyph" aria-hidden="true">
+            <!-- Maritime Compass / Horizon Beacon Glyph (Inline SVG) -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square">
+              <polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9 12 2"></polygon>
+              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+            </svg>
+          </div>
+          <div>
+            <span class="brand-title">ORCA</span>
+            <span class="brand-sub">SEA SAFETY</span>
+          </div>
+        </div>
+
+        <div class="masthead-actions">
+          <!-- Direct Link to Companion AI Chat -->
+          <a href="chat.html" class="tool-btn" style="color: var(--caution-text); border-color: var(--caution-border); background-color: var(--caution-tint); text-decoration: none;" title="Open ORCA AI Sahayak Chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Chat</span>
+          </a>
+
+          <!-- Direct Link to Unified Suite -->
+          <a href="index.html" class="tool-btn" style="text-decoration: none;" title="Unified ORCA App">
+            <span>Suite ⊞</span>
+          </a>
+
+          <!-- Sunlight High-Contrast Toggle -->
+          <button id="sunlightToggle" class="tool-btn" type="button" title="Boost contrast for bright sunlight on deck" aria-pressed="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <span id="sunlightLabel">Sunlight Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Maritime Telemetry Bar -->
+      <div class="telemetry-strip" aria-label="Maritime Telemetry">
+        <span class="telemetry-item">
+          <span class="status-dot" id="connectivityDot" aria-hidden="true"></span>
+          <span id="connectivityStatus">GPS Locked • West Coast Sector</span>
+        </span>
+        <span class="telemetry-item">
+          <span>Goa–Karwar Waters (14.8°N)</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Main Alert Bulletin Workspace -->
+    <main id="mainContent" role="main">
+      
+      <!-- Bulletin Header Block -->
+      <section class="bulletin-header" aria-labelledby="bulletinHeading">
+        <div class="bulletin-title-wrap">
+          <h1 id="bulletinHeading" class="bulletin-title">Active Safety Alerts</h1>
+        </div>
+        <p class="bulletin-status-summary" id="bulletinSummaryText">
+          Loading safety bulletins...
+        </p>
+        <div class="summary-counts" id="summaryCounts">
+          <!-- Dynamically populated counts: Danger, Caution, Resolved -->
+        </div>
+      </section>
+
+      <!-- Category Filter Tabs -->
+      <nav class="filter-bar" aria-label="Filter alerts by severity">
+        <button class="filter-tab active" data-filter="all" type="button">
+          All Alerts <span class="tab-badge" id="badgeAll">0</span>
+        </button>
+        <button class="filter-tab" data-filter="danger" type="button">
+          Danger <span class="tab-badge" id="badgeDanger">0</span>
+        </button>
+        <button class="filter-tab" data-filter="caution" type="button">
+          Caution <span class="tab-badge" id="badgeCaution">0</span>
+        </button>
+        <button class="filter-tab" data-filter="resolved" type="button">
+          Resolved <span class="tab-badge" id="badgeResolved">0</span>
+        </button>
+      </nav>
+
+      <!-- Demo Simulator Controls (Allows instantaneous preview of empty state) -->
+      <div class="controls-secondary">
+        <span>Display state:</span>
+        <button id="simToggle" class="sim-toggle-btn" type="button" title="Toggle between mock alerts and empty state for testing">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span id="simBtnLabel">Simulate "All Clear" State</span>
+        </button>
+      </div>
+
+      <!-- The Live Alert Feed List -->
+      <ul id="alertList" class="alert-feed" aria-live="polite" aria-label="Marine alerts list">
+        <!-- Rendered dynamically by renderAlerts() -->
+      </ul>
+
+      <!-- Dedicated Empty State Container (Displayed when no alerts match) -->
+      <div id="emptyState" class="empty-state-panel" style="display: none;" role="status">
+        <div class="empty-state-icon-wrap" aria-hidden="true">
+          <!-- Lighthouse / Safe Harbor Anchor SVG -->
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <polyline points="9 12 11 14 15 10"></polyline>
+          </svg>
+        </div>
+        <h2 class="empty-state-title">No Active Safety Alerts</h2>
+        <p class="empty-state-desc">
+          Sea conditions are currently reported nominal in your coastal sector. No gale warnings, squalls, or restricted operations are active.
+        </p>
+        <div class="empty-state-card-status">
+          <div class="empty-status-row">
+            <span class="empty-status-label">Coastal Monitoring Station:</span>
+            <span class="empty-status-val">INCOIS / IMD West Coast</span>
+          </div>
+          <div class="empty-status-row">
+            <span class="empty-status-label">Next Scheduled Bulletin:</span>
+            <span class="empty-status-val" id="nextBulletinTime">17:30 IST</span>
+          </div>
+          <div class="empty-status-row">
+            <span class="empty-status-label">Local Swell / Wind:</span>
+            <span class="empty-status-val">1.2m Calm • NW 9 kt</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Emergency Lifeline Footer Bar (Essential for fishermen at sea) -->
+    <footer class="emergency-footer" role="contentinfo">
+      <div class="emergency-grid">
+        <div class="emergency-box">
+          <span class="emergency-box-title">Emergency VHF Radio</span>
+          <span class="emergency-box-val">Channel 16</span>
+          <span class="emergency-box-sub">2182 kHz Distress watch</span>
+        </div>
+        <div class="emergency-box">
+          <span class="emergency-box-title">Coast Guard Toll-Free</span>
+          <span class="emergency-box-val">1554</span>
+          <span class="emergency-box-sub">SAR Maritime Ops (24/7)</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // ==========================================================================
+    // ===== MOCK DATA — replace this block with a real API call later =====
+    // ==========================================================================
+    const MOCK_ALERTS = [
+      {
+        "id": "alert-imd-091",
+        "type": "danger",
+        "title": "Cyclone Warning: Severe Depression in Arabian Sea",
+        "description": "Squall wind speed reaching 55-65 km/h gusting to 75 km/h over East-Central Arabian Sea. High wave swells exceeding 4.2 meters.",
+        "action": "Immediate return to nearest harbor required. Secure deck gear and avoid open waters.",
+        "zone": "South-West zone, ~18km offshore",
+        "issued_at": new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+        "expires_at": new Date(Date.now() + 5 * 3600 * 1000).toISOString(),
+        "source": "IMD Cyclone Alert"
+      },
+      {
+        "id": "alert-imd-092",
+        "type": "danger",
+        "title": "Severe Lightning & Intense Squall Warning",
+        "description": "Rapidly intensifying thunderstorm cell moving East at 22 knots. Frequent cloud-to-water lightning strikes detected.",
+        "action": "Lower all tall radio masts. Clear open deck immediately and disconnect metallic winches.",
+        "zone": "West-Northwest zone, ~9km offshore",
+        "issued_at": new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+        "expires_at": new Date(Date.now() + 75 * 60 * 1000).toISOString(),
+        "source": "IMD Lightning Warning"
+      },
+      {
+        "id": "alert-inc-043",
+        "type": "caution",
+        "title": "High Wind & Heavy Swell Surge Advisory",
+        "description": "Swell surge of 3.0 to 3.6m expected during high tide. Low-lying beach landing areas subject to wave crashing.",
+        "action": "Small non-mechanized crafts should suspend netting. Ensure double-mooring in harbor.",
+        "zone": "South zone, ~22km offshore",
+        "issued_at": new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        "expires_at": new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+        "source": "INCOIS Swell Surge Bulletin"
+      },
+      {
+        "id": "alert-cg-108",
+        "type": "caution",
+        "title": "Restricted Zone: Naval Gunnery Practice",
+        "description": "Indian Navy surface firing drills scheduled in Sector Bravo coordinates. Surface danger area in effect.",
+        "action": "Keep clear of 14°42'N to 14°58'N zone. Maintain radio vigil on VHF Ch 16.",
+        "zone": "West zone, ~28km to 45km offshore",
+        "issued_at": new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+        "expires_at": new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
+        "source": "Indian Coast Guard Navtex"
+      },
+      {
+        "id": "alert-port-019",
+        "type": "caution",
+        "title": "Dense Coastal Sea Fog & Restricted Visibility",
+        "description": "Shallow water fog bank reducing visibility to under 400 meters near harbor sandbar entrance.",
+        "action": "Proceed at dead slow speed. Sound fog horn one prolonged blast every 2 minutes.",
+        "zone": "Coastal shallows & harbor mouth, ~3km offshore",
+        "issued_at": new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+        "expires_at": new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+        "source": "Port Conservator Advisory"
+      },
+      {
+        "id": "alert-res-004",
+        "type": "resolved",
+        "title": "Spring Tide Harbor Bar Surges (Cleared)",
+        "description": "Water surge levels have subsided below caution thresholds. The river mouth bar channel is now safe for navigation.",
+        "action": "Normal trawling operations may resume under regular watchkeeping precautions.",
+        "zone": "Estuary channel & coastal strip, ~2km offshore",
+        "issued_at": new Date(Date.now() - 7 * 3600 * 1000).toISOString(),
+        "expires_at": new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        "source": "State Fisheries Coastal Desk"
+      }
+    ];
+    // ===== END MOCK DATA =====
+
+    // Working state variable:
+    let alerts = MOCK_ALERTS; // TODO: replace with fetch('/api/alerts') response
+
+    // Stub function as required:
+    async function fetchAlerts() {
+      // TODO: replace with real API call, e.g.:
+      // const res = await fetch('/api/alerts');
+      // return await res.json();
+      return MOCK_ALERTS;
+    }
+
+    // App state
+    let currentFilter = 'all';
+    let simulationMode = 'real'; // 'real' or 'empty'
+    let currentUtterance = null;
+
+    // Severity weights for sorting: Danger (1) -> Caution (2) -> Resolved (3)
+    const SEVERITY_ORDER = {
+      'danger': 1,
+      'caution': 2,
+      'resolved': 3
+    };
+
+    // Helper: Format relative or remaining time
+    function formatTimeRemaining(isoDateStr, isExpired) {
+      if (!isoDateStr) return 'Active';
+      const targetTime = new Date(isoDateStr).getTime();
+      const now = Date.now();
+      const diffMs = targetTime - now;
+
+      if (isExpired || diffMs <= 0) {
+        const pastMinutes = Math.floor(Math.abs(diffMs) / 60000);
+        if (pastMinutes < 60) return `Resolved ${pastMinutes}m ago`;
+        const pastHours = Math.floor(pastMinutes / 60);
+        return `Resolved ${pastHours}h ago`;
+      }
+
+      const totalMinutes = Math.floor(diffMs / 60000);
+      if (totalMinutes < 60) {
+        return `Active: next ${totalMinutes} min`;
+      }
+      const hours = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      if (mins === 0) {
+        return `Active: next ${hours} hr${hours > 1 ? 's' : ''}`;
+      }
+      return `Active: next ${hours}h ${mins}m`;
+    }
+
+    // Helper: Format readable time in Indian Standard Time (IST)
+    function formatClockTime(isoDateStr) {
+      if (!isoDateStr) return '';
+      try {
+        const d = new Date(isoDateStr);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) + ' IST';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    // Inline SVG Icon Provider
+    function getSeverityIcon(type) {
+      if (type === 'danger') {
+        // Warning triangle with exclamation
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>`;
+      } else if (type === 'caution') {
+        // Alert diamond
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="12 2 22 12 12 22 2 12 12 2"></polygon>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>`;
+      } else {
+        // Resolved shield with check
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <polyline points="9 12 11 14 15 10"></polyline>
+        </svg>`;
+      }
+    }
+
+    // Render Function
+    function renderAlerts() {
+      const alertListEl = document.getElementById('alertList');
+      const emptyStateEl = document.getElementById('emptyState');
+      const summaryTextEl = document.getElementById('bulletinSummaryText');
+      const summaryCountsEl = document.getElementById('summaryCounts');
+
+      // Determine the active data pool
+      const rawData = (simulationMode === 'empty') ? [] : alerts;
+
+      // Update Tab Badges
+      const dangerCount = rawData.filter(a => a.type === 'danger').length;
+      const cautionCount = rawData.filter(a => a.type === 'caution').length;
+      const resolvedCount = rawData.filter(a => a.type === 'resolved').length;
+      const totalCount = rawData.length;
+
+      document.getElementById('badgeAll').textContent = totalCount;
+      document.getElementById('badgeDanger').textContent = dangerCount;
+      document.getElementById('badgeCaution').textContent = cautionCount;
+      document.getElementById('badgeResolved').textContent = resolvedCount;
+
+      // Update Summary Header
+      if (rawData.length === 0) {
+        summaryTextEl.textContent = 'All clear • No active hazards or warnings reported in this sector.';
+        summaryCountsEl.innerHTML = `<span class="count-pill pill-resolved">Nominal Conditions</span>`;
+      } else {
+        summaryTextEl.textContent = `${dangerCount} Danger and ${cautionCount} Caution notices active for Goa-Karwar offshore belt.`;
+        summaryCountsEl.innerHTML = `
+          ${dangerCount > 0 ? `<span class="count-pill pill-danger">${dangerCount} DANGER</span>` : ''}
+          ${cautionCount > 0 ? `<span class="count-pill pill-caution">${cautionCount} CAUTION</span>` : ''}
+          ${resolvedCount > 0 ? `<span class="count-pill pill-resolved">${resolvedCount} RESOLVED</span>` : ''}
+        `;
+      }
+
+      // Filter
+      let displayed = rawData;
+      if (currentFilter !== 'all') {
+        displayed = rawData.filter(item => item.type === currentFilter);
+      }
+
+      // Sort: Severity first (danger -> caution -> resolved), then soonest-expiring near top
+      displayed.sort((a, b) => {
+        const orderA = SEVERITY_ORDER[a.type] || 99;
+        const orderB = SEVERITY_ORDER[b.type] || 99;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        // Within same severity, soonest expiring first
+        const timeA = new Date(a.expires_at).getTime();
+        const timeB = new Date(b.expires_at).getTime();
+        return timeA - timeB;
+      });
+
+      // Clear previous
+      alertListEl.innerHTML = '';
+
+      // Check for empty state
+      if (displayed.length === 0) {
+        emptyStateEl.style.display = 'flex';
+        // Adjust empty state title if caused by category filter
+        const emptyTitle = emptyStateEl.querySelector('.empty-state-title');
+        const emptyDesc = emptyStateEl.querySelector('.empty-state-desc');
+        if (currentFilter !== 'all') {
+          emptyTitle.textContent = `No ${currentFilter.toUpperCase()} Alerts`;
+          emptyDesc.textContent = `There are currently no active ${currentFilter} safety notices in this sector.`;
+        } else {
+          emptyTitle.textContent = 'No Active Safety Alerts';
+          emptyDesc.textContent = 'Sea conditions are currently reported nominal in your coastal sector. No gale warnings, squalls, or restricted operations are active.';
+        }
+        return;
+      } else {
+        emptyStateEl.style.display = 'none';
+      }
+
+      // Build Alert Cards
+      displayed.forEach((item) => {
+        const isExpired = new Date(item.expires_at).getTime() < Date.now() || item.type === 'resolved';
+        const validityLabel = formatTimeRemaining(item.expires_at, isExpired);
+        const issuedClock = formatClockTime(item.issued_at);
+        const expiresClock = formatClockTime(item.expires_at);
+        const isUrgent = item.type === 'danger' && !isExpired;
+
+        const li = document.createElement('li');
+        li.className = `alert-card type-${item.type}`;
+        li.setAttribute('data-id', item.id);
+
+        li.innerHTML = `
+          <!-- Card Meta Row -->
+          <div class="card-meta-row">
+            <div class="meta-left">
+              <span class="severity-tag ${item.type}">
+                ${getSeverityIcon(item.type)}
+                ${item.type.toUpperCase()}
+              </span>
+              <span class="source-tag">${item.source || 'Coastal Station'}</span>
+            </div>
+            <span class="validity-chip ${isUrgent ? 'urgent' : ''}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              ${validityLabel}
+            </span>
+          </div>
+
+          <!-- Alert Title -->
+          <h2 class="alert-title">${item.title}</h2>
+
+          <!-- Plain Language Description -->
+          <p class="alert-description">${item.description}</p>
+
+          <!-- Direct Fisherman Action / Operational Meaning -->
+          ${item.action ? `
+            <div class="action-guidance ${item.type}-guidance">
+              <span class="action-guidance-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+                Required Action for Boats
+              </span>
+              <p class="action-guidance-text">${item.action}</p>
+            </div>
+          ` : ''}
+
+          <!-- Zone & Time Details Grid -->
+          <div class="card-footer-grid">
+            <div class="footer-data-item">
+              <!-- Compass SVG -->
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+              </svg>
+              <span>Zone: <strong class="footer-data-val">${item.zone}</strong></span>
+            </div>
+            <div class="footer-data-item">
+              <!-- Clock SVG -->
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Valid: <span class="footer-data-val">${issuedClock} → ${expiresClock}</span></span>
+            </div>
+          </div>
+
+          <!-- Quick Action Bar -->
+          <div class="card-actions-bar">
+            <button class="action-btn-sm btn-speak" type="button" aria-label="Listen to voice readout of this alert">
+              <!-- Audio Speaker SVG -->
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <span>Audio Broadcast</span>
+            </button>
+
+            <button class="details-toggle-btn" type="button" aria-expanded="false">
+              <span>Safety Details</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Collapsible Protocol Details Drawer -->
+          <div class="card-extra-details">
+            <div class="extra-detail-line">
+              <strong>Emergency Frequencies:</strong> VHF Ch 16 (156.8 MHz), VHF Ch 08 (Inter-ship)
+            </div>
+            <div class="extra-detail-line">
+              <strong>Coastal Radar Tracking:</strong> Karwar Light & DGPS station active
+            </div>
+            <div class="extra-detail-line">
+              <strong>Alert ID:</strong> <code>${item.id}</code> • Verified by Coast Guard Marine Ops
+            </div>
+          </div>
+        `;
+
+        // Wire Audio Readout
+        const speakBtn = li.querySelector('.btn-speak');
+        speakBtn.addEventListener('click', () => {
+          toggleSpeech(item, speakBtn);
+        });
+
+        // Wire Details Toggle
+        const detailsBtn = li.querySelector('.details-toggle-btn');
+        const drawer = li.querySelector('.card-extra-details');
+        detailsBtn.addEventListener('click', () => {
+          const isOpen = drawer.classList.toggle('open');
+          detailsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          detailsBtn.querySelector('span').textContent = isOpen ? 'Hide Details' : 'Safety Details';
+        });
+
+        alertListEl.appendChild(li);
+      });
+    }
+
+    // Audio Voice Readout (High utility for fishermen with wet hands / bright sun)
+    function toggleSpeech(item, btnElement) {
+      if (!('speechSynthesis' in window)) {
+        alert("Audio readout not supported on this browser.");
+        return;
+      }
+
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        document.querySelectorAll('.btn-speak').forEach(b => {
+          b.classList.remove('speaking');
+          b.querySelector('span').textContent = 'Audio Broadcast';
+        });
+        if (btnElement.classList.contains('speaking')) {
+          return;
+        }
+      }
+
+      const textToRead = `${item.type} alert. ${item.title}. Affected area: ${item.zone}. Required action: ${item.action || item.description}. Source: ${item.source}.`;
+      const utterance = new SpeechSynthesisUtterance(textToRead);
+      utterance.rate = 0.95; // Slightly measured pace for marine clarity
+      utterance.pitch = 1.0;
+
+      utterance.onstart = () => {
+        btnElement.classList.add('speaking');
+        btnElement.querySelector('span').textContent = 'Stop Audio';
+      };
+
+      utterance.onend = () => {
+        btnElement.classList.remove('speaking');
+        btnElement.querySelector('span').textContent = 'Audio Broadcast';
+      };
+
+      utterance.onerror = () => {
+        btnElement.classList.remove('speaking');
+        btnElement.querySelector('span').textContent = 'Audio Broadcast';
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Filter Navigation Setup
+    function setupFilters() {
+      const tabs = document.querySelectorAll('.filter-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          currentFilter = tab.getAttribute('data-filter');
+          renderAlerts();
+        });
+      });
+    }
+
+    // Sunlight High-Contrast Mode Toggle
+    function setupSunlightToggle() {
+      const btn = document.getElementById('sunlightToggle');
+      const label = document.getElementById('sunlightLabel');
+      
+      btn.addEventListener('click', () => {
+        const isBoosted = document.body.classList.toggle('sunlight-boost');
+        btn.classList.toggle('active', isBoosted);
+        btn.setAttribute('aria-pressed', isBoosted ? 'true' : 'false');
+        label.textContent = isBoosted ? 'Sunlight Active' : 'Sunlight Mode';
+      });
+    }
+
+    // Simulator Toggle (Mock data vs Empty state demo)
+    function setupSimulator() {
+      const simBtn = document.getElementById('simToggle');
+      const simLabel = document.getElementById('simBtnLabel');
+
+      simBtn.addEventListener('click', () => {
+        if (simulationMode === 'real') {
+          simulationMode = 'empty';
+          simLabel.textContent = 'Restore Mock Alerts';
+          simBtn.style.color = 'var(--resolved-text)';
+        } else {
+          simulationMode = 'real';
+          simLabel.textContent = 'Simulate "All Clear" State';
+          simBtn.style.color = 'var(--caution-text)';
+        }
+        renderAlerts();
+      });
+    }
+
+    // App Initialization
+    async function init() {
+      setupFilters();
+      setupSunlightToggle();
+      setupSimulator();
+
+      // Call fetchAlerts() on load as required by specification:
+      alerts = await fetchAlerts();
+      renderAlerts();
+    }
+
+    // Run when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
