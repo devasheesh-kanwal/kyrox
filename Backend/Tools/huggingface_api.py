@@ -97,3 +97,5 @@ def _extract_assistant_text(completion) -> str:
         logger.warning("Unexpected Hugging Face completion payload shape")
 
     return ""
+
+
