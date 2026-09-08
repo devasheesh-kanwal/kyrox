@@ -3161,12 +3161,14 @@
         };
         if (context.coords && typeof context.coords.latitude === 'number' && typeof context.coords.longitude === 'number') {
           payload.location = { latitude: context.coords.latitude, longitude: context.coords.longitude };
+        } else if (vesselLocation) {
+          payload.location = vesselLocation;
         }
 
         const response = await fetch(`${BACKEND_API_BASE}/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify(typeof payload !== 'undefined' ? payload : { message: text, location: vesselLocation }),
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
