@@ -72,3 +72,12 @@ class SafetyAnalysisResponse(BaseModel):
     geospatial: GeoData
     risk: RiskResult
     recommendation: Recommendation
+
+# =========================================================
+# USER REQUEST
+# =========================================================
+class UserRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000, description="User query or dispatch message")
+    location: Optional[Location] = Field(None, description="Vessel GPS coordinates")
+    zone_id: Optional[str] = Field(None, max_length=100, description="Active or queried navigational zone ID")
+    context: Optional[dict] = Field(None, description="Optional telemetry or query context")

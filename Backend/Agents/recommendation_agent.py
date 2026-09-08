@@ -202,7 +202,7 @@ def _query_llm(
     Returns a dict with message, recommendations, explanation.
     On ANY failure, returns the deterministic fallback.
     """
-    fallback = _get_fallback(action)
+    fallback = _get_fallback(action, risk_data)
 
     # Build the user message with all verified data
     user_message = _build_user_message(
@@ -374,9 +374,35 @@ def _sanitize_text(text: str) -> str:
     return cleaned.strip()[:1500]
 
 
-def _get_fallback(action: str) -> dict:
-    """Return the deterministic fallback for the given action."""
-    return _FALLBACK_MESSAGES.get(action, _FALLBACK_MESSAGES["RETURN_TO_SHORE"])
+def _get_fallback(action: str, risk_data: dict = None) -> dict:
+    """Return the deterministic fallback customized with verified risk reasons."""
+    base = _FALLBACK_MESSAGES.get(action, _FALLBACK_MESSAGES["RETURN_TO_SHORE"])
+    reasons = (risk_data or {}).get("reasons", [])
+
+    msg = base["message"]
+    explanation = base["explanation"]
+    recommendations = list(base["recommendations"])
+
+    if reasons:
+        primary_hazard = reasons[0]
+        reasons_text = "; ".join(reasons)
+        if action in ("CRITICAL", "DO_NOT_PROCEED"):
+            msg = f"CRITICAL HAZARD: {primary_hazard}. Do not venture to sea."
+            explanation = f"Dangerous conditions detected: {reasons_text}. Immediate shelter or harbor return required."
+            if "Maintain continuous guard on VHF Channel 16." not in recommendations:
+                recommendations.insert(0, "Maintain continuous guard on VHF Channel 16.")
+        elif action in ("HIGH", "RETURN_TO_SHORE"):
+            msg = f"HIGH RISK: {primary_hazard}. Return to shore or safe harbour."
+            explanation = f"Significant maritime hazards detected: {reasons_text}."
+        elif action == "PROCEED_WITH_CAUTION":
+            msg = f"CAUTION: {primary_hazard}. Proceed with vigilance."
+            explanation = f"Moderate maritime conditions detected: {reasons_text}."
+
+    return {
+        "message": msg,
+        "recommendations": recommendations,
+        "explanation": explanation,
+    }
 
 
 # ---------- Example Usage (Test this file directly) ----------
