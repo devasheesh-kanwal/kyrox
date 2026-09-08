@@ -2885,6 +2885,20 @@
         legendArrow.textContent = '▸';
         btnToggleLegend.setAttribute('aria-expanded', 'false');
       }
+
+      // Auto-focus respective station when opened directly from /Alerts or /Chat
+      const loc = (window.location.pathname || '').toLowerCase();
+      if (loc.includes('alert')) {
+        switchStationTab('alerts');
+        if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+          switchMobileView('alerts');
+        }
+      } else if (loc.includes('chat')) {
+        switchStationTab('chat');
+        if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+          switchMobileView('chat');
+        }
+      }
     }
 
     if (document.readyState === 'loading') {
