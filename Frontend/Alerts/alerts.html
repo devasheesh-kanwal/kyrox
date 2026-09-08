@@ -2353,10 +2353,10 @@
         viewPC: "PC",
         viewPhone: "फोन",
         queries: [
-          { label: "🐟 उत्तम मत्स्य क्षेत्र (PFZ)", query: "Aaj machli pakadne ke liye sabse achi jagah kahan hai?" },
-          { label: "🌊 हवा व 3m लहरें", query: "Kya 35 km/h ki tez hawa aur unchi lehron ka khatra hai?" },
-          { label: "⚓ बंदरगाह वापसी समय", query: "Kal subah samundar mein jaana safe hai kya?" },
-          { label: "🆘 तटरक्षक आपातकाल", query: "Emergency distress assistance VHF Ch 16 contact" }
+          { label: "🐟 उत्तम मत्स्य क्षेत्र (PFZ)", query: "Aaj machli pakadne ke liye sabse achi jagah kahan hai?", zone_id: "zone-pfz-sw" },
+          { label: "🌊 हवा व 3m लहरें", query: "Kya 35 km/h ki tez hawa aur unchi lehron ka khatra hai?", zone_id: "zone-wind-ne" },
+          { label: "⚓ बंदरगाह वापसी समय", query: "Kal subah samundar mein jaana safe hai kya?", zone_id: "zone-pfz-sw" },
+          { label: "🆘 तटरक्षक आपातकाल", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: "zone-danger-se" }
         ]
       },
       en: {
@@ -2420,10 +2420,10 @@
         viewPC: "PC",
         viewPhone: "PHONE",
         queries: [
-          { label: "🐟 Recommended PFZ Spot", query: "Where is the best potential fishing zone today?" },
-          { label: "🌊 Swell & High Wind Warning", query: "Is there high wind and rough swell risk today?" },
-          { label: "⚓ Return Tide Window", query: "Is it safe to venture out tomorrow morning?" },
-          { label: "🆘 Coast Guard Emergency", query: "Emergency distress assistance VHF Ch 16 contact" }
+          { label: "🐟 Recommended PFZ Spot", query: "Where is the best potential fishing zone today?", zone_id: "zone-pfz-sw" },
+          { label: "🌊 Swell & High Wind Warning", query: "Is there high wind and rough swell risk today?", zone_id: "zone-wind-ne" },
+          { label: "⚓ Return Tide Window", query: "Is it safe to venture out tomorrow morning?", zone_id: "zone-pfz-sw" },
+          { label: "🆘 Coast Guard Emergency", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: "zone-danger-se" }
         ]
       },
       ta: {
@@ -2487,10 +2487,10 @@
         viewPC: "PC",
         viewPhone: "போன்",
         queries: [
-          { label: "🐟 சிறந்த மீன்பிடி பகுதி (PFZ)", query: "இன்று சிறந்த மீன்பிடி பகுதி எங்குள்ளது?" },
-          { label: "🌊 பலத்த காற்று & 3m அலைகள்", query: "இன்று கடுமையான அலைகள் மற்றும் பலத்த காற்று ஆபத்து உள்ளதா?" },
-          { label: "⚓ துறைமுகம் திரும்பும் நேரம்", query: "நாளை காலை கடலுக்குச் செல்வது பாதுகாப்பானதா?" },
-          { label: "🆘 அவசர உதவி (VHF Ch 16)", query: "Emergency distress assistance VHF Ch 16 contact" }
+          { label: "🐟 சிறந்த மீன்பிடி பகுதி (PFZ)", query: "இன்று சிறந்த மீன்பிடி பகுதி எங்குள்ளது?", zone_id: "zone-pfz-sw" },
+          { label: "🌊 பலத்த காற்று & 3m அலைகள்", query: "இன்று கடுமையான அலைகள் மற்றும் பலத்த காற்று ஆபத்து உள்ளதா?", zone_id: "zone-wind-ne" },
+          { label: "⚓ துறைமுகம் திரும்பும் நேரம்", query: "நாளை காலை கடலுக்குச் செல்வது பாதுகாப்பானதா?", zone_id: "zone-pfz-sw" },
+          { label: "🆘 அவசர உதவி (VHF Ch 16)", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: "zone-danger-se" }
         ]
       }
     };
@@ -2911,19 +2911,20 @@
     document.getElementById('btnDismissDrawer').addEventListener('click', closeTacticalDrawer);
     document.getElementById('btnDrawerCloseOnly').addEventListener('click', closeTacticalDrawer);
     document.getElementById('btnDrawerAskChat').addEventListener('click', () => {
+      const targetZId = drawerTargetZoneId;
       closeTacticalDrawer();
       if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
         switchMobileView('chat');
       } else {
         switchStationTab('chat');
       }
-      const z = MAP_ZONES.find(item => item.id === drawerTargetZoneId);
+      const z = MAP_ZONES.find(item => item.id === targetZId);
       const query = (currentLang === 'hi') ? 
         `Is kshetr ke baare mein jankari dein: ${z ? z.label_hi : 'Goa Offshore'}` : 
         (currentLang === 'ta' ? 
           `இந்த பகுதி பற்றிய விவரம் தேவை: ${z ? (z.label_ta || z.label_en) : 'Goa Offshore'}` : 
           `Provide tactical briefing for area: ${z ? z.label_en : 'Goa Offshore'}`);
-      triggerTacticalQuery(query);
+      triggerTacticalQuery(query, { zoneId: targetZId });
     });
 
     // Render Bulletins List
@@ -3000,7 +3001,7 @@
             (currentLang === 'ta' ? 
               `இந்த எச்சரிக்கையால் என் படகுக்கு ஆபத்து உள்ளதா: ${title}?` : 
               `Is my vessel in danger from: ${title}?`);
-          triggerTacticalQuery(q);
+          triggerTacticalQuery(q, { zoneId: b.zone_id });
         });
 
         container.appendChild(card);
@@ -3029,7 +3030,7 @@
         btn.className = 'tactical-query-chip';
         btn.type = 'button';
         btn.textContent = c.label;
-        btn.addEventListener('click', () => triggerTacticalQuery(c.query));
+        btn.addEventListener('click', () => triggerTacticalQuery(c.query, { zoneId: c.zone_id }));
         row.appendChild(btn);
       });
     }
@@ -3116,7 +3117,7 @@
       }
     }
 
-    async function triggerTacticalQuery(text) {
+    async function triggerTacticalQuery(text, context = {}) {
       if (!text || !text.trim()) return;
 
       // Append operator message
@@ -3154,13 +3155,20 @@
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000);
 
+        const payload = {
+          message: text,
+          zone_id: context.zoneId || null,
+        };
+        if (context.coords && typeof context.coords.latitude === 'number' && typeof context.coords.longitude === 'number') {
+          payload.location = { latitude: context.coords.latitude, longitude: context.coords.longitude };
+        } else if (vesselLocation) {
+          payload.location = vesselLocation;
+        }
+
         const response = await fetch(`${BACKEND_API_BASE}/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            location: vesselLocation
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -3222,17 +3230,23 @@
 
             // Live Telemetry Grid
             const telem = data.telemetry || {};
+            const riskLevel = (data.risk_assessment && data.risk_assessment.risk_level) || 'LOW';
+            const riskScore = (data.risk_assessment && typeof data.risk_assessment.risk_score === 'number') ? data.risk_assessment.risk_score : 0;
+            const riskColor = (riskLevel === 'CRITICAL' || riskLevel === 'HIGH') ? 'var(--danger-bright)' : (riskLevel === 'MEDIUM' ? 'var(--caution-border)' : 'var(--pfz-bright)');
+
             const telemRows = `
               <div>WAVE: <span class="telemetry-val">${escapeHtml(telem.wave || (data.marine_data && data.marine_data.wave_height ? data.marine_data.wave_height + 'm' : '1.1m'))}</span></div>
               <div>WIND: <span class="telemetry-val">${escapeHtml(telem.wind || (data.weather_data && data.weather_data.wind_speed ? data.weather_data.wind_speed + ' kts' : '12 kts'))}</span></div>
               <div>SWELL: <span class="telemetry-val">${escapeHtml(telem.swell || '0.9m')}</span></div>
               <div>CURRENT: <span class="telemetry-val">${escapeHtml(telem.current || '0.9 kts')}</span></div>
               <div>SST: <span class="telemetry-val">${escapeHtml(telem.sst || '28.1°C')}</span></div>
-              <div>RISK: <span class="telemetry-val" style="color:${data.risk_assessment && data.risk_assessment.risk_level === 'LOW' ? 'var(--pfz-bright)' : 'var(--danger-bright)'}">${data.risk_assessment ? data.risk_assessment.risk_score + '/100 (' + data.risk_assessment.risk_level + ')' : 'LOW'}</span></div>
+              <div>RISK: <span class="telemetry-val" style="color:${riskColor}">${riskScore}/100 (${riskLevel})</span></div>
             `;
 
-            // Zone ID target
-            const targetZoneId = (rec.action === 'SAFE') ? 'zone-pfz-sw' : (rec.action === 'PROCEED_WITH_CAUTION' ? 'zone-wind-ne' : 'zone-danger-se');
+            // Zone ID target: dynamic resolution from backend response, context, or action
+            const targetZoneId = data.zone_id || rec.zone_id || context.zoneId || (
+              rec.action === 'SAFE' ? 'zone-pfz-sw' : (rec.action === 'PROCEED_WITH_CAUTION' ? 'zone-wind-ne' : 'zone-danger-se')
+            );
 
             const advisoryDiv = document.createElement('div');
             advisoryDiv.className = 'dispatch-entry advisory';
@@ -3274,6 +3288,9 @@
             chatThread.appendChild(advisoryDiv);
             scrollChatToBottom();
 
+            // Automatically highlight matching zone on the tactical chart
+            selectMapZone(targetZoneId);
+
             // Update top bar telemetry
             if (telem.wave) {
               const elBaro = document.getElementById('txtTelemBaro');
@@ -3288,20 +3305,22 @@
       if (!backendSuccess) {
         if (thinkingDiv.parentNode) thinkingDiv.remove();
 
-        // Fallback to offline repository
+        // Fallback to offline repository (emergency prioritized)
         const lower = text.toLowerCase();
         let matchedKey = 'fishing';
         let matched = ADVISORY_RESPONSES.fishing;
-        if (ADVISORY_RESPONSES.weather.keywords.some(k => lower.includes(k))) {
-          matchedKey = 'weather';
-          matched = ADVISORY_RESPONSES.weather;
+        if (ADVISORY_RESPONSES.emergency.keywords.some(k => lower.includes(k))) {
+          matchedKey = 'emergency';
+          matched = ADVISORY_RESPONSES.emergency;
         } else if (ADVISORY_RESPONSES.safety.keywords.some(k => lower.includes(k))) {
           matchedKey = 'safety';
           matched = ADVISORY_RESPONSES.safety;
-        } else if (ADVISORY_RESPONSES.emergency.keywords.some(k => lower.includes(k))) {
-          matchedKey = 'emergency';
-          matched = ADVISORY_RESPONSES.emergency;
+        } else if (ADVISORY_RESPONSES.weather.keywords.some(k => lower.includes(k))) {
+          matchedKey = 'weather';
+          matched = ADVISORY_RESPONSES.weather;
         }
+
+        const offlineZoneId = context.zoneId || matched.zone_id;
 
         const advisoryDiv = document.createElement('div');
         advisoryDiv.className = 'dispatch-entry advisory';
@@ -3328,7 +3347,7 @@
               ${telemRows}
             </div>
             <div class="advisory-action-row">
-              <button class="advisory-plot-btn" type="button" data-zone="${matched.zone_id}">
+              <button class="advisory-plot-btn" type="button" data-zone="${offlineZoneId}">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9 12 2"></polygon>
                 </svg>
@@ -3342,11 +3361,12 @@
           if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
             switchMobileView('chart');
           }
-          selectMapZone(matched.zone_id);
+          selectMapZone(offlineZoneId);
         });
 
         chatThread.appendChild(advisoryDiv);
         scrollChatToBottom();
+        selectMapZone(offlineZoneId);
       }
     }
 
@@ -3704,11 +3724,14 @@
 
     // Utilities
     function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
     function formatMarkdown(str) {
-      return str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      if (!str) return '';
+      const clean = escapeHtml(String(str));
+      return clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     }
 
     // Initialize application
