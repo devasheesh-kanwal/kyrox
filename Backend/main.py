@@ -6,6 +6,7 @@ import asyncio
 import logging
 
 from Models.schemas import Location
+from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
 
 logger = logging.getLogger(__name__)
 
@@ -100,14 +101,7 @@ async def weather_agent(location: Location):
 # --------------------------------------------------
 
 async def geospatial_agent(location: Location):
-
-    # TODO:
-    # Replace with PostGIS / GIS API
-
-    return {
-        "inside_protected_area": False,
-        "restrictions": []
-    }
+    return await run_geospatial_agent(location)
 
 
 # --------------------------------------------------
