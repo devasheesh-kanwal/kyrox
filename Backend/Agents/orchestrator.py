@@ -3,20 +3,12 @@ import asyncio
 import logging
 from typing import Optional, Union
 
-try:
-    from backend.agents.conversational_agent import conversational_agent
-    from backend.agents.weather_agent import weather_agent
-    from backend.agents.marine_agent import marine_agent
-    from backend.agents.geospatial_Agent import geospatial_agent
-    from backend.agents.recommendation_agent import recommendation_agent
-    from backend.models.schemas import Location
-except ImportError:
-    from Agents.conversational_agent import conversational_agent
-    from Agents.weather_agent import weather_agent
-    from Agents.marine_agent import marine_agent
-    from Agents.geospatial_Agent import geospatial_agent
-    from Agents.recommendation_agent import recommendation_agent
-    from Models.schemas import Location
+from Agents.conversational_agent import conversational_agent
+from Agents.weather_agent import weather_agent
+from Agents.marine_agent import marine_agent
+from Agents.geospatial_Agent import geospatial_agent
+from Agents.recommendation_agent import recommendation_agent
+from Models.schemas import Location
 
 logger = logging.getLogger(__name__)
 

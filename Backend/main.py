@@ -16,38 +16,21 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-try:
-    from Models.schemas import (
-        Location,
-        WeatherData,
-        MarineData,
-        GeoData,
-        RiskResult,
-        Recommendation,
-        SafetyAnalysisResponse,
-    )
-    from Agents.marine_agent import marine_agent as run_marine_agent
-    from Agents.weather_agent import weather_agent as run_weather_agent
-    from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
-    from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
-    from Agents.conversational_agent import conversational_agent as run_conversational_agent
-    from Agents.orchestrator import calculate_risk, orchestrate
-except ImportError:
-    from backend.models.schemas import (
-        Location,
-        WeatherData,
-        MarineData,
-        GeoData,
-        RiskResult,
-        Recommendation,
-        SafetyAnalysisResponse,
-    )
-    from backend.agents.marine_agent import marine_agent as run_marine_agent
-    from backend.agents.weather_agent import weather_agent as run_weather_agent
-    from backend.agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
-    from backend.agents.recommendation_agent import recommendation_agent as run_recommendation_agent
-    from backend.agents.conversational_agent import conversational_agent as run_conversational_agent
-    from backend.agents.orchestrator import calculate_risk, orchestrate
+from Models.schemas import (
+    Location,
+    WeatherData,
+    MarineData,
+    GeoData,
+    RiskResult,
+    Recommendation,
+    SafetyAnalysisResponse,
+)
+from Agents.marine_agent import marine_agent as run_marine_agent
+from Agents.weather_agent import weather_agent as run_weather_agent
+from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
+from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
+from Agents.conversational_agent import conversational_agent as run_conversational_agent
+from Agents.orchestrator import calculate_risk, orchestrate
 
 logging.basicConfig(
     level=logging.INFO,
