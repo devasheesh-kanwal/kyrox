@@ -60,6 +60,7 @@ class Recommendation(BaseModel):
     action: Literal["SAFE", "PROCEED_WITH_CAUTION", "RETURN_TO_SHORE", "DO_NOT_PROCEED"]
     message: str
     recommendations: List[str]
+    explanation: Optional[str] = None
 
 # =========================================================
 # FINAL RESPONSE

@@ -1,10 +1,11 @@
-# backend/tools/huggingface_api.py
 import os
 import logging
-
+from pathlib import Path
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
 
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -23,9 +24,9 @@ def get_hf_client() -> InferenceClient:
     """Return a reusable InferenceClient authenticated with HF_TOKEN."""
     global _client
 
-    token = os.getenv("HF_TOKEN")
+    token = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_KEY")
     if not token:
-        raise RuntimeError("HF_TOKEN environment variable is not set in .env")
+        raise RuntimeError("HF_TOKEN (or HUGGING_FACE_KEY) environment variable is not set in .env")
 
     if _client is None:
         _client = InferenceClient(model=HF_CHAT_MODEL, token=token)

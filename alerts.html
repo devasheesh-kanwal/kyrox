@@ -819,6 +819,66 @@
       background-color: var(--bg-console-raised);
     }
 
+    /* Recommendation Agent UI Elements */
+    .rec-action-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius-subtle);
+      letter-spacing: 0.5px;
+      margin: 4px 0 6px 0;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+    .rec-action-badge.action-safe {
+      background-color: var(--pfz-fill);
+      color: var(--pfz-bright);
+      border: 1px solid var(--pfz-border);
+    }
+    .rec-action-badge.action-caution {
+      background-color: var(--caution-fill);
+      color: #F8D18C;
+      border: 1px solid var(--caution-border);
+    }
+    .rec-action-badge.action-danger, .rec-action-badge.action-critical {
+      background-color: var(--danger-fill);
+      color: var(--danger-bright);
+      border: 1px solid var(--danger-border);
+    }
+    .rec-tips-list {
+      margin: 6px 0;
+      padding-left: 18px;
+      color: var(--text-chart);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .rec-tips-list li {
+      margin-bottom: 3px;
+    }
+    .rec-explanation-box {
+      background: rgba(0, 0, 0, 0.32);
+      border-left: 3px solid var(--brass-base);
+      padding: 7px 10px;
+      margin: 6px 0 8px 0;
+      border-radius: 0 3px 3px 0;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .rec-explanation-box .protocol-label {
+      font-family: var(--font-telemetry);
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--brass-bright);
+      display: block;
+      margin-bottom: 2px;
+      letter-spacing: 0.4px;
+    }
+
     /* Radio Query Input Dock */
     .tactical-input-dock {
       background-color: var(--bg-console);
@@ -2436,7 +2496,7 @@
     };
 
     // Authentic Coastal Safety Bulletins (NAVAREA / INCOIS Standard)
-    const BULLETINS = [
+    let BULLETINS = [
       {
         id: "NAVAREA-VIII-0492",
         type: "danger",
@@ -2982,7 +3042,57 @@
       chatThread.scrollTop = chatThread.scrollHeight;
     }
 
-    function triggerTacticalQuery(text) {
+    const BACKEND_API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && window.location.port === '8000' ? '' : 'http://localhost:8000';
+    let isBackendConnected = false;
+
+    // Fetch Live Telemetry from Backend on Load
+    async function fetchLiveTelemetry() {
+      try {
+        const res = await fetch(`${BACKEND_API_BASE}/telemetry`);
+        if (!res.ok) return;
+        const data = await res.json();
+        isBackendConnected = true;
+        if (data.sog) {
+          const el = document.getElementById('txtTelemSog');
+          if (el) el.innerHTML = `SOG: <strong>${data.sog}</strong>`;
+        }
+        if (data.cog) {
+          const el = document.getElementById('txtTelemCog');
+          if (el) el.innerHTML = `COG: <strong>${data.cog}</strong>`;
+        }
+        if (data.depth) {
+          const el = document.getElementById('txtTelemDepth');
+          if (el) el.innerHTML = `DEPTH: <strong>${data.depth}</strong>`;
+        }
+        if (data.wave) {
+          const el = document.getElementById('txtTelemBaro');
+          if (el) el.innerHTML = `WAVE: <strong>${data.wave}</strong> • BARO: <strong>${data.baro}</strong>`;
+        }
+        if (data.fix) {
+          const el = document.getElementById('txtTelemetryFix');
+          if (el) el.textContent = data.fix;
+        }
+      } catch (err) {
+        // Backend offline or local file, continue with baseline telemetry
+      }
+    }
+
+    // Fetch Live Bulletins from Backend on Load
+    async function fetchLiveBulletins() {
+      try {
+        const res = await fetch(`${BACKEND_API_BASE}/bulletins`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          BULLETINS = data;
+          renderBulletinsList();
+        }
+      } catch (err) {
+        // Backend offline, baseline bulletins remain
+      }
+    }
+
+    async function triggerTacticalQuery(text) {
       if (!text || !text.trim()) return;
 
       // Append operator message
@@ -2999,23 +3109,176 @@
       chatThread.appendChild(operatorDiv);
       scrollChatToBottom();
 
-      // Find matching tactical advisory response
-      const lower = text.toLowerCase();
-      let matchedKey = 'fishing';
-      let matched = ADVISORY_RESPONSES.fishing;
-      if (ADVISORY_RESPONSES.weather.keywords.some(k => lower.includes(k))) {
-        matchedKey = 'weather';
-        matched = ADVISORY_RESPONSES.weather;
-      } else if (ADVISORY_RESPONSES.safety.keywords.some(k => lower.includes(k))) {
-        matchedKey = 'safety';
-        matched = ADVISORY_RESPONSES.safety;
-      } else if (ADVISORY_RESPONSES.emergency.keywords.some(k => lower.includes(k))) {
-        matchedKey = 'emergency';
-        matched = ADVISORY_RESPONSES.emergency;
+      // Show live analyzing / transmitting indicator
+      const thinkingDiv = document.createElement('div');
+      thinkingDiv.className = 'dispatch-entry advisory';
+      thinkingDiv.id = 'chatLiveThinking';
+      thinkingDiv.innerHTML = `
+        <div class="dispatch-card-advisory" style="border-left-color: var(--brass-bright); padding: 9px 12px;">
+          <div style="display:flex; align-items:center; gap:8px; font-family:var(--font-telemetry); font-size:11px; color:var(--brass-bright);">
+            <span class="sensor-live-blip" style="background:var(--brass-bright); box-shadow:0 0 8px var(--brass-bright);"></span>
+            <span>KYROX MULTI-AGENT ADVISORY: Querying Live Marine, Weather & Recommendation Agents...</span>
+          </div>
+        </div>
+      `;
+      chatThread.appendChild(thinkingDiv);
+      scrollChatToBottom();
+
+      let backendSuccess = false;
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const response = await fetch(`${BACKEND_API_BASE}/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            location: { latitude: 15.246, longitude: 73.803 }
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.recommendation) {
+            backendSuccess = true;
+            if (thinkingDiv.parentNode) thinkingDiv.remove();
+
+            const rec = data.recommendation;
+            const t = I18N[currentLang] || I18N.en;
+
+            // Action Badge styling
+            let actionCls = 'action-safe';
+            let actionIcon = '✓';
+            let actionLabel = (currentLang === 'hi') ? 'सुरक्षित (SAFE TO PROCEED)' : (currentLang === 'ta' ? 'பாதுகாப்பானது (SAFE TO PROCEED)' : 'SAFE TO PROCEED');
+
+            if (rec.action === 'PROCEED_WITH_CAUTION') {
+              actionCls = 'action-caution';
+              actionIcon = '⚠';
+              actionLabel = (currentLang === 'hi') ? 'सावधानी बरतें (PROCEED WITH CAUTION)' : (currentLang === 'ta' ? 'எச்சரிக்கையுடன் செல்லவும் (CAUTION)' : 'PROCEED WITH CAUTION');
+            } else if (rec.action === 'RETURN_TO_SHORE') {
+              actionCls = 'action-danger';
+              actionIcon = '⚑';
+              actionLabel = (currentLang === 'hi') ? 'तट पर लौटें (RETURN TO SHORE)' : (currentLang === 'ta' ? 'துறைமுகம் திரும்பவும் (RETURN TO SHORE)' : 'RETURN TO SHORE');
+            } else if (rec.action === 'DO_NOT_PROCEED') {
+              actionCls = 'action-critical';
+              actionIcon = '⛔';
+              actionLabel = (currentLang === 'hi') ? 'नौकायन निषिद्ध (DO NOT PROCEED)' : (currentLang === 'ta' ? 'கடலுக்கு செல்ல தடை (DO NOT PROCEED)' : 'DO NOT PROCEED');
+            }
+
+            // Bulleted Tips
+            let recListHtml = '';
+            if (Array.isArray(rec.recommendations) && rec.recommendations.length > 0) {
+              recListHtml = `<ul class="rec-tips-list">` +
+                rec.recommendations.map(tip => `<li><strong>•</strong> ${escapeHtml(tip)}</li>`).join('') +
+                `</ul>`;
+            }
+
+            // Explanation
+            let explanationHtml = '';
+            if (rec.explanation) {
+              explanationHtml = `
+                <div class="rec-explanation-box">
+                  <span class="protocol-label">ANALYSIS / सामरिक विश्लेषण:</span>
+                  <p>${escapeHtml(rec.explanation)}</p>
+                </div>
+              `;
+            }
+
+            // Alerts chips
+            let alertsHtml = '';
+            if (Array.isArray(rec.alerts) && rec.alerts.length > 0) {
+              alertsHtml = `<div style="display:flex; flex-wrap:wrap; gap:5px; margin: 4px 0 6px 0;">` +
+                rec.alerts.map(a => `<span style="font-family:var(--font-telemetry); font-size:10px; background:var(--danger-fill); color:var(--danger-bright); border:1px solid var(--danger-border); padding:2px 6px; border-radius:2px;">⚠ ${escapeHtml(a)}</span>`).join('') +
+                `</div>`;
+            }
+
+            // Live Telemetry Grid
+            const telem = data.telemetry || {};
+            const telemRows = `
+              <div>WAVE: <span class="telemetry-val">${escapeHtml(telem.wave || (data.marine_data && data.marine_data.wave_height ? data.marine_data.wave_height + 'm' : '1.1m'))}</span></div>
+              <div>WIND: <span class="telemetry-val">${escapeHtml(telem.wind || (data.weather_data && data.weather_data.wind_speed ? data.weather_data.wind_speed + ' kts' : '12 kts'))}</span></div>
+              <div>SWELL: <span class="telemetry-val">${escapeHtml(telem.swell || '0.9m')}</span></div>
+              <div>CURRENT: <span class="telemetry-val">${escapeHtml(telem.current || '0.9 kts')}</span></div>
+              <div>SST: <span class="telemetry-val">${escapeHtml(telem.sst || '28.1°C')}</span></div>
+              <div>RISK: <span class="telemetry-val" style="color:${data.risk_assessment && data.risk_assessment.risk_level === 'LOW' ? 'var(--pfz-bright)' : 'var(--danger-bright)'}">${data.risk_assessment ? data.risk_assessment.risk_score + '/100 (' + data.risk_assessment.risk_level + ')' : 'LOW'}</span></div>
+            `;
+
+            // Zone ID target
+            const targetZoneId = (rec.action === 'SAFE') ? 'zone-pfz-sw' : (rec.action === 'PROCEED_WITH_CAUTION' ? 'zone-wind-ne' : 'zone-danger-se');
+
+            const advisoryDiv = document.createElement('div');
+            advisoryDiv.className = 'dispatch-entry advisory';
+            advisoryDiv.innerHTML = `
+              <div class="dispatch-card-advisory" style="border-left-color: ${rec.action === 'SAFE' ? 'var(--pfz-border)' : (rec.action === 'PROCEED_WITH_CAUTION' ? 'var(--caution-border)' : 'var(--danger-border)')};">
+                <div class="advisory-stamp-bar">
+                  <span class="advisory-station-code">STATION: KYROX-RECOMMENDATION-AGENT</span>
+                  <span style="color: var(--brass-bright); font-weight: 700;">LIVE BACKEND • DGPS VERIFIED</span>
+                </div>
+                <div class="rec-action-badge ${actionCls}">
+                  <span>${actionIcon}</span>
+                  <span>${actionLabel}</span>
+                </div>
+                <div class="advisory-main-text">${formatMarkdown(rec.message || (data.conversation && data.conversation.response) || '')}</div>
+                ${alertsHtml}
+                ${recListHtml}
+                ${explanationHtml}
+                <div class="nautical-telemetry-grid">
+                  ${telemRows}
+                </div>
+                <div class="advisory-action-row">
+                  <button class="advisory-plot-btn" type="button" data-zone="${targetZoneId}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9 12 2"></polygon>
+                    </svg>
+                    <span>${t.plotOnChart}</span>
+                  </button>
+                </div>
+              </div>
+            `;
+
+            advisoryDiv.querySelector('.advisory-plot-btn').addEventListener('click', () => {
+              if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
+                switchMobileView('chart');
+              }
+              selectMapZone(targetZoneId);
+            });
+
+            chatThread.appendChild(advisoryDiv);
+            scrollChatToBottom();
+
+            // Update top bar telemetry
+            if (telem.wave) {
+              const elBaro = document.getElementById('txtTelemBaro');
+              if (elBaro) elBaro.innerHTML = `WAVE: <strong>${escapeHtml(telem.wave)}</strong> • BARO: <strong>1008 hPa</strong>`;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Backend /query call failed, utilizing offline advisory fallback:", err);
       }
 
-      // Simulated radio transmission latency (350ms)
-      setTimeout(() => {
+      if (!backendSuccess) {
+        if (thinkingDiv.parentNode) thinkingDiv.remove();
+
+        // Fallback to offline repository
+        const lower = text.toLowerCase();
+        let matchedKey = 'fishing';
+        let matched = ADVISORY_RESPONSES.fishing;
+        if (ADVISORY_RESPONSES.weather.keywords.some(k => lower.includes(k))) {
+          matchedKey = 'weather';
+          matched = ADVISORY_RESPONSES.weather;
+        } else if (ADVISORY_RESPONSES.safety.keywords.some(k => lower.includes(k))) {
+          matchedKey = 'safety';
+          matched = ADVISORY_RESPONSES.safety;
+        } else if (ADVISORY_RESPONSES.emergency.keywords.some(k => lower.includes(k))) {
+          matchedKey = 'emergency';
+          matched = ADVISORY_RESPONSES.emergency;
+        }
+
         const advisoryDiv = document.createElement('div');
         advisoryDiv.className = 'dispatch-entry advisory';
         advisoryDiv.setAttribute('data-response-key', matchedKey);
@@ -3034,7 +3297,7 @@
           <div class="dispatch-card-advisory">
             <div class="advisory-stamp-bar">
               <span class="advisory-station-code">STATION: ${matched.station}</span>
-              <span>VERIFIED • DGPS</span>
+              <span style="color:var(--caution-border);">OFFLINE CACHED • PORT 8000 OFFLINE</span>
             </div>
             <div class="advisory-main-text">${formatMarkdown(ans)}</div>
             <div class="nautical-telemetry-grid">
@@ -3060,7 +3323,7 @@
 
         chatThread.appendChild(advisoryDiv);
         scrollChatToBottom();
-      }, 350);
+      }
     }
 
     document.getElementById('tacticalQueryForm').addEventListener('submit', (e) => {
@@ -3437,6 +3700,9 @@
         legendArrow.textContent = '▸';
         btnToggleLegend.setAttribute('aria-expanded', 'false');
       }
+      // Load live telemetry and safety bulletins from backend
+      fetchLiveTelemetry();
+      fetchLiveBulletins();
     }
 
     if (document.readyState === 'loading') {

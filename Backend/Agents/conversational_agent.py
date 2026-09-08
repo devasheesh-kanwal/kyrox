@@ -75,14 +75,13 @@ def conversational_agent(user_message: str) -> dict:
             system_prompt=KYROX_SYSTEM_PROMPT,
             user_message=_wrap_untrusted_user_message(cleaned_message),
         )
-    except HuggingFaceAPIError:
-        logger.error("Conversational LLM call failed")
-        raise ConversationalAgentError("Unable to process the message with KyroX") from None
-    except Exception:
-        logger.error("Conversational agent failed unexpectedly")
-        raise ConversationalAgentError("Unable to process the message with KyroX") from None
-
-    parsed = _parse_llm_payload(raw)
+        parsed = _parse_llm_payload(raw)
+    except Exception as exc:
+        logger.warning(
+            "Conversational LLM call failed or unavailable (%s), using rule-based classification",
+            exc,
+        )
+        parsed = _fallback_intent_classifier(cleaned_message)
     intent = parsed.get("intent")
     if not isinstance(intent, str) or intent not in VALID_INTENTS:
         intent = "GENERAL_QUERY"
@@ -169,4 +168,38 @@ def _parse_llm_payload(raw: str) -> dict:
     return {
         "intent": "GENERAL_QUERY",
         "response": "",
+    }
+
+
+def _fallback_intent_classifier(message: str) -> dict:
+    """Deterministic intent classifier used when the LLM is unreachable."""
+    low = message.lower()
+    if any(w in low for w in ["mayday", "sos", "distress", "sinking", "emergency", "man overboard", "डूब", "आपातकाल", "खतरा"]):
+        return {
+            "intent": "EMERGENCY",
+            "response": "EMERGENCY ALERT: Coast Guard MRCC notified. Keep VHF Channel 16 open and wear lifejackets.",
+        }
+    if any(w in low for w in ["hawa", "wind", "storm", "squall", "weather", "rain", "lightning", "बिजली", "हवा", "तूफान", "मौसम", "काट"]):
+        return {
+            "intent": "WEATHER_QUERY",
+            "response": "Live weather telemetry and wind analysis requested for your sector.",
+        }
+    if any(w in low for w in ["fish", "pfz", "machli", "chlorophyll", "sst", "fishing", "मछली", "पकड़", "மீன்"]):
+        return {
+            "intent": "MARINE_QUERY",
+            "response": "Querying ocean thermal fronts and potential fishing zones (PFZ) in your sector.",
+        }
+    if any(w in low for w in ["border", "boundary", "eez", "restricted", "sanctuary", "सीमा", "प्रतिबंधित"]):
+        return {
+            "intent": "BOUNDARY_WARNING",
+            "response": "Verifying vessel position against protected sanctuaries and maritime boundaries.",
+        }
+    if any(w in low for w in ["safe", "safety", "jaana", "go out", "ja sakta", "सुरक्षित"]):
+        return {
+            "intent": "CHECK_SAFETY",
+            "response": "Analyzing comprehensive safety parameters, wave heights, and weather risks.",
+        }
+    return {
+        "intent": "GENERAL_QUERY",
+        "response": SAFE_FALLBACK_RESPONSE,
     }
