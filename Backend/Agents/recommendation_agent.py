@@ -14,16 +14,7 @@ import json
 import logging
 import re
 
-try:
-    from backend.tools.huggingface_api import (
-        HuggingFaceAPIError,
-        generate_chat_response,
-    )
-except ImportError:
-    from Tools.huggingface_api import (
-        HuggingFaceAPIError,
-        generate_chat_response,
-    )
+from Tools.huggingface_api import HuggingFaceAPIError, generate_chat_response
 
 logger = logging.getLogger(__name__)
 
