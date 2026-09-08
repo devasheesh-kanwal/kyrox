@@ -1,10 +1,13 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
-import requests
+import logging
 
-import httpx
+from Models.schemas import Location
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Marine AI Multi-Agent System",
@@ -12,14 +15,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# --------------------------------------------------
+# CORS MIDDLEWARE
+# --------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # TODO: restrict to specific origins in production
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
 
 # --------------------------------------------------
 # REQUEST MODEL
 # --------------------------------------------------
 
-class Location(BaseModel):
-    latitude: float
-    longitude: float
+# Location is imported from Models.schemas (includes lat/lon range validation)
 
 
 class UserRequest(BaseModel):
