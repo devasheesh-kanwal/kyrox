@@ -24,13 +24,19 @@ from Models.schemas import (
     RiskResult,
     Recommendation,
     SafetyAnalysisResponse,
+    UserRequest,
 )
 from Agents.marine_agent import marine_agent as run_marine_agent
 from Agents.weather_agent import weather_agent as run_weather_agent
 from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
 from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
-from Agents.orchestrator import calculate_risk, orchestrate
+from Agents.orchestrator import (
+    calculate_risk,
+    orchestrate,
+    extract_location_and_zone_from_text,
+    KNOWN_ZONES,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,17 +64,6 @@ app.add_middleware(
 # Default vessel operational location (Goa-Karwar coastal waters)
 DEFAULT_LATITUDE = 15.246
 DEFAULT_LONGITUDE = 73.803
-
-
-# --------------------------------------------------
-# REQUEST & RESPONSE MODELS
-# --------------------------------------------------
-class UserRequest(BaseModel):
-    message: str = Field(..., description="User voice or text query")
-    location: Optional[Location] = Field(
-        None,
-        description="Vessel GPS coordinates (optional; defaults to current vessel fix)"
-    )
 
 
 # --------------------------------------------------
@@ -105,9 +100,23 @@ async def process_query(request: UserRequest):
     4. Invokes recommendation_agent for safety action, tips, and LLM advice.
     5. Returns unified response with real live data.
     """
-    loc = request.location or Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+    # 1. Resolve navigational zone and coordinates from request or query text
+    detected_loc, detected_zone = extract_location_and_zone_from_text(request.message)
+    target_zone = request.zone_id or detected_zone
 
-    logger.info("Processing /query: '%s' at (%s, %s)", request.message, loc.latitude, loc.longitude)
+    if request.location:
+        loc = request.location
+    elif detected_loc:
+        loc = detected_loc
+    elif target_zone and target_zone in KNOWN_ZONES:
+        loc = KNOWN_ZONES[target_zone]
+    else:
+        loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+
+    logger.info(
+        "Processing /query: '%s' | zone: %s | loc: (%s, %s)",
+        request.message, target_zone, loc.latitude, loc.longitude
+    )
 
     # Concurrently run conversational analysis and domain agents
     conv_task = asyncio.to_thread(run_conversational_agent, request.message)
@@ -187,8 +196,15 @@ async def process_query(request: UserRequest):
     else:
         geo_data = geo_res
 
-    # 3. Deterministic Risk Assessment
-    risk_assessment = calculate_risk(marine_data, weather_data, geo_data)
+    # 3. Deterministic Risk Assessment (incorporating intent, message, zone)
+    risk_assessment = calculate_risk(
+        marine_data,
+        weather_data,
+        geo_data,
+        intent=conv_data.get("intent"),
+        user_message=request.message,
+        zone_id=target_zone,
+    )
 
     # 4. Integrate Recommendation Agent
     try:
@@ -211,7 +227,18 @@ async def process_query(request: UserRequest):
             "explanation": "Automatic safety fallback based on verified risk calculation.",
         }
 
+    # Resolve effective navigational zone for UI highlighting
+    if target_zone:
+        effective_zone = target_zone
+    elif risk_assessment.get("risk_level") in ("HIGH", "CRITICAL"):
+        effective_zone = "zone-danger-se"
+    elif risk_assessment.get("risk_level") == "MEDIUM":
+        effective_zone = "zone-wind-ne"
+    else:
+        effective_zone = "zone-pfz-sw"
+
     # Backward compatible fields for UI
+    recommendation["zone_id"] = effective_zone
     recommendation["alerts"] = risk_assessment.get("reasons", [])
     if risk_assessment["risk_level"] in ("HIGH", "CRITICAL"):
         recommendation["map_layers"] = ["Weather Warnings", "Protected Areas"]
@@ -245,6 +272,7 @@ async def process_query(request: UserRequest):
         "intent": conv_data.get("intent", "GENERAL_QUERY"),
         "conversation": conv_data,
         "location": loc.model_dump(),
+        "zone_id": effective_zone,
         "marine_data": marine_data,
         "weather_data": weather_data,
         "geospatial_data": geo_data,
