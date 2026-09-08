@@ -1,13 +1,13 @@
 import requests
 
 # Apni OpenWeather API key yahan daalo
-API_KEY = "92faf64e86133fd15eef6d445cd0c68bgit"
+API_KEY = ""
 
 # Jis location ka weather chahiye
 CITY = "Haldwani"
 
 # OpenWeather API URL
-url = "https://api.openweathermap.org/data/2.5/weather"
+url = ""
 
 # API ko bhejne wale parameters
 params = {
