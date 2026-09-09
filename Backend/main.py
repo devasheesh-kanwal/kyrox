@@ -40,6 +40,7 @@ from Agents.recommendation_agent import recommendation_agent as run_recommendati
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
 from Agents.gps_agent import gps_agent
 from Agents.risk_agent import generate_risk_heatmap
+from Services.prediction_service import compute_24h_prediction
 from Agents.orchestrator import (
     calculate_risk,
     orchestrate,
@@ -681,6 +682,81 @@ async def get_bulletins(
         })
 
     return bulletins
+
+
+# --------------------------------------------------
+# 24-HOUR LINEAR REGRESSION PREDICTION ENDPOINT
+# --------------------------------------------------
+@app.get("/predictions/linear-regression")
+@app.post("/predictions/linear-regression")
+async def get_linear_regression_predictions(
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None),
+    variable: Optional[str] = Query("wave_height"),
+    horizon_hours: Optional[int] = Query(24),
+    past_hours: Optional[int] = Query(24),
+    body: Optional[Dict[str, Any]] = Body(None),
+):
+    """
+    24-Hour Marine Linear Regression Modelling Endpoint.
+    Computes an Ordinary Least Squares (OLS) line of best fit over marine time-series,
+    determines R², slope, intercept, standard error, and returns forward 24-hour
+    hourly projections with 95% confidence intervals and multi-lingual marine safety advisories.
+    """
+    req_body = body or {}
+    target_lat = lat or req_body.get("lat") or DEFAULT_LATITUDE
+    target_lon = lon or req_body.get("lon") or DEFAULT_LONGITUDE
+    target_var = (variable or req_body.get("variable") or "wave_height").strip().lower()
+    h_hours = horizon_hours or req_body.get("horizon_hours") or 24
+    p_hours = past_hours or req_body.get("past_hours") or 24
+
+    # Validate GPS coordinates safely
+    try:
+        validated_gps = gps_agent(target_lat, target_lon)
+        loc = Location(latitude=validated_gps["latitude"], longitude=validated_gps["longitude"])
+    except Exception:
+        loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+
+    # Attempt to retrieve live anchor value for the target variable
+    current_val = None
+    try:
+        if target_var in ("wave_height", "swell_wave_height", "ocean_current_velocity"):
+            marine_res = await run_marine_agent(loc)
+            marine_dict = _normalize_agent_result(marine_res, {})
+            if target_var == "wave_height":
+                current_val = marine_dict.get("wave_height")
+            elif target_var == "swell_wave_height":
+                current_val = marine_dict.get("swell_wave_height")
+            elif target_var == "ocean_current_velocity":
+                current_val = marine_dict.get("ocean_current_velocity")
+        elif target_var == "wind_speed":
+            weather_res = await run_weather_agent(loc)
+            weather_dict = _normalize_agent_result(weather_res, {})
+            current_val = weather_dict.get("wind_speed")
+        elif target_var == "risk_score":
+            w_res, m_res, g_res = await asyncio.gather(
+                run_weather_agent(loc),
+                run_marine_agent(loc),
+                run_geospatial_agent(loc),
+                return_exceptions=True
+            )
+            w_dict = _normalize_agent_result(w_res, {})
+            m_dict = _normalize_agent_result(m_res, {})
+            g_dict = _normalize_agent_result(g_res, {})
+            risk_calc = calculate_risk(w_dict, m_dict, g_dict)
+            current_val = risk_calc.get("risk_score")
+    except Exception as exc:
+        logger.warning("Could not fetch real-time anchor for %s: %s", target_var, exc)
+
+    # Compute regression model
+    result = compute_24h_prediction(
+        variable=target_var,
+        current_val=current_val,
+        past_hours=p_hours,
+        horizon_hours=h_hours
+    )
+    result["location"] = {"latitude": loc.latitude, "longitude": loc.longitude}
+    return result
 
 
 # --------------------------------------------------
