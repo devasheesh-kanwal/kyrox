@@ -68,7 +68,7 @@ async def get_marine_data(latitude: float, longitude: float) -> dict:
         "longitude": longitude,
         "current": CURRENT_MARINE_FIELDS,
         "timezone": "auto",
-        "cell_selection": "sea",
+        "cell_selection": "nearest",
     }
 
     headers = {

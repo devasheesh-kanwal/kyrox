@@ -21,7 +21,7 @@ from Models.schemas import Location
 from Agents.gps_agent import gps_agent
 from Agents.marine_agent import marine_agent
 from Agents.weather_agent import weather_agent
-from Agents.geospatial_Agent import geospatial_agent
+from Agents.geospatial_agent import geospatial_agent
 from Agents.orchestrator import calculate_risk
 
 logger = logging.getLogger(__name__)
@@ -174,7 +174,10 @@ async def generate_risk_heatmap(
     # 2. Build 3x3 grid coordinates
     grid_coords = generate_3x3_coordinates(center_lat, center_lon, step=step)
 
-    # 3. Concurrently evaluate all 9 points across domain agents
+    # 3. Warm local spatial and environmental caches with center point first
+    await evaluate_risk_point(center_lat, center_lon)
+
+    # 4. Concurrently evaluate all 9 points across domain agents
     tasks = [evaluate_risk_point(pt_lat, pt_lon) for pt_lat, pt_lon in grid_coords]
     evaluated = await asyncio.gather(*tasks, return_exceptions=True)
 

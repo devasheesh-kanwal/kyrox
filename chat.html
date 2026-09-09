@@ -3021,17 +3021,24 @@
       const lonMin = ((Math.abs(lon) - lonDeg) * 60).toFixed(1);
       const coordsStr = `${latDeg}°${latMin}'${lat >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonMin}'${lon >= 0 ? 'E' : 'W'}`;
 
+      // Update vesselLocation cache
+      vesselLocation = { latitude: lat, longitude: lon };
+
       // Update masthead telemetry bar
       const elFix = document.getElementById('txtTelemetryFix');
-      if (elFix) elFix.textContent = `DGPS FIX: ${coordsStr}`;
+      if (elFix) {
+        const pinLabel = (gpsData.name && gpsData.name !== 'Your Current Location') ? `${gpsData.name.toUpperCase()} • ` : '';
+        elFix.textContent = `📍 ${pinLabel}DGPS FIX: ${coordsStr}`;
+      }
 
       if (!leafletMap) {
         initLeafletMap();
       }
 
       // Create or update live pulsing beacon icon
+      const locDisplayName = gpsData.name || 'Your Current Location';
       const beaconHtml = `
-        <div class="leaflet-user-beacon" title="📍 Your Current Location (${coordsStr})">
+        <div class="leaflet-user-beacon" title="📍 ${escapeHtml(locDisplayName)} (${coordsStr})">
           <div class="user-beacon-pulse"></div>
           <div class="user-beacon-core"></div>
         </div>
@@ -3054,7 +3061,9 @@
 
         userGpsMarker.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
-          const title = (currentLang === 'hi') ? '📍 आपकी वर्तमान स्थिति' : (currentLang === 'ta' ? '📍 உங்கள் தற்போதைய அமைவிடம்' : '📍 Your Current Location');
+          const title = (gpsData.name && gpsData.name !== 'Your Current Location') ?
+            `📍 ${gpsData.name}` :
+            ((currentLang === 'hi') ? '📍 आपकी वर्तमान स्थिति' : (currentLang === 'ta' ? '📍 உங்கள் தற்போதைய அமைவிடம்' : '📍 Your Current Location'));
           const reason = (currentLang === 'hi') ? 
             `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।` : 
             (currentLang === 'ta' ? 
@@ -3410,6 +3419,9 @@
             // Pin user location from GPS Agent verification
             if (data.gps) {
               pinUserLocationOnMap(data.gps);
+            }
+            if (data.risk_points && data.risk_points.length > 0) {
+              renderDynamicRiskHeatmap(data.risk_points, data.location || data.user_location);
             }
 
             const rec = data.recommendation;

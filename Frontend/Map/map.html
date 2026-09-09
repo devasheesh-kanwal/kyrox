@@ -2708,12 +2708,13 @@
       const mapContainer = document.getElementById('marineMapLeaflet');
       if (!mapContainer) return;
 
-      const initLat = vesselLocation ? vesselLocation.latitude : 15.25;
-      const initLon = vesselLocation ? vesselLocation.longitude : 73.80;
+      const initLat = vesselLocation ? vesselLocation.latitude : 20.0;
+      const initLon = vesselLocation ? vesselLocation.longitude : 78.0;
+      const initZoom = vesselLocation ? 12 : 5;
 
       leafletMap = L.map('marineMapLeaflet', {
         center: [initLat, initLon],
-        zoom: 11,
+        zoom: initZoom,
         minZoom: 3,
         maxZoom: 18,
         zoomControl: false
@@ -2776,6 +2777,12 @@
       if (!tacticalZonesLayer) return;
       tacticalZonesLayer.clearLayers();
 
+      const showGoaDemo = !vesselLocation || (
+        Math.abs(vesselLocation.latitude - 15.25) < 1.2 &&
+        Math.abs(vesselLocation.longitude - 73.80) < 1.2
+      );
+      if (!showGoaDemo) return;
+
       MAP_ZONES.forEach(z => {
         if (!z.latLngs) return;
         const color = z.type === 'pfz' ? '#8C9B5E' : (z.type === 'caution' ? '#E8A44C' : '#DE6347');
@@ -2803,6 +2810,12 @@
     function renderLeafletWaypoints() {
       if (!waypointsLayer) return;
       waypointsLayer.clearLayers();
+
+      const showGoaDemo = !vesselLocation || (
+        Math.abs(vesselLocation.latitude - 15.25) < 1.2 &&
+        Math.abs(vesselLocation.longitude - 73.80) < 1.2
+      );
+      if (!showGoaDemo) return;
 
       MAP_MARKERS.forEach(m => {
         if (!m.latLng) return;
@@ -3027,17 +3040,24 @@
       const lonMin = ((Math.abs(lon) - lonDeg) * 60).toFixed(1);
       const coordsStr = `${latDeg}°${latMin}'${lat >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonMin}'${lon >= 0 ? 'E' : 'W'}`;
 
+      // Update vesselLocation cache
+      vesselLocation = { latitude: lat, longitude: lon };
+
       // Update masthead telemetry bar
       const elFix = document.getElementById('txtTelemetryFix');
-      if (elFix) elFix.textContent = `DGPS FIX: ${coordsStr}`;
+      if (elFix) {
+        const pinLabel = (gpsData.name && gpsData.name !== 'Your Current Location') ? `${gpsData.name.toUpperCase()} • ` : '';
+        elFix.textContent = `📍 ${pinLabel}DGPS FIX: ${coordsStr}`;
+      }
 
       if (!leafletMap) {
         initLeafletMap();
       }
 
       // Create or update live pulsing beacon icon
+      const locDisplayName = gpsData.name || 'Your Current Location';
       const beaconHtml = `
-        <div class="leaflet-user-beacon" title="📍 Your Current Location (${coordsStr})">
+        <div class="leaflet-user-beacon" title="📍 ${escapeHtml(locDisplayName)} (${coordsStr})">
           <div class="user-beacon-pulse"></div>
           <div class="user-beacon-core"></div>
         </div>
@@ -3060,7 +3080,9 @@
 
         userGpsMarker.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
-          const title = (currentLang === 'hi') ? '📍 आपकी वर्तमान स्थिति' : (currentLang === 'ta' ? '📍 உங்கள் தற்போதைய அமைவிடம்' : '📍 Your Current Location');
+          const title = (gpsData.name && gpsData.name !== 'Your Current Location') ?
+            `📍 ${gpsData.name}` :
+            ((currentLang === 'hi') ? '📍 आपकी वर्तमान स्थिति' : (currentLang === 'ta' ? '📍 உங்கள் தற்போதைய அமைவிடம்' : '📍 Your Current Location'));
           const reason = (currentLang === 'hi') ? 
             `जीपीएस सत्यापित लाइव स्थिति (${coordsStr})। मौसम, समुद्री स्थिति और सुरक्षा विश्लेषण इस बिंदु से सिंक हैं।` : 
             (currentLang === 'ta' ? 
@@ -3072,13 +3094,16 @@
 
       // Fly and center map to user coordinates
       focusMapOnUserLocation(lat, lon);
+      renderLeafletTacticalZones();
+      renderLeafletWaypoints();
     }
 
     // Center or Move Map Viewport to User Location
     function focusMapOnUserLocation(lat, lon) {
       if (!leafletMap) return;
-      const targetLat = (typeof lat === 'number') ? lat : (vesselLocation ? vesselLocation.latitude : 15.25);
-      const targetLon = (typeof lon === 'number') ? lon : (vesselLocation ? vesselLocation.longitude : 73.80);
+      const targetLat = (typeof lat === 'number') ? lat : (vesselLocation ? vesselLocation.latitude : null);
+      const targetLon = (typeof lon === 'number') ? lon : (vesselLocation ? vesselLocation.longitude : null);
+      if (targetLat == null || targetLon == null) return;
       leafletMap.flyTo([targetLat, targetLon], 12, { duration: 1.2 });
     }
 
@@ -3314,15 +3339,19 @@
 
     // Fetch Live Telemetry from Backend on Load
     async function fetchLiveTelemetry() {
+      if (!vesselLocation) return;
       try {
-        const res = await fetch(`${BACKEND_API_BASE}/telemetry`);
+        const res = await fetch(`${BACKEND_API_BASE}/telemetry?lat=${encodeURIComponent(vesselLocation.latitude)}&lon=${encodeURIComponent(vesselLocation.longitude)}`);
         if (!res.ok) return;
         const data = await res.json();
         isBackendConnected = true;
-        if (data.gps) {
-          pinUserLocationOnMap(data.gps);
+        if (data.gps && vesselLocation) {
+          const sameFix =
+            Math.abs(data.gps.latitude - vesselLocation.latitude) < 0.05 &&
+            Math.abs(data.gps.longitude - vesselLocation.longitude) < 0.05;
+          if (sameFix) pinUserLocationOnMap(data.gps);
         }
-        if (data.risk_points && data.risk_points.length > 0) {
+        if (data.risk_points && data.risk_points.length > 0 && vesselLocation) {
           renderDynamicRiskHeatmap(data.risk_points, data.user_location);
         } else if (vesselLocation) {
           fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
@@ -3413,9 +3442,22 @@
             backendSuccess = true;
             if (thinkingDiv.parentNode) thinkingDiv.remove();
 
-            // Pin user location from GPS Agent verification
-            if (data.gps) {
-              pinUserLocationOnMap(data.gps);
+            // Keep the live GPS pin. Do not jump the chart to Goa demo zones.
+            if (data.gps && vesselLocation) {
+              const namedOverride = data.gps.name && data.gps.name !== 'Your Current Location';
+              if (!namedOverride) {
+                pinUserLocationOnMap({
+                  ...data.gps,
+                  latitude: vesselLocation.latitude,
+                  longitude: vesselLocation.longitude,
+                  name: 'Your Current Location'
+                });
+              } else {
+                pinUserLocationOnMap(data.gps);
+              }
+            }
+            if (data.risk_points && data.risk_points.length > 0) {
+              renderDynamicRiskHeatmap(data.risk_points, data.location || data.user_location);
             }
 
             const rec = data.recommendation;
@@ -3521,14 +3563,21 @@
               if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
                 switchMobileView('chart');
               }
-              selectMapZone(targetZoneId);
+              if (vesselLocation) {
+                focusMapOnUserLocation(vesselLocation.latitude, vesselLocation.longitude);
+              } else {
+                selectMapZone(targetZoneId);
+              }
             });
 
             chatThread.appendChild(advisoryDiv);
             scrollChatToBottom();
 
-            // Automatically highlight matching zone on the tactical chart
-            selectMapZone(targetZoneId);
+            if (vesselLocation) {
+              focusMapOnUserLocation(vesselLocation.latitude, vesselLocation.longitude);
+              renderLeafletTacticalZones();
+              renderLeafletWaypoints();
+            }
 
             // Update top bar telemetry
             if (telem.wave) {
