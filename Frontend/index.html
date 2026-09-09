@@ -681,59 +681,156 @@
     }
 
     /* ==========================================================================
-       4. TACTICAL ADVISORY LOG & BRIDGE COMMUNICATOR (CHAT)
+       4. TACTICAL ADVISORY LOG & BRIDGE COMMUNICATOR (CHAT) — PREMIUM SOOTHING SPEC
        ========================================================================== */
     .tactical-log-container {
       display: flex;
       flex-direction: column;
       height: 100%;
       position: relative;
+      background: radial-gradient(circle at 50% 0%, rgba(38, 30, 24, 0.45) 0%, rgba(18, 16, 14, 0.96) 85%);
     }
 
     .log-scroll-thread {
       flex: 1;
       overflow-y: auto;
-      padding: 14px;
+      padding: 16px 16px 20px 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
       -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
     }
 
-    /* Mission Brief Header in Chat */
+    .log-scroll-thread::-webkit-scrollbar {
+      width: 6px;
+    }
+    .log-scroll-thread::-webkit-scrollbar-track {
+      background: rgba(20, 16, 13, 0.5);
+    }
+    .log-scroll-thread::-webkit-scrollbar-thumb {
+      background: rgba(200, 138, 62, 0.28);
+      border-radius: 4px;
+    }
+    .log-scroll-thread::-webkit-scrollbar-thumb:hover {
+      background: rgba(200, 138, 62, 0.45);
+    }
+
+    /* Mission Brief Header in Chat (Swarm Beacon Card) */
     .mission-brief-card {
-      background-color: var(--bg-console);
-      border: 1px solid var(--border-bezel);
-      border-left: 3px solid var(--brass-base);
-      padding: 10px 12px;
-      border-radius: var(--radius-subtle);
+      background: linear-gradient(135deg, rgba(35, 28, 23, 0.88) 0%, rgba(24, 20, 17, 0.94) 100%);
+      border: 1px solid rgba(200, 138, 62, 0.25);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 14px 16px;
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mission-brief-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--brass-bright), var(--pfz-bright));
+      border-radius: 4px 0 0 4px;
+    }
+
+    .brief-header-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .brief-title {
       font-family: var(--font-nav);
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 700;
-      color: var(--text-chart);
+      color: #F8F5F0;
+      letter-spacing: 0.3px;
       display: flex;
       align-items: center;
+      gap: 8px;
+    }
+
+    .brief-swarm-badge {
+      display: inline-flex;
+      align-items: center;
       gap: 6px;
+      background: rgba(116, 128, 78, 0.20);
+      border: 1px solid rgba(140, 155, 94, 0.40);
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-family: var(--font-telemetry);
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--pfz-bright);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .brief-swarm-badge .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--pfz-bright);
+      box-shadow: 0 0 8px var(--pfz-bright);
+      animation: swarmBeaconPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes swarmBeaconPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
     }
 
     .brief-desc {
       font-size: 12.5px;
-      color: var(--text-muted);
-      line-height: 1.45;
+      color: #C0B4A4;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .brief-agent-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .agent-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-family: var(--font-telemetry);
+      font-size: 10px;
+      color: #B5A898;
     }
 
     /* Tactical Log Messages */
     .dispatch-entry {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      max-width: 92%;
+      gap: 5px;
+      max-width: 88%;
+      animation: chatEntryFadeIn 0.28s ease-out;
+    }
+
+    @keyframes chatEntryFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .dispatch-entry.operator {
@@ -743,26 +840,43 @@
     .dispatch-entry.advisory {
       align-self: flex-start;
       width: 100%;
+      max-width: 100%;
     }
 
     .dispatch-bubble-operator {
-      background-color: var(--bg-console-raised);
-      border: 1px solid var(--border-brass);
-      border-radius: var(--radius-subtle);
-      padding: 9px 12px;
+      background: linear-gradient(135deg, #2F261F 0%, #241D17 100%);
+      border: 1px solid rgba(200, 138, 62, 0.38);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      border-radius: 16px 16px 4px 16px;
+      padding: 10px 14px;
       font-size: 13.5px;
-      color: var(--text-chart);
+      color: #FAF6EE;
+      line-height: 1.5;
+    }
+
+    .dispatch-operator-time {
+      font-family: var(--font-telemetry);
+      font-size: 10px;
+      color: var(--brass-bright);
+      opacity: 0.85;
+      text-align: right;
+      margin-top: 4px;
+      letter-spacing: 0.4px;
     }
 
     .dispatch-card-advisory {
-      background-color: var(--bg-console);
-      border: 1px solid var(--border-bezel);
-      border-left: 3px solid var(--brass-base);
-      border-radius: var(--radius-subtle);
-      padding: 11px 13px;
+      background: linear-gradient(145deg, rgba(32, 26, 21, 0.94) 0%, rgba(22, 18, 15, 0.96) 100%);
+      border: 1px solid rgba(200, 138, 62, 0.22);
+      border-left: 3.5px solid var(--brass-base);
+      border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      transition: border-color 0.25s, box-shadow 0.25s;
     }
 
     .advisory-stamp-bar {
@@ -770,222 +884,327 @@
       align-items: center;
       justify-content: space-between;
       font-family: var(--font-telemetry);
-      font-size: 10px;
-      color: var(--text-dim);
+      font-size: 10.5px;
+      color: #9C8F80;
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding-bottom: 4px;
+      padding-bottom: 6px;
+      letter-spacing: 0.3px;
     }
 
     .advisory-station-code {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       color: var(--brass-bright);
       font-weight: 700;
     }
 
+    .advisory-station-code::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--brass-bright);
+      box-shadow: 0 0 6px var(--brass-bright);
+      display: inline-block;
+    }
+
     .advisory-main-text {
       font-size: 13.5px;
-      color: var(--text-chart);
-      line-height: 1.45;
+      color: #F7F3EB;
+      line-height: 1.6;
+      letter-spacing: 0.15px;
     }
 
     .nautical-telemetry-grid {
-      background-color: var(--bg-bridge);
-      border: 1px solid var(--border-bezel);
-      padding: 7px 10px;
-      border-radius: 2px;
+      background: rgba(14, 12, 10, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 10px 12px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px 10px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px 12px;
       font-family: var(--font-telemetry);
       font-size: 10.5px;
-      color: var(--text-muted);
+      color: #A39686;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 480px) {
+      .nautical-telemetry-grid {
+        grid-template-columns: 1fr 1fr;
+      }
     }
 
     .telemetry-val {
       font-weight: 700;
-      color: var(--text-chart);
+      color: #F5F1E9;
     }
 
     .advisory-action-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
     .advisory-plot-btn {
-      background: none;
-      border: 1px solid var(--border-brass);
+      background: rgba(200, 138, 62, 0.12);
+      border: 1px solid rgba(200, 138, 62, 0.35);
       color: var(--brass-bright);
       font-family: var(--font-telemetry);
       font-size: 11px;
-      padding: 4px 8px;
-      border-radius: 2px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .advisory-plot-btn:hover {
-      background-color: var(--bg-console-raised);
+      background: rgba(200, 138, 62, 0.24);
+      border-color: var(--brass-bright);
+      color: #FFF;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 10px rgba(200, 138, 62, 0.25);
     }
 
     /* Recommendation Agent UI Elements */
     .rec-action-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
+      gap: 7px;
+      padding: 5px 12px;
       font-family: var(--font-telemetry);
       font-size: 11px;
       font-weight: 700;
-      border-radius: var(--radius-subtle);
+      border-radius: 20px;
       letter-spacing: 0.5px;
-      margin: 4px 0 6px 0;
+      margin: 2px 0 4px 0;
       text-transform: uppercase;
       width: fit-content;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
+
     .rec-action-badge.action-safe {
-      background-color: var(--pfz-fill);
-      color: var(--pfz-bright);
-      border: 1px solid var(--pfz-border);
+      background-color: rgba(116, 128, 78, 0.22);
+      color: #B5D28A;
+      border: 1px solid rgba(140, 155, 94, 0.45);
     }
+
     .rec-action-badge.action-caution {
-      background-color: var(--caution-fill);
+      background-color: rgba(212, 144, 59, 0.20);
       color: #F8D18C;
-      border: 1px solid var(--caution-border);
+      border: 1px solid rgba(232, 164, 76, 0.45);
     }
+
     .rec-action-badge.action-danger, .rec-action-badge.action-critical {
-      background-color: var(--danger-fill);
-      color: var(--danger-bright);
-      border: 1px solid var(--danger-border);
+      background-color: rgba(196, 84, 58, 0.22);
+      color: #FFA590;
+      border: 1px solid rgba(222, 99, 71, 0.45);
     }
+
     .rec-tips-list {
       margin: 6px 0;
       padding-left: 18px;
-      color: var(--text-chart);
-      font-size: 12.5px;
+      color: #EDE8DF;
+      font-size: 12.8px;
+      line-height: 1.6;
+    }
+
+    .rec-tips-list li {
+      margin-bottom: 5px;
+    }
+
+    .rec-explanation-box {
+      background: rgba(0, 0, 0, 0.35);
+      border-left: 3px solid var(--brass-base);
+      padding: 8px 12px;
+      margin: 6px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 12px;
+      color: #BDB0A0;
       line-height: 1.5;
     }
-    .rec-tips-list li {
-      margin-bottom: 3px;
-    }
-    .rec-explanation-box {
-      background: rgba(0, 0, 0, 0.32);
-      border-left: 3px solid var(--brass-base);
-      padding: 7px 10px;
-      margin: 6px 0 8px 0;
-      border-radius: 0 3px 3px 0;
-      font-size: 11.5px;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
+
     .rec-explanation-box .protocol-label {
       font-family: var(--font-telemetry);
       font-size: 9.5px;
       font-weight: 700;
       color: var(--brass-bright);
       display: block;
-      margin-bottom: 2px;
-      letter-spacing: 0.4px;
+      margin-bottom: 3px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Live Thinking Swarm Indicator */
+    .soothing-thinking-box {
+      background: linear-gradient(135deg, rgba(30, 24, 19, 0.92) 0%, rgba(20, 17, 14, 0.95) 100%);
+      border: 1px solid rgba(200, 138, 62, 0.3);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .soothing-wave-dots {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .soothing-wave-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--brass-bright);
+      animation: soothingWave 1.4s ease-in-out infinite;
+    }
+
+    .soothing-wave-dots span:nth-child(2) {
+      animation-delay: 0.2s;
+      background: var(--pfz-bright);
+    }
+
+    .soothing-wave-dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes soothingWave {
+      0%, 100% { transform: translateY(0); opacity: 0.35; }
+      50% { transform: translateY(-5px); opacity: 1; box-shadow: 0 0 8px currentColor; }
+    }
+
+    .soothing-thinking-text {
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      color: #D6C8B8;
+      letter-spacing: 0.3px;
+      line-height: 1.4;
     }
 
     /* Radio Query Input Dock */
     .tactical-input-dock {
-      background-color: var(--bg-console);
-      border-top: 2px solid var(--border-bezel);
-      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(28, 22, 18, 0.94) 0%, rgba(18, 15, 12, 0.98) 100%);
+      border-top: 1px solid rgba(200, 138, 62, 0.22);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 12px 14px 14px 14px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       flex-shrink: 0;
     }
 
     /* Nautical Instant Tactical Query Buttons */
     .tactical-queries-row {
       display: flex;
-      gap: 6px;
+      gap: 7px;
       overflow-x: auto;
-      padding-bottom: 3px;
+      padding-bottom: 4px;
       -webkit-overflow-scrolling: touch;
     }
 
+    .tactical-queries-row::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .tactical-queries-row::-webkit-scrollbar-thumb {
+      background: rgba(200, 138, 62, 0.25);
+      border-radius: 2px;
+    }
+
     .tactical-query-chip {
-      background-color: var(--bg-bridge);
-      border: 1px solid var(--border-bezel);
-      color: var(--text-muted);
+      background: rgba(36, 29, 23, 0.85);
+      border: 1px solid rgba(200, 138, 62, 0.25);
+      color: #C2B5A5;
       font-family: var(--font-telemetry);
       font-size: 11px;
       font-weight: 600;
-      padding: 4px 9px;
-      border-radius: var(--radius-subtle);
+      padding: 5px 12px;
+      border-radius: 20px;
       cursor: pointer;
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+      gap: 6px;
+      transition: all 0.2s ease;
     }
 
     .tactical-query-chip:hover {
-      background-color: var(--bg-console-raised);
-      border-color: var(--border-brass);
-      color: var(--text-chart);
+      background: rgba(48, 38, 30, 0.95);
+      border-color: var(--brass-bright);
+      color: #FFF;
+      transform: translateY(-1.5px);
+      box-shadow: 0 3px 10px rgba(200, 138, 62, 0.2);
     }
 
     .query-input-form {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
     }
 
     .marine-input-box {
       flex: 1;
-      background-color: var(--bg-input);
-      border: 1px solid var(--border-bezel);
-      border-radius: var(--radius-subtle);
-      padding: 8px 12px;
+      background: rgba(18, 15, 12, 0.9);
+      border: 1px solid rgba(200, 138, 62, 0.28);
+      border-radius: 24px;
+      padding: 9px 16px;
       font-family: var(--font-ui);
       font-size: 13.5px;
-      color: var(--text-chart);
+      color: #F8F4ED;
       outline: none;
-      min-height: 38px;
+      min-height: 40px;
+      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
     }
 
     .marine-input-box:focus {
-      border-color: var(--brass-base);
+      border-color: var(--brass-bright);
+      background: rgba(24, 20, 16, 0.95);
+      box-shadow: 0 0 0 3px rgba(200, 138, 62, 0.22);
     }
 
     .marine-input-box::placeholder {
-      color: var(--text-dim);
+      color: #8C8072;
       font-family: var(--font-telemetry);
       font-size: 12px;
     }
 
     .tactical-voice-btn {
-      width: 38px;
-      height: 38px;
-      min-width: 38px;
-      background-color: var(--bg-console);
-      border: 1px solid var(--border-bezel);
-      border-radius: var(--radius-subtle);
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      background: rgba(35, 28, 23, 0.85);
+      border: 1px solid rgba(200, 138, 62, 0.3);
+      border-radius: 50%;
       color: var(--brass-bright);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       position: relative;
-      transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+      transition: all 0.2s ease;
     }
 
     .tactical-voice-btn:hover {
-      background-color: var(--bg-console-raised);
-      border-color: var(--brass-base);
-      color: var(--text-chart);
+      background: rgba(46, 37, 30, 0.95);
+      border-color: var(--brass-bright);
+      color: #FFF;
+      transform: scale(1.05);
     }
 
     .tactical-voice-btn:active {
-      transform: scale(0.95);
+      transform: scale(0.94);
     }
 
     .tactical-voice-btn.listening {
@@ -1006,12 +1225,12 @@
 
     .voice-pulse-ring {
       position: absolute;
-      top: -3px;
-      left: -3px;
-      right: -3px;
-      bottom: -3px;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
       border: 1.5px solid var(--danger-bright);
-      border-radius: var(--radius-subtle);
+      border-radius: 50%;
       opacity: 0;
       pointer-events: none;
     }
@@ -1026,13 +1245,13 @@
     }
 
     .tactical-submit-btn {
-      background-color: var(--brass-base);
-      border: 1px solid var(--brass-bright);
-      color: var(--text-inverse);
+      background: linear-gradient(135deg, #DC9B4A 0%, #C88A3E 100%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #12100E;
       font-weight: 700;
-      min-height: 38px;
-      padding: 0 14px;
-      border-radius: var(--radius-subtle);
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 24px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -1040,10 +1259,18 @@
       gap: 6px;
       font-family: var(--font-telemetry);
       font-size: 11.5px;
+      box-shadow: 0 2px 10px rgba(200, 138, 62, 0.25);
+      transition: all 0.2s ease;
     }
 
     .tactical-submit-btn:hover {
-      background-color: var(--brass-bright);
+      background: linear-gradient(135deg, #E6A756 0%, #D4903B 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(200, 138, 62, 0.4);
+    }
+
+    .tactical-submit-btn:active {
+      transform: scale(0.96);
     }
 
     /* ==========================================================================
@@ -2108,17 +2335,30 @@
             <div class="log-scroll-thread" id="tacticalChatThread">
               
               <div class="mission-brief-card">
-                <div class="brief-title">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 16v-4"></path>
-                    <path d="M12 8h.01"></path>
-                  </svg>
-                  <span id="txtBriefTitle">नाविक सामरिक सहायता केंद्र</span>
+                <div class="brief-header-meta">
+                  <div class="brief-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M12 16v-4"></path>
+                      <path d="M12 8h.01"></path>
+                    </svg>
+                    <span id="txtBriefTitle">नाविक सामरिक सहायता केंद्र</span>
+                  </div>
+                  <div class="brief-swarm-badge">
+                    <span class="pulse-dot"></span>
+                    <span>AI Swarm Active</span>
+                  </div>
                 </div>
                 <p class="brief-desc" id="txtBriefBody">
                   INCOIS व तटरक्षक बल से लिंक सक्रिय है। मछली पकड़ने के संभावित क्षेत्र (PFZ), ज्वार-भाटा समय या वर्तमान मौसम के लिए त्वरित बटन दबाएं या प्रश्न लिखें।
                 </p>
+                <div class="brief-agent-tags">
+                  <span class="agent-tag">🌊 Marine Met</span>
+                  <span class="agent-tag">⛅ Satellite Weather</span>
+                  <span class="agent-tag">🛡 Sanctuaries</span>
+                  <span class="agent-tag">⚡ Risk Matrix</span>
+                  <span class="agent-tag">🧠 Safety LLM</span>
+                </div>
               </div>
 
             </div>
@@ -2708,13 +2948,12 @@
       const mapContainer = document.getElementById('marineMapLeaflet');
       if (!mapContainer) return;
 
-      const initLat = vesselLocation ? vesselLocation.latitude : 20.0;
-      const initLon = vesselLocation ? vesselLocation.longitude : 78.0;
-      const initZoom = vesselLocation ? 12 : 5;
+      const initLat = vesselLocation ? vesselLocation.latitude : 15.25;
+      const initLon = vesselLocation ? vesselLocation.longitude : 73.80;
 
       leafletMap = L.map('marineMapLeaflet', {
         center: [initLat, initLon],
-        zoom: initZoom,
+        zoom: 11,
         minZoom: 3,
         maxZoom: 18,
         zoomControl: false
@@ -2777,12 +3016,6 @@
       if (!tacticalZonesLayer) return;
       tacticalZonesLayer.clearLayers();
 
-      const showGoaDemo = !vesselLocation || (
-        Math.abs(vesselLocation.latitude - 15.25) < 1.2 &&
-        Math.abs(vesselLocation.longitude - 73.80) < 1.2
-      );
-      if (!showGoaDemo) return;
-
       MAP_ZONES.forEach(z => {
         if (!z.latLngs) return;
         const color = z.type === 'pfz' ? '#8C9B5E' : (z.type === 'caution' ? '#E8A44C' : '#DE6347');
@@ -2810,12 +3043,6 @@
     function renderLeafletWaypoints() {
       if (!waypointsLayer) return;
       waypointsLayer.clearLayers();
-
-      const showGoaDemo = !vesselLocation || (
-        Math.abs(vesselLocation.latitude - 15.25) < 1.2 &&
-        Math.abs(vesselLocation.longitude - 73.80) < 1.2
-      );
-      if (!showGoaDemo) return;
 
       MAP_MARKERS.forEach(m => {
         if (!m.latLng) return;
@@ -3094,16 +3321,13 @@
 
       // Fly and center map to user coordinates
       focusMapOnUserLocation(lat, lon);
-      renderLeafletTacticalZones();
-      renderLeafletWaypoints();
     }
 
     // Center or Move Map Viewport to User Location
     function focusMapOnUserLocation(lat, lon) {
       if (!leafletMap) return;
-      const targetLat = (typeof lat === 'number') ? lat : (vesselLocation ? vesselLocation.latitude : null);
-      const targetLon = (typeof lon === 'number') ? lon : (vesselLocation ? vesselLocation.longitude : null);
-      if (targetLat == null || targetLon == null) return;
+      const targetLat = (typeof lat === 'number') ? lat : (vesselLocation ? vesselLocation.latitude : 15.25);
+      const targetLon = (typeof lon === 'number') ? lon : (vesselLocation ? vesselLocation.longitude : 73.80);
       leafletMap.flyTo([targetLat, targetLon], 12, { duration: 1.2 });
     }
 
@@ -3339,19 +3563,15 @@
 
     // Fetch Live Telemetry from Backend on Load
     async function fetchLiveTelemetry() {
-      if (!vesselLocation) return;
       try {
-        const res = await fetch(`${BACKEND_API_BASE}/telemetry?lat=${encodeURIComponent(vesselLocation.latitude)}&lon=${encodeURIComponent(vesselLocation.longitude)}`);
+        const res = await fetch(`${BACKEND_API_BASE}/telemetry`);
         if (!res.ok) return;
         const data = await res.json();
         isBackendConnected = true;
-        if (data.gps && vesselLocation) {
-          const sameFix =
-            Math.abs(data.gps.latitude - vesselLocation.latitude) < 0.05 &&
-            Math.abs(data.gps.longitude - vesselLocation.longitude) < 0.05;
-          if (sameFix) pinUserLocationOnMap(data.gps);
+        if (data.gps) {
+          pinUserLocationOnMap(data.gps);
         }
-        if (data.risk_points && data.risk_points.length > 0 && vesselLocation) {
+        if (data.risk_points && data.risk_points.length > 0) {
           renderDynamicRiskHeatmap(data.risk_points, data.user_location);
         } else if (vesselLocation) {
           fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
@@ -3386,7 +3606,7 @@
       operatorDiv.innerHTML = `
         <div class="dispatch-bubble-operator">
           ${escapeHtml(text)}
-          <div style="font-family: var(--font-telemetry); font-size: 10px; color: var(--text-dim); text-align: right; margin-top: 2px;">
+          <div class="dispatch-operator-time">
             ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} IST
           </div>
         </div>
@@ -3399,10 +3619,14 @@
       thinkingDiv.className = 'dispatch-entry advisory';
       thinkingDiv.id = 'chatLiveThinking';
       thinkingDiv.innerHTML = `
-        <div class="dispatch-card-advisory" style="border-left-color: var(--brass-bright); padding: 9px 12px;">
-          <div style="display:flex; align-items:center; gap:8px; font-family:var(--font-telemetry); font-size:11px; color:var(--brass-bright);">
-            <span class="sensor-live-blip" style="background:var(--brass-bright); box-shadow:0 0 8px var(--brass-bright);"></span>
-            <span>KYROX MULTI-AGENT ADVISORY: Querying Live Marine, Weather & Recommendation Agents...</span>
+        <div class="soothing-thinking-box">
+          <div class="soothing-wave-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="soothing-thinking-text">
+            <strong>KYROX MULTI-AGENT SWARM:</strong> Analyzing Live Weather, Marine & Sanctuary Telemetry...
           </div>
         </div>
       `;
@@ -3442,18 +3666,9 @@
             backendSuccess = true;
             if (thinkingDiv.parentNode) thinkingDiv.remove();
 
-            if (data.gps && vesselLocation) {
-              const namedOverride = data.gps.name && data.gps.name !== 'Your Current Location';
-              if (!namedOverride) {
-                pinUserLocationOnMap({
-                  ...data.gps,
-                  latitude: vesselLocation.latitude,
-                  longitude: vesselLocation.longitude,
-                  name: 'Your Current Location'
-                });
-              } else {
-                pinUserLocationOnMap(data.gps);
-              }
+            // Pin user location from GPS Agent verification
+            if (data.gps) {
+              pinUserLocationOnMap(data.gps);
             }
             if (data.risk_points && data.risk_points.length > 0) {
               renderDynamicRiskHeatmap(data.risk_points, data.location || data.user_location);
@@ -3562,21 +3777,14 @@
               if (currentDeviceMode === 'phone' || window.innerWidth < 960) {
                 switchMobileView('chart');
               }
-              if (vesselLocation) {
-                focusMapOnUserLocation(vesselLocation.latitude, vesselLocation.longitude);
-              } else {
-                selectMapZone(targetZoneId);
-              }
+              selectMapZone(targetZoneId);
             });
 
             chatThread.appendChild(advisoryDiv);
             scrollChatToBottom();
 
-            if (vesselLocation) {
-              focusMapOnUserLocation(vesselLocation.latitude, vesselLocation.longitude);
-              renderLeafletTacticalZones();
-              renderLeafletWaypoints();
-            }
+            // Automatically highlight matching zone on the tactical chart
+            selectMapZone(targetZoneId);
 
             // Update top bar telemetry
             if (telem.wave) {
