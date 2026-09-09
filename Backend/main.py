@@ -32,10 +32,7 @@ from Models.schemas import (
 )
 from Agents.marine_agent import marine_agent as run_marine_agent
 from Agents.weather_agent import weather_agent as run_weather_agent
-try:
-    from Agents.geospatial_agent import geospatial_agent as run_geospatial_agent
-except ImportError:
-    from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
+from Agents.geospatial_agent import geospatial_agent as run_geospatial_agent
 from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
 from Agents.gps_agent import gps_agent
