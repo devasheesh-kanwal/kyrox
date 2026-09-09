@@ -61,6 +61,26 @@ def test_risk_analysis_endpoint():
         assert res_heatmap.status_code == 200, f"/heatmap failed: {res_heatmap.status_code}"
         print("[PASS] /heatmap endpoint OK")
 
+def test_query_canonical():
+    mock_rec = {
+        "action": "SAFE",
+        "message": "Conditions are calm and safe.",
+        "recommendations": ["Safe fishing permitted."],
+        "explanation": "Low wind and wave height."
+    }
+    with patch('main.run_recommendation_agent', new=AsyncMock(return_value=mock_rec)):
+        res = client.post('/query', json={'message': 'Is it safe to fish?', 'latitude': 15.25, 'longitude': 73.80})
+        assert res.status_code == 200, f"/query failed: {res.status_code}"
+        data = res.json()
+        assert data['status'] == 'success'
+        # Canonical keys
+        for k in ['location', 'chat', 'weather', 'marine', 'geospatial', 'risk', 'recommendation', 'heatmap', 'alerts']:
+            assert k in data, f"Missing canonical key '{k}' in /query response"
+        assert 'risk_score' in data['risk']
+        assert 'risk_level' in data['risk']
+        assert 'risk_points' in data['heatmap']
+        print("[PASS] /query returns full canonical contract successfully")
+
 def test_no_keys_in_source():
     forbidden_terms = ['CARTO_API_KEY=', 'key=']
     # Check that in source files, no real keys are hardcoded
@@ -74,5 +94,6 @@ if __name__ == '__main__':
     test_health()
     test_location_endpoint()
     test_risk_analysis_endpoint()
+    test_query_canonical()
     test_no_keys_in_source()
     print("\n--- ALL BACKEND INTEGRATION TESTS PASSED (100%) ---")

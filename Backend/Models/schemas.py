@@ -102,7 +102,7 @@ class SafetyAnalysisResponse(BaseModel):
 # USER REQUEST
 # =========================================================
 class UserRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=2000, description="User query or dispatch message")
+    message: str = Field("General maritime safety check", min_length=0, max_length=2000, description="User query or dispatch message")
     location: Optional[Location] = Field(None, description="Vessel GPS coordinates")
     latitude: Optional[float] = Field(None, ge=-90, le=90, description="Direct latitude parameter")
     longitude: Optional[float] = Field(None, ge=-180, le=180, description="Direct longitude parameter")

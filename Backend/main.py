@@ -33,9 +33,9 @@ from Models.schemas import (
 from Agents.marine_agent import marine_agent as run_marine_agent
 from Agents.weather_agent import weather_agent as run_weather_agent
 try:
-    from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
-except ImportError:
     from Agents.geospatial_agent import geospatial_agent as run_geospatial_agent
+except ImportError:
+    from Agents.geospatial_Agent import geospatial_agent as run_geospatial_agent
 from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
 from Agents.gps_agent import gps_agent
@@ -76,8 +76,21 @@ DEFAULT_LONGITUDE = 73.803
 
 
 # --------------------------------------------------
-# AGENT RESULT NORMALIZATION
+# AGENT RESULT NORMALIZATION & MODEL SERIALIZATION
 # --------------------------------------------------
+def _dump_model(m: Any) -> Dict[str, Any]:
+    """Safely serialize Pydantic model to dict across Pydantic v1 and v2."""
+    if m is None:
+        return {}
+    if hasattr(m, "model_dump"):
+        return m.model_dump()
+    if hasattr(m, "dict"):
+        return m.dict()
+    if isinstance(m, dict):
+        return m
+    return {}
+
+
 def _normalize_agent_result(result: Any, fallback: Dict[str, Any]) -> Dict[str, Any]:
     """
     Agent calls can come back as a Pydantic model, a plain dict, or (when run
@@ -90,6 +103,8 @@ def _normalize_agent_result(result: Any, fallback: Dict[str, Any]) -> Dict[str, 
         return dict(fallback)
     if hasattr(result, "model_dump"):
         return result.model_dump()
+    if hasattr(result, "dict"):
+        return result.dict()
     if isinstance(result, dict):
         return result
     return dict(fallback)
@@ -129,29 +144,58 @@ async def process_query(request: UserRequest):
     4. Invokes recommendation_agent for safety action, tips, and LLM advice.
     5. Returns unified response with real live data.
     """
-    # 1. Resolve navigational zone and coordinates from request or query text
-    detected_loc, detected_zone = extract_location_and_zone_from_text(request.message)
-    target_zone = request.zone_id or detected_zone
+    query_text = (request.message or "What is the current safety status?").strip()
+    if not query_text:
+        query_text = "What is the current safety status?"
 
-    if request.location:
-        loc = request.location
+    detected_loc, detected_zone, detected_name = extract_location_and_zone_from_text(query_text)
+    has_device_gps = bool(
+        request.location
+        or (request.latitude is not None and request.longitude is not None)
+    )
+
+    # Device GPS is the source of truth. Named places in the message may override
+    # GPS only when the user explicitly named a port/city/coordinates.
+    named_place = bool(detected_loc and detected_zone is None and detected_name)
+
+    if named_place:
+        loc_name = detected_name or "Queried Location"
+        gps_val = gps_agent(detected_loc.latitude, detected_loc.longitude, name=loc_name)
+        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        target_zone = detected_zone
+        logger.info("Using location named in message: '%s' -> (%.4f, %.4f)", loc_name, loc.latitude, loc.longitude)
+    elif request.location:
+        loc_name = "Your Current Location"
+        gps_val = gps_agent(request.location.latitude, request.location.longitude, name=loc_name)
+        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        target_zone = None if has_device_gps else (request.zone_id or detected_zone)
+        logger.info("Using user device GPS location: (%.4f, %.4f)", loc.latitude, loc.longitude)
     elif request.latitude is not None and request.longitude is not None:
-        loc = Location(latitude=request.latitude, longitude=request.longitude)
-    elif detected_loc:
-        loc = detected_loc
-    elif target_zone and target_zone in KNOWN_ZONES:
-        zone_info = KNOWN_ZONES[target_zone]
-        loc = Location(latitude=zone_info["latitude"], longitude=zone_info["longitude"])
+        loc_name = "Your Current Location"
+        gps_val = gps_agent(request.latitude, request.longitude, name=loc_name)
+        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        target_zone = None
+        logger.info("Using direct coordinate parameters: (%.4f, %.4f)", loc.latitude, loc.longitude)
+    elif request.zone_id and request.zone_id in KNOWN_ZONES:
+        zone_info = KNOWN_ZONES[request.zone_id]
+        loc_name = zone_info["name"]
+        gps_val = gps_agent(zone_info["latitude"], zone_info["longitude"], name=loc_name)
+        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        target_zone = request.zone_id
     else:
-        loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+        return {
+            "status": "error",
+            "error": "Location is required. Enable GPS or name a coastal place.",
+            "risk_points": [],
+        }
 
     logger.info(
         "Processing /query: '%s' | zone: %s | loc: (%s, %s)",
-        request.message, target_zone, loc.latitude, loc.longitude
+        query_text, target_zone, loc.latitude, loc.longitude
     )
 
     # Concurrently run conversational analysis and domain agents
-    conv_task = asyncio.to_thread(run_conversational_agent, request.message)
+    conv_task = asyncio.to_thread(run_conversational_agent, query_text)
     marine_task = run_marine_agent(loc)
     weather_task = run_weather_agent(loc)
     geo_task = run_geospatial_agent(loc)
@@ -175,9 +219,7 @@ async def process_query(request: UserRequest):
     else:
         conv_data = conv_res
 
-    # Safe handling of marine agent (may return a MarineData model, a dict,
-    # or an Exception) -- normalize to a dict so `.get(...)` calls below
-    # never raise and real data is never silently dropped.
+    # Safe handling of marine agent (normalize to dict)
     marine_fallback = {
         "wave_height": 1.4,
         "wave_direction": 225,
@@ -252,12 +294,8 @@ async def process_query(request: UserRequest):
     # Resolve effective navigational zone for UI highlighting
     if target_zone:
         effective_zone = target_zone
-    elif risk_assessment.get("risk_level") in ("HIGH", "CRITICAL"):
-        effective_zone = "zone-danger-se"
-    elif risk_assessment.get("risk_level") == "MEDIUM":
-        effective_zone = "zone-wind-ne"
     else:
-        effective_zone = "zone-pfz-sw"
+        effective_zone = "user_location"
 
     # Backward compatible fields for UI
     recommendation["zone_id"] = effective_zone
@@ -289,7 +327,7 @@ async def process_query(request: UserRequest):
     }
 
     # Generate standardized GPS user location marker via GPS Agent
-    gps_data = gps_agent(loc.latitude, loc.longitude)
+    gps_data = gps_agent(loc.latitude, loc.longitude, name=loc_name)
 
     # Generate or retrieve 3x3 risk heatmap around user coordinates
     try:
@@ -299,12 +337,53 @@ async def process_query(request: UserRequest):
         logger.warning("Could not generate risk points for /query: %s", exc)
         risk_points = []
 
+    # Build canonical alerts list
+    alerts_list = []
+    for reason in risk_assessment.get("reasons", []):
+        alert_type = (
+            "danger" if risk_assessment["risk_level"] in ("HIGH", "CRITICAL")
+            else ("caution" if risk_assessment["risk_level"] == "MEDIUM" else "resolved")
+        )
+        alerts_list.append({
+            "id": f"ALERT-{abs(hash(reason)) % 10000:04d}",
+            "type": alert_type,
+            "risk_level": risk_assessment["risk_level"],
+            "title": f"Advisory ({risk_assessment['risk_level']})",
+            "description": reason,
+            "action": recommendation.get("action", "PROCEED_WITH_CAUTION"),
+            "zone_id": effective_zone,
+            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
+        })
+
+    # Return Canonical Contract with Full Backward Compatibility
     return {
         "status": "success",
-        "user_query": request.message,
+        # Canonical Contract Fields
+        "location": _dump_model(loc),
+        "chat": {
+            "user_message": query_text,
+            "intent": conv_data.get("intent", "GENERAL_QUERY"),
+            "response": recommendation.get("message") or conv_data.get("response", ""),
+        },
+        "weather": weather_data,
+        "marine": marine_data,
+        "geospatial": geo_data,
+        "risk": {
+            "risk_score": risk_assessment.get("risk_score", 0),
+            "risk_level": risk_assessment.get("risk_level", "LOW"),
+            "reasons": risk_assessment.get("reasons", []),
+        },
+        "recommendation": recommendation,
+        "heatmap": {
+            "user_location": _dump_model(loc),
+            "risk_points": risk_points,
+        },
+        "alerts": alerts_list,
+
+        # Backward compatibility aliases for existing UI bindings
+        "user_query": query_text,
         "intent": conv_data.get("intent", "GENERAL_QUERY"),
         "conversation": conv_data,
-        "location": loc.model_dump(),
         "gps": gps_data,
         "risk_points": risk_points,
         "zone_id": effective_zone,
@@ -312,9 +391,25 @@ async def process_query(request: UserRequest):
         "weather_data": weather_data,
         "geospatial_data": geo_data,
         "risk_assessment": risk_assessment,
-        "recommendation": recommendation,
         "telemetry": telemetry_snapshot,
     }
+
+
+@app.get("/query")
+async def process_query_get(
+    message: Optional[str] = Query("What is the current safety status?"),
+    lat: Optional[float] = Query(None, ge=-90, le=90),
+    lon: Optional[float] = Query(None, ge=-180, le=180),
+    zone_id: Optional[str] = Query(None),
+):
+    """GET query endpoint for fast browser inspection and developer testing."""
+    req = UserRequest(
+        message=message or "What is the current safety status?",
+        latitude=lat,
+        longitude=lon,
+        zone_id=zone_id
+    )
+    return await process_query(req)
 
 
 # --------------------------------------------------
@@ -323,10 +418,15 @@ async def process_query(request: UserRequest):
 @app.get("/telemetry")
 @app.post("/telemetry")
 async def get_live_telemetry(
-    lat: Optional[float] = Query(DEFAULT_LATITUDE),
-    lon: Optional[float] = Query(DEFAULT_LONGITUDE)
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None)
 ):
-    """Returns live vessel bridge telemetry for given or current coordinates."""
+    """Returns live vessel bridge telemetry for given coordinates."""
+    if lat is None or lon is None:
+        return {
+            "status": "error",
+            "error": "latitude and longitude are required",
+        }
     loc = Location(latitude=lat, longitude=lon)
     try:
         marine_res, weather_res = await asyncio.gather(
@@ -368,7 +468,7 @@ async def get_live_telemetry(
         "lowTide": "17:50 IST (0.4m)",
         "visibility": "GOOD (>10 NM)",
         "clearance": "SAFE" if wave_h < 2.0 and wind_spd < 20 else "PROCEED_WITH_CAUTION",
-        "location": loc.model_dump(),
+        "location": _dump_model(loc),
         "gps": gps_data,
         "risk_points": risk_points,
     }
@@ -393,8 +493,14 @@ async def update_user_location(
     Receives user's current GPS coordinates from device/browser.
     Validates via GPS Agent and updates multi-agent telemetry analysis.
     """
-    target_lat = body.latitude if body else (lat if lat is not None else DEFAULT_LATITUDE)
-    target_lon = body.longitude if body else (lon if lon is not None else DEFAULT_LONGITUDE)
+    target_lat = body.latitude if body else (lat if lat is not None else None)
+    target_lon = body.longitude if body else (lon if lon is not None else None)
+    if target_lat is None or target_lon is None:
+        return {
+            "status": "error",
+            "error": "latitude and longitude are required",
+            "risk_points": [],
+        }
 
     gps_data = gps_agent(target_lat, target_lon)
     loc = Location(latitude=gps_data["latitude"], longitude=gps_data["longitude"])
@@ -426,8 +532,8 @@ async def update_user_location(
 
     return {
         "status": "success",
-        "user_location": loc.model_dump(),
-        "location": loc.model_dump(),
+        "user_location": _dump_model(loc),
+        "location": _dump_model(loc),
         "gps": gps_data,
         "risk_points": risk_points,
         "telemetry": {
@@ -502,9 +608,20 @@ async def get_risk_heatmap(
 # LIVE BULLETINS ENDPOINT
 # --------------------------------------------------
 @app.get("/bulletins")
-async def get_bulletins():
+@app.post("/bulletins")
+async def get_bulletins(
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None)
+):
     """Returns live safety bulletins computed from marine and weather conditions."""
-    loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+    target_lat = lat if lat is not None else DEFAULT_LATITUDE
+    target_lon = lon if lon is not None else DEFAULT_LONGITUDE
+    try:
+        validated_gps = gps_agent(target_lat, target_lon)
+        loc = Location(latitude=validated_gps["latitude"], longitude=validated_gps["longitude"])
+    except Exception:
+        loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+
     try:
         geo_res = await run_geospatial_agent(loc)
     except Exception as exc:
