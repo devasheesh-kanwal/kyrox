@@ -55,248 +55,37 @@ KNOWN_ZONES = {
 }
 
 
-# Comprehensive Indian & International Maritime Ports, Anchorages, and Coastal Regions
-COASTAL_LOCATIONS: dict = {
-    # Goa Coastal Waters
-    "goa": (15.2993, 73.8030, "Goa Coastal Waters", None),
-    "panaji": (15.4989, 73.8278, "Panaji (Goa)", None),
-    "panjim": (15.4989, 73.8278, "Panaji (Goa)", None),
-    "mormugao": (15.4167, 73.7833, "Mormugao Port (Goa)", None),
-    "vasco": (15.3982, 73.8113, "Vasco da Gama (Goa)", None),
-    "betul": (15.1480, 73.9550, "Betul Estuary (Goa)", None),
-    "calangute": (15.5439, 73.7553, "Calangute Offshore (Goa)", None),
-    "candolim": (15.5170, 73.7620, "Candolim Coastal Waters (Goa)", None),
-    "baga": (15.5560, 73.7510, "Baga Beach Waters (Goa)", None),
-    "colva": (15.2780, 73.9120, "Colva Waters (Goa)", None),
-    "palolem": (15.0100, 74.0230, "Palolem Bay (Goa)", None),
-    "anjuna": (15.5730, 73.7410, "Anjuna Offshore (Goa)", None),
-    "malvan": (16.0600, 73.4700, "Malvan Marine Sanctuary (Maharashtra)", None),
-    "netrani": (14.0167, 74.3333, "Netrani Island Coral Reserve (Karnataka)", None),
-
-    # Maharashtra & Gujarat (West Coast North)
-    "mumbai": (18.9220, 72.8347, "Mumbai Harbour & Offshore", None),
-    "bombay": (18.9220, 72.8347, "Mumbai Harbour & Offshore", None),
-    "jnpt": (18.9500, 72.9500, "JNPT / Nhava Sheva (Maharashtra)", None),
-    "nhava sheva": (18.9500, 72.9500, "JNPT / Nhava Sheva (Maharashtra)", None),
-    "alibaug": (18.6414, 72.8722, "Alibaug Coastal Waters", None),
-    "alibag": (18.6414, 72.8722, "Alibaug Coastal Waters", None),
-    "ratnagiri": (16.9902, 73.3000, "Ratnagiri Port Waters", None),
-    "dahanu": (19.9700, 72.7300, "Dahanu Offshore", None),
-    "kandla": (23.0033, 70.2186, "Kandla / Deendayal Port (Gujarat)", None),
-    "deendayal": (23.0033, 70.2186, "Kandla / Deendayal Port (Gujarat)", None),
-    "mundra": (22.8390, 69.7060, "Mundra Port (Gujarat)", None),
-    "porbandar": (21.6422, 69.6093, "Porbandar Coastal Waters", None),
-    "veraval": (20.9000, 70.3700, "Veraval Fishery Port (Gujarat)", None),
-    "okha": (22.4667, 69.0667, "Okha Port (Gujarat)", None),
-    "dwarka": (22.2442, 68.9685, "Dwarka Coastal Waters", None),
-    "bhavnagar": (21.7645, 72.1519, "Gulf of Khambhat / Bhavnagar", None),
-    "surat": (21.1702, 72.8311, "Surat Coastal Waters", None),
-    "hazira": (21.1000, 72.6300, "Hazira Industrial Port", None),
-    "daman": (20.4283, 72.8397, "Daman Coastal Waters", None),
-    "diu": (20.7144, 70.9874, "Diu Island Coastal Waters", None),
-    "pipavav": (20.9100, 71.5000, "Port Pipavav (Gujarat)", None),
-
-    # Karnataka & Kerala (West Coast South)
-    "karwar": (14.8150, 74.1300, "Karwar Naval & Fishing Port", None),
-    "mangalore": (12.9141, 74.8560, "New Mangalore Port Waters", None),
-    "mangaluru": (12.9141, 74.8560, "New Mangalore Port Waters", None),
-    "bhatkal": (13.9800, 74.5500, "Bhatkal Coastal Waters", None),
-    "udupi": (13.3409, 74.7421, "Malpe / Udupi Coastal Waters", None),
-    "malpe": (13.3500, 74.7000, "Malpe Fishing Harbour", None),
-    "honnavar": (14.2800, 74.4500, "Honnavar Waters", None),
-    "cochin": (9.9312, 76.2673, "Cochin / Kochi Port Waters", None),
-    "kochi": (9.9312, 76.2673, "Cochin / Kochi Port Waters", None),
-    "calicut": (11.2588, 75.7804, "Kozhikode / Calicut Port", None),
-    "kozhikode": (11.2588, 75.7804, "Kozhikode / Calicut Port", None),
-    "kollam": (8.8932, 76.6141, "Kollam / Quilon Port Waters", None),
-    "quilon": (8.8932, 76.6141, "Kollam / Quilon Port Waters", None),
-    "alappuzha": (9.4981, 76.3388, "Alappuzha / Alleppey Waters", None),
-    "alleppey": (9.4981, 76.3388, "Alappuzha / Alleppey Waters", None),
-    "trivandrum": (8.5241, 76.9366, "Thiruvananthapuram Coastal Waters", None),
-    "thiruvananthapuram": (8.5241, 76.9366, "Thiruvananthapuram Coastal Waters", None),
-    "vizhinjam": (8.3800, 76.9900, "Vizhinjam International Seaport", None),
-    "kannur": (11.8745, 75.3704, "Kannur Coastal Waters", None),
-    "munambam": (10.1800, 76.1700, "Munambam Fishery Harbour", None),
-
-    # Tamil Nadu & Andhra Pradesh (East Coast South)
-    "kanyakumari": (8.0883, 77.5385, "Kanyakumari / Cape Comorin", None),
-    "cape comorin": (8.0883, 77.5385, "Kanyakumari / Cape Comorin", None),
-    "tuticorin": (8.7642, 78.1348, "V.O. Chidambaranar / Tuticorin Port", None),
-    "thoothukudi": (8.7642, 78.1348, "Thoothukudi / Tuticorin Port", None),
-    "rameshwaram": (9.2876, 79.3129, "Rameshwaram & Pamban Pass", None),
-    "rameswaram": (9.2876, 79.3129, "Rameshwaram & Pamban Pass", None),
-    "pamban": (9.2800, 79.2000, "Pamban Strait", None),
-    "chennai": (13.0827, 80.2707, "Chennai Port & Coastal Waters", None),
-    "madras": (13.0827, 80.2707, "Chennai Port & Coastal Waters", None),
-    "ennore": (13.2000, 80.3300, "Kamarajar / Ennore Port", None),
-    "pondicherry": (11.9416, 79.8083, "Puducherry / Pondicherry Port", None),
-    "puducherry": (11.9416, 79.8083, "Puducherry / Pondicherry Port", None),
-    "cuddalore": (11.7500, 79.7700, "Cuddalore Port Waters", None),
-    "nagapattinam": (10.7667, 79.8417, "Nagapattinam Fishery Port", None),
-    "visakhapatnam": (17.6868, 83.2185, "Visakhapatnam Port & Outer Anchorage", None),
-    "vizag": (17.6868, 83.2185, "Visakhapatnam Port & Outer Anchorage", None),
-    "kakinada": (16.9891, 82.2475, "Kakinada Deep Water Port", None),
-    "machilipatnam": (16.1875, 81.1389, "Machilipatnam Coastal Waters", None),
-    "krishnapatnam": (14.2500, 80.1200, "Krishnapatnam Port", None),
-
-    # Odisha & West Bengal (East Coast North)
-    "paradip": (20.2644, 86.6698, "Paradip Port Waters", None),
-    "paradeep": (20.2644, 86.6698, "Paradip Port Waters", None),
-    "dhamra": (20.8000, 86.9700, "Dhamra Port (Odisha)", None),
-    "gopalpur": (19.2600, 84.9000, "Gopalpur Port (Odisha)", None),
-    "puri": (19.8135, 85.8312, "Puri Coastal Waters", None),
-    "kolkata": (22.5726, 88.3639, "Hooghly River / Kolkata Port", None),
-    "calcutta": (22.5726, 88.3639, "Hooghly River / Kolkata Port", None),
-    "haldia": (22.0257, 88.0583, "Haldia Dock Complex", None),
-    "digha": (21.6266, 87.5074, "Digha Coastal Waters", None),
-
-    # Islands & UTs
-    "port blair": (11.6234, 92.7265, "Port Blair (Andaman & Nicobar)", None),
-    "andaman": (11.6234, 92.7265, "Andaman Sea", None),
-    "nicobar": (7.0000, 93.8000, "Great Nicobar Waters", None),
-    "kavaratti": (10.5667, 72.6333, "Kavaratti (Lakshadweep)", None),
-    "agatti": (10.8500, 72.1833, "Agatti Island (Lakshadweep)", None),
-    "lakshadweep": (10.5667, 72.6333, "Lakshadweep Waters", None),
-
-    # Multilingual Names (Hindi / Tamil)
-    "मुंबई": (18.9220, 72.8347, "मुंबई (Mumbai Harbour)", None),
-    "गोवा": (15.2993, 73.8030, "गोवा (Goa Waters)", None),
-    "कोच्चि": (9.9312, 76.2673, "कोच्चि (Kochi Port)", None),
-    "चेन्नई": (13.0827, 80.2707, "चेन्नई (Chennai Port)", None),
-    "कोलकाता": (22.5726, 88.3639, "कोलकाता (Kolkata Port)", None),
-    "मंगलुरु": (12.9141, 74.8560, "मंगलुरु (Mangaluru Port)", None),
-    "कारवार": (14.8150, 74.1300, "कारवार (Karwar Port)", None),
-    "विशाखापट्टनम": (17.6868, 83.2185, "विशाखापट्टनम (Vizag Port)", None),
-    "கொச்சி": (9.9312, 76.2673, "கொச்சி (Kochi)", None),
-    "சென்னை": (13.0827, 80.2707, "சென்னை (Chennai)", None),
-    "தூத்துக்குடி": (8.7642, 78.1348, "தூத்துக்குடி (Tuticorin)", None),
-    "கன்னியாகுமரி": (8.0883, 77.5385, "கன்னியாகுமரி (Kanyakumari)", None),
-}
-
-_GEOCODE_CACHE: dict = {}
-
-
-def _lookup_external_geocoding(text: str) -> Optional[Tuple[Location, str]]:
-    """Fast geocoding lookup for explicitly mentioned ports/harbours with in-memory caching."""
-    patterns = [
-        r'\b(?:port|harbour|harbor|beach|island|coast|bay|gulf)\s+of\s+([A-Za-z\s]{3,24})\b',
-        r'\b([A-Za-z\s]{3,24})\s+(?:port|harbour|harbor|beach|island|coast|bay|gulf)\b',
-        r'\b(?:city|town|coastal\s+waters)\s+of\s+([A-Za-z\s]{3,24})\b',
-    ]
-    stoplist = {
-        "sail", "sailing", "fish", "fishing", "swim", "swimming",
-        "navigate", "navigation", "go", "going", "proceed", "proceeding",
-        "leave", "leaving", "dock", "docking", "anchor", "anchoring",
-        "safety", "danger", "caution", "weather", "marine", "wind",
-        "waves", "status", "report", "the", "now", "today", "tomorrow",
-        "water", "sea", "ocean", "here", "port", "beach", "island", "coast"
-    }
-
-    candidates = []
-    for pat in patterns:
-        m = re.search(pat, text or "", re.IGNORECASE)
-        if m:
-            cand = m.group(1).strip()
-            cand_low = cand.lower()
-            if cand_low not in stoplist and not any(w in stoplist for w in cand_low.split()):
-                candidates.append(cand)
-
-    if not candidates:
-        return None
-
-    import httpx
-    for place in candidates:
-        ckey = place.lower()
-        if ckey in _GEOCODE_CACHE:
-            lat, lon, name = _GEOCODE_CACHE[ckey]
-            return Location(latitude=lat, longitude=lon), name
-
-        try:
-            resp = httpx.get(
-                "https://geocoding-api.open-meteo.com/v1/search",
-                params={"name": place, "count": 1, "language": "en", "format": "json"},
-                timeout=2.0
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                results = data.get("results")
-                if results and len(results) > 0:
-                    top = results[0]
-                    lat = float(top["latitude"])
-                    lon = float(top["longitude"])
-                    name = f"{top.get('name', place)} ({top.get('country', '')})"
-                    _GEOCODE_CACHE[ckey] = (lat, lon, name)
-                    return Location(latitude=lat, longitude=lon), name
-        except Exception as exc:
-            logger.debug("External geocoding lookup failed for '%s': %s", place, exc)
-
-    return None
-
-
-def extract_location_and_zone_from_text(
-    text: str
-) -> Tuple[Optional[Location], Optional[str], Optional[str]]:
-    """
-    Detect user-mentioned geographical points, coastal ports, explicit coordinates, or safety zones.
-    Returns: (Location, zone_id, location_display_name)
-    """
+def extract_location_and_zone_from_text(text: str) -> Tuple[Optional[Location], Optional[str]]:
+    """Detect mentioned geographical points, sanctuaries, or tactical zones in text."""
     low = (text or "").lower()
 
-    # 1. Check for explicit DMS coordinates e.g. 15°26'N, 73°44'E or 15 26 N 73 44 E
-    dms_match = re.search(
-        r'(\d{1,2})[°\s]+(\d{1,2}(?:\.\d+)?)\'?\s*([NSns])[,\s]+(\d{1,3})[°\s]+(\d{1,2}(?:\.\d+)?)\'?\s*([EWew])',
-        text or ""
-    )
-    if dms_match:
-        lat_deg, lat_min, lat_dir, lon_deg, lon_min, lon_dir = dms_match.groups()
-        lat_val = float(lat_deg) + float(lat_min) / 60.0
-        if lat_dir.upper() == 'S':
-            lat_val = -lat_val
-        lon_val = float(lon_deg) + float(lon_min) / 60.0
-        if lon_dir.upper() == 'W':
-            lon_val = -lon_val
-        if -90 <= lat_val <= 90 and -180 <= lon_val <= 180:
-            name_str = f"Coordinates {round(lat_val, 4)}°{lat_dir.upper()}, {round(lon_val, 4)}°{lon_dir.upper()}"
-            return Location(latitude=round(lat_val, 6), longitude=round(lon_val, 6)), None, name_str
+    if any(k in low for k in ["danger", "squall", "red alert", "14°50", "14.83", "तूफान"]):
+        return Location(latitude=14.83, longitude=73.97), "zone-danger-se"
+    if any(k in low for k in ["caution", "rough swell", "2.8m", "15°26", "15.43", "सावधानी"]):
+        return Location(latitude=15.43, longitude=73.73), "zone-wind-ne"
+    if any(k in low for k in ["pfz", "machli", "fishing spot", "alpha", "15°12", "15.20"]):
+        return Location(latitude=15.20, longitude=73.53), "zone-pfz-sw"
+    if "netrani" in low:
+        return Location(latitude=14.01, longitude=74.32), None
+    if "malvan" in low:
+        return Location(latitude=16.06, longitude=73.47), None
+    if any(k in low for k in ["mormugao", "fairway", "shipping channel"]):
+        return Location(latitude=15.42, longitude=73.78), None
+    if "betul" in low:
+        return Location(latitude=15.14, longitude=73.95), None
 
-    # 2. Check for explicit decimal coordinates e.g. "18.92, 72.83" or "lat: 18.92, lon: 72.83"
-    coord_match = re.search(r'(?:lat(?:itude)?[:\s]*)?(-?\d{1,2}\.\d+)[,\s]+(?:lon(?:gitude)?[:\s]*)?(-?\d{1,3}\.\d+)', low)
+    # Regex search for explicit decimal coordinates e.g. "15.42, 73.81"
+    coord_match = re.search(r'(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)', low)
     if coord_match:
         try:
             lat = float(coord_match.group(1))
             lon = float(coord_match.group(2))
             if -90 <= lat <= 90 and -180 <= lon <= 180:
-                name_str = f"Waypoint ({lat:.4f}°N, {lon:.4f}°E)"
-                return Location(latitude=lat, longitude=lon), None, name_str
+                return Location(latitude=lat, longitude=lon), None
         except ValueError:
             pass
 
-    # 3. Check tactical simulation keywords ONLY when the user clearly
-    # refers to the demo Goa chart overlays — never for generic safety words.
-    if any(k in low for k in ["zone-danger-se", "14°50", "14.83"]):
-        return Location(latitude=14.83, longitude=73.97), "zone-danger-se", "Restricted Danger Zone (SE Squall)"
-    if any(k in low for k in ["zone-wind-ne", "15°26", "15.43"]):
-        return Location(latitude=15.43, longitude=73.73), "zone-wind-ne", "Caution Area (Rough Swell Sector)"
-    if any(k in low for k in ["zone-pfz-sw", "15°12"]):
-        return Location(latitude=15.20, longitude=73.53), "zone-pfz-sw", "INCOIS Potential Fishing Zone (PFZ Alpha)"
-
-    # 4. Check curated dictionary of coastal locations
-    # Sort keys by length descending to match multi-word phrases first (e.g. "port blair" before "port")
-    sorted_keys = sorted(COASTAL_LOCATIONS.keys(), key=lambda k: len(k), reverse=True)
-    for key in sorted_keys:
-        # Match as whole word or boundary-enclosed phrase
-        pattern = r'\b' + re.escape(key) + r'\b'
-        if re.search(pattern, low):
-            lat, lon, display_name, zone = COASTAL_LOCATIONS[key]
-            return Location(latitude=lat, longitude=lon), zone, display_name
-
-    # 5. Geocoding fallback for non-catalogued places told by the user
-    geo_res = _lookup_external_geocoding(text or "")
-    if geo_res:
-        loc, display_name = geo_res
-        return loc, None, display_name
-
-    return None, None, None
+    return None, None
 
 
 def extract_user_conditions(text: str) -> dict:
@@ -495,32 +284,27 @@ async def orchestrate(
     intent = conversation.get("intent") or "GENERAL_QUERY"
 
     # Contextual Location Extraction
-    detected_loc, detected_zone, detected_name = extract_location_and_zone_from_text(user_message)
+    detected_loc, detected_zone = extract_location_and_zone_from_text(user_message)
     effective_zone = zone_id or detected_zone
 
-    # Location told by user in message takes precedence over passive/stored location!
-    if detected_loc is not None:
-        loc_obj = detected_loc
-        loc_name = detected_name or "Queried Location"
-    elif location is not None:
+    if location is not None:
         if isinstance(location, dict):
             loc_obj = Location(**location)
         else:
             loc_obj = location
-        loc_name = "Your Current Location"
+    elif detected_loc is not None:
+        loc_obj = detected_loc
     elif effective_zone and effective_zone in KNOWN_ZONES:
         loc_obj = Location(
             latitude=KNOWN_ZONES[effective_zone]["latitude"],
             longitude=KNOWN_ZONES[effective_zone]["longitude"]
         )
-        loc_name = KNOWN_ZONES[effective_zone]["name"]
     else:
         # Default vessel operational location (Goa coastal waters)
         loc_obj = Location(latitude=15.246, longitude=73.803)
-        loc_name = "Default Vessel Station"
 
     # Process validated GPS pin via GPS Agent
-    gps_data = gps_agent(loc_obj.latitude, loc_obj.longitude, name=loc_name)
+    gps_data = gps_agent(loc_obj.latitude, loc_obj.longitude)
 
     # Run domain agents concurrently
     marine_task = marine_agent(loc_obj)

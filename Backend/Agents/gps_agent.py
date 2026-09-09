@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 
 def gps_agent(
     latitude: Union[float, int, Any] = None,
-    longitude: Union[float, int] = None,
-    name: str = None
+    longitude: Union[float, int] = None
 ) -> Dict[str, Any]:
     """
     Validate device GPS coordinates and return standardized marker object.
@@ -72,10 +71,9 @@ def gps_agent(
     if not (-180.0 <= lon <= 180.0):
         raise ValueError(f"Longitude {lon} out of range. Must be between -180.0 and 180.0.")
 
-    display_name = (name or "").strip() or "Your Current Location"
     location_data = {
         "id": "user_location",
-        "name": display_name,
+        "name": "Your Current Location",
         "latitude": round(lat, 6),
         "longitude": round(lon, 6),
         "type": "CURRENT_LOCATION",

@@ -148,46 +148,26 @@ async def process_query(request: UserRequest):
     if not query_text:
         query_text = "What is the current safety status?"
 
-    detected_loc, detected_zone, detected_name = extract_location_and_zone_from_text(query_text)
-    has_device_gps = bool(
-        request.location
-        or (request.latitude is not None and request.longitude is not None)
-    )
+    # 1. Resolve navigational zone and coordinates from request or query text
+    detected_loc, detected_zone = extract_location_and_zone_from_text(query_text)
+    target_zone = request.zone_id or detected_zone
 
-    # Device GPS is the source of truth. Named places in the message may override
-    # GPS only when the user explicitly named a port/city/coordinates.
-    named_place = bool(detected_loc and detected_zone is None and detected_name)
-
-    if named_place:
-        loc_name = detected_name or "Queried Location"
-        gps_val = gps_agent(detected_loc.latitude, detected_loc.longitude, name=loc_name)
+    if request.location:
+        gps_val = gps_agent(request.location.latitude, request.location.longitude)
         loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
-        target_zone = detected_zone
-        logger.info("Using location named in message: '%s' -> (%.4f, %.4f)", loc_name, loc.latitude, loc.longitude)
-    elif request.location:
-        loc_name = "Your Current Location"
-        gps_val = gps_agent(request.location.latitude, request.location.longitude, name=loc_name)
-        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
-        target_zone = None if has_device_gps else (request.zone_id or detected_zone)
-        logger.info("Using user device GPS location: (%.4f, %.4f)", loc.latitude, loc.longitude)
     elif request.latitude is not None and request.longitude is not None:
-        loc_name = "Your Current Location"
-        gps_val = gps_agent(request.latitude, request.longitude, name=loc_name)
+        gps_val = gps_agent(request.latitude, request.longitude)
         loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
-        target_zone = None
-        logger.info("Using direct coordinate parameters: (%.4f, %.4f)", loc.latitude, loc.longitude)
-    elif request.zone_id and request.zone_id in KNOWN_ZONES:
-        zone_info = KNOWN_ZONES[request.zone_id]
-        loc_name = zone_info["name"]
-        gps_val = gps_agent(zone_info["latitude"], zone_info["longitude"], name=loc_name)
+    elif detected_loc:
+        gps_val = gps_agent(detected_loc.latitude, detected_loc.longitude)
         loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
-        target_zone = request.zone_id
+    elif target_zone and target_zone in KNOWN_ZONES:
+        zone_info = KNOWN_ZONES[target_zone]
+        gps_val = gps_agent(zone_info["latitude"], zone_info["longitude"])
+        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
     else:
-        return {
-            "status": "error",
-            "error": "Location is required. Enable GPS or name a coastal place.",
-            "risk_points": [],
-        }
+        gps_val = gps_agent(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
+        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
 
     logger.info(
         "Processing /query: '%s' | zone: %s | loc: (%s, %s)",
@@ -294,8 +274,12 @@ async def process_query(request: UserRequest):
     # Resolve effective navigational zone for UI highlighting
     if target_zone:
         effective_zone = target_zone
+    elif risk_assessment.get("risk_level") in ("HIGH", "CRITICAL"):
+        effective_zone = "zone-danger-se"
+    elif risk_assessment.get("risk_level") == "MEDIUM":
+        effective_zone = "zone-wind-ne"
     else:
-        effective_zone = "user_location"
+        effective_zone = "zone-pfz-sw"
 
     # Backward compatible fields for UI
     recommendation["zone_id"] = effective_zone
@@ -327,7 +311,7 @@ async def process_query(request: UserRequest):
     }
 
     # Generate standardized GPS user location marker via GPS Agent
-    gps_data = gps_agent(loc.latitude, loc.longitude, name=loc_name)
+    gps_data = gps_agent(loc.latitude, loc.longitude)
 
     # Generate or retrieve 3x3 risk heatmap around user coordinates
     try:
@@ -418,15 +402,10 @@ async def process_query_get(
 @app.get("/telemetry")
 @app.post("/telemetry")
 async def get_live_telemetry(
-    lat: Optional[float] = Query(None),
-    lon: Optional[float] = Query(None)
+    lat: Optional[float] = Query(DEFAULT_LATITUDE),
+    lon: Optional[float] = Query(DEFAULT_LONGITUDE)
 ):
-    """Returns live vessel bridge telemetry for given coordinates."""
-    if lat is None or lon is None:
-        return {
-            "status": "error",
-            "error": "latitude and longitude are required",
-        }
+    """Returns live vessel bridge telemetry for given or current coordinates."""
     loc = Location(latitude=lat, longitude=lon)
     try:
         marine_res, weather_res = await asyncio.gather(
@@ -493,14 +472,8 @@ async def update_user_location(
     Receives user's current GPS coordinates from device/browser.
     Validates via GPS Agent and updates multi-agent telemetry analysis.
     """
-    target_lat = body.latitude if body else (lat if lat is not None else None)
-    target_lon = body.longitude if body else (lon if lon is not None else None)
-    if target_lat is None or target_lon is None:
-        return {
-            "status": "error",
-            "error": "latitude and longitude are required",
-            "risk_points": [],
-        }
+    target_lat = body.latitude if body else (lat if lat is not None else DEFAULT_LATITUDE)
+    target_lon = body.longitude if body else (lon if lon is not None else DEFAULT_LONGITUDE)
 
     gps_data = gps_agent(target_lat, target_lon)
     loc = Location(latitude=gps_data["latitude"], longitude=gps_data["longitude"])
