@@ -143,6 +143,10 @@ async def evaluate_risk_point(latitude: float, longitude: float) -> Dict[str, An
         "longitude": longitude,
         "risk": round(risk_score, 1),
         "risk_level": risk_level,
+        "wave_height": m_data.get("wave_height"),
+        "wind_speed": w_data.get("wind_speed"),
+        "sst": m_data.get("sea_surface_temperature"),
+        "reasons": risk_assessment.get("reasons", []),
     }
 
     _RISK_CACHE[ckey] = (now, result)
@@ -174,24 +178,10 @@ async def generate_risk_heatmap(
     # 2. Build 3x3 grid coordinates
     grid_coords = generate_3x3_coordinates(center_lat, center_lon, step=step)
 
-    # 3. Warm local spatial and environmental caches with center point first
-    await evaluate_risk_point(center_lat, center_lon)
-
-    # 4. Concurrently evaluate all 9 points across domain agents
-    tasks = [evaluate_risk_point(pt_lat, pt_lon) for pt_lat, pt_lon in grid_coords]
-    evaluated = await asyncio.gather(*tasks, return_exceptions=True)
-
-    risk_points = []
-    for idx, result in enumerate(evaluated):
-        if isinstance(result, dict) and "risk" in result:
-            risk_points.append(result)
-        else:
-            logger.warning(
-                "Skipping heatmap cell %s at %s: %s",
-                idx + 1,
-                grid_coords[idx],
-                result,
-            )
+    evaluations = await asyncio.gather(
+        *[evaluate_risk_point(pt_lat, pt_lon) for pt_lat, pt_lon in grid_coords]
+    )
+    risk_points = list(evaluations)
 
     logger.info(
         "Generated 3x3 risk heatmap for user at (%.4f, %.4f) with %d points",

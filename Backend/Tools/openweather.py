@@ -10,14 +10,8 @@ load_dotenv()  # Fallback to current working directory if present
 
 logger = logging.getLogger(__name__)
 
-# ========== SECURE ENV LOADING (No Hardcoded Keys!) ==========
 API_KEY = os.getenv("WEATHER_KEY", "").strip().removesuffix("git")
 BASE_URL = os.getenv("WEATHER_URL")
-
-if not API_KEY:
-    raise RuntimeError("WEATHER_KEY environment variable is not set in .env")
-if not BASE_URL:
-    raise RuntimeError("WEATHER_URL environment variable is not set in .env")
 
 REQUEST_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
@@ -35,6 +29,9 @@ async def get_weather(latitude: float, longitude: float) -> dict:
         raise ValueError("Latitude out of range (-90 to 90)")
     if not (-180 <= longitude <= 180):
         raise ValueError("Longitude out of range (-180 to 180)")
+
+    if not API_KEY or not BASE_URL:
+        raise RuntimeError("OpenWeather API key or URL is not configured in .env")
 
     params = {
         "lat": latitude,

@@ -33,10 +33,13 @@ class GPSData(BaseModel):
 # WEATHER DATA
 # =========================================================
 class WeatherData(BaseModel):
-    wind_speed: float = Field(..., ge=0, description="Wind speed in knots or m/s")
+    wind_speed: float = Field(..., ge=0, description="Wind speed in knots")
     wave_height: float = Field(..., ge=0, description="Significant wave height in meters")
     lightning_risk: Literal["LOW", "MEDIUM", "HIGH"]
     storm_risk: Literal["LOW", "MEDIUM", "HIGH"]
+    temperature: Optional[float] = Field(None, description="Air temperature in Celsius")
+    surface_pressure: Optional[float] = Field(None, description="Barometric pressure in hPa")
+    wind_direction: Optional[float] = Field(None, description="Wind direction in degrees")
 
 # =========================================================
 # MARINE DATA

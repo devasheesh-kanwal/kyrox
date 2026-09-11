@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 # Open-Meteo public Marine API does NOT require an API key.
 BASE_URL = os.getenv("MARINE_API_BASE_URL") or "https://marine-api.open-meteo.com/v1/marine"
 
-REQUEST_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+REQUEST_TIMEOUT = httpx.Timeout(15.0, connect=8.0)
 
-# Fields requested from the Open-Meteo Marine API (current conditions)
 CURRENT_MARINE_FIELDS = ",".join([
     "wave_height",
     "wave_direction",
@@ -34,24 +33,38 @@ CURRENT_MARINE_FIELDS = ",".join([
     "sea_surface_temperature",
 ])
 
+# Reference maritime coastal stations across Indian littoral waters
+COASTAL_SECTOR_ANCHORS = [
+    ("Central West Coast Offshore", 15.25, 73.75),
+    ("Karwar Marine Sector", 14.80, 74.05),
+    ("Mormugao Channel", 15.42, 73.74),
+    ("Betul South Waters", 15.12, 73.90),
+    ("Mumbai High", 19.10, 72.60),
+    ("Gujarat Saurashtra", 21.10, 70.00),
+    ("Mangalore Sector", 12.85, 74.75),
+    ("Kochi Offshore", 9.95, 76.15),
+    ("Kanyakumari Cape", 8.05, 77.55),
+    ("Chennai East", 13.10, 80.35),
+    ("Visakhapatnam Deep", 17.65, 83.35),
+    ("Odisha Paradip", 20.25, 86.70),
+    ("Digha Bengal", 21.55, 87.55),
+    ("Andaman Sea", 11.65, 92.75),
+]
+
+
+def _find_nearest_coastal_anchor(lat: float, lon: float) -> tuple[float, float]:
+    """Find the nearest coastal marine anchor point for inland coordinates."""
+    best = min(COASTAL_SECTOR_ANCHORS, key=lambda a: (a[1] - lat) ** 2 + (a[2] - lon) ** 2)
+    return best[1], best[2]
+
 
 async def get_marine_data(latitude: float, longitude: float) -> dict:
     """
     Fetch current marine weather data from the Open-Meteo Marine API.
 
     Uses .env for the base URL and httpx for non-blocking requests.
-    Returns the raw JSON response as a dict.
-
-    Args:
-        latitude:  Vessel latitude  (-90 to 90).
-        longitude: Vessel longitude (-180 to 180).
-
-    Returns:
-        dict: Raw JSON response from the Open-Meteo Marine API.
-
-    Raises:
-        ValueError: If latitude or longitude are invalid.
-        Exception:  On network / HTTP errors (details logged server-side only).
+    If the requested coordinates are inland and return null marine conditions,
+    automatically resolves conditions for the nearest coastal sector.
     """
     # ---- Input validation ----
     if not isinstance(latitude, (int, float)):
@@ -63,25 +76,35 @@ async def get_marine_data(latitude: float, longitude: float) -> dict:
     if not (-180 <= longitude <= 180):
         raise ValueError("Longitude out of range (-180 to 180)")
 
-    params = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "current": CURRENT_MARINE_FIELDS,
-        "timezone": "auto",
-        "cell_selection": "nearest",
-    }
-
     headers = {
-        "User-Agent": "KyroX-Marine-AI/1.0",
+        "User-Agent": "KyroX-Marine-AI/2.0",
     }
 
-    try:
+    async def _fetch(lat: float, lon: float) -> dict:
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "current": CURRENT_MARINE_FIELDS,
+            "timezone": "auto",
+            "cell_selection": "nearest",
+        }
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.get(
-                BASE_URL, params=params, headers=headers
-            )
+            response = await client.get(BASE_URL, params=params, headers=headers)
             response.raise_for_status()
             return response.json()
+
+    try:
+        data = await _fetch(latitude, longitude)
+        current = data.get("current") or {}
+        # If open-meteo returned null values (coordinate is inland / non-marine)
+        if current.get("wave_height") is None:
+            c_lat, c_lon = _find_nearest_coastal_anchor(latitude, longitude)
+            logger.info("Coordinates (%.4f, %.4f) are inland; fetching nearest coastal anchor (%.4f, %.4f)",
+                        latitude, longitude, c_lat, c_lon)
+            coastal_data = await _fetch(c_lat, c_lon)
+            if (coastal_data.get("current") or {}).get("wave_height") is not None:
+                return coastal_data
+        return data
     except httpx.TimeoutException as exc:
         logger.error(
             "Marine API request timed out for (%s, %s): %s",

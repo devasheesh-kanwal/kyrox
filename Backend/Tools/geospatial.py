@@ -139,7 +139,7 @@ def _local_sanctuary_fallback(lat: float, lon: float) -> dict:
         "restrictions": restrictions,
         "distance_to_boundary_meters": dist_boundary,
         "near_boundary": near_boundary,
-        "distance_to_shore_meters": 5000.0,
+        "distance_to_shore_meters": None,
     }
 
 

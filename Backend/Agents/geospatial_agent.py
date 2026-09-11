@@ -86,6 +86,6 @@ def _local_geospatial_check(lat: float, lon: float) -> dict:
         "near_boundary": near_boundary,
         "distance_to_boundary_meters": dist_boundary,
         "restricted_zone": restricted_zone,
-        "distance_to_shore_meters": 5000.0,
+        "distance_to_shore_meters": None,
     }
 

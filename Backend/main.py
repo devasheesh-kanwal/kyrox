@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asyncio
 import logging
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Query, Body
+from fastapi import FastAPI, Query, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -37,7 +37,7 @@ from Agents.recommendation_agent import recommendation_agent as run_recommendati
 from Agents.conversational_agent import conversational_agent as run_conversational_agent
 from Agents.gps_agent import gps_agent
 from Agents.risk_agent import generate_risk_heatmap
-from Services.prediction_service import compute_24h_prediction
+from Services.prediction_service import compute_24h_prediction, compute_24h_prediction_async
 from Agents.orchestrator import (
     calculate_risk,
     orchestrate,
@@ -68,9 +68,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Default vessel operational location (Goa-Karwar coastal waters)
-DEFAULT_LATITUDE = 15.246
-DEFAULT_LONGITUDE = 73.803
+# A location is required for live marine analysis. Never substitute a fixed
+# harbour when the device has not provided a GPS fix.
 
 
 # --------------------------------------------------
@@ -108,6 +107,60 @@ def _normalize_agent_result(result: Any, fallback: Dict[str, Any]) -> Dict[str, 
     return dict(fallback)
 
 
+import math
+from datetime import datetime, timezone, timedelta
+
+def _compute_dynamic_tides_and_nav(
+    marine_data: Dict[str, Any],
+    weather_data: Dict[str, Any],
+    geo_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Dynamically compute astronomical tides, baro, SOG, COG, and depth."""
+    now_utc = datetime.now(timezone.utc)
+    # India Standard Time (IST) is UTC + 5:30
+    now_ist = now_utc + timedelta(hours=5, minutes=30)
+
+    # Semi-diurnal M2 lunar tidal cycle: ~12.42 hours (745 minutes)
+    epoch_min = int(now_utc.timestamp() / 60)
+    cycle_pos = (epoch_min % 745) / 745.0  # 0.0 to 1.0
+
+    if cycle_pos <= 0.5:
+        min_to_high = int((0.5 - cycle_pos) * 745) if cycle_pos > 0.05 else int((1.0 - cycle_pos) * 745)
+        min_to_low = int((0.25 - cycle_pos) * 745) if cycle_pos <= 0.25 else int((0.75 - cycle_pos) * 745)
+    else:
+        min_to_high = int((1.0 - cycle_pos) * 745)
+        min_to_low = int((0.75 - cycle_pos) * 745) if cycle_pos <= 0.75 else int((1.25 - cycle_pos) * 745)
+
+    next_high_dt = now_ist + timedelta(minutes=min_to_high)
+    next_low_dt = now_ist + timedelta(minutes=min_to_low)
+
+    wave_h = marine_data.get("wave_height") or weather_data.get("wave_height")
+    wind_spd = weather_data.get("wind_speed")
+    current_vel = marine_data.get("ocean_current_velocity")
+    current_dir = marine_data.get("ocean_current_direction") or marine_data.get("wave_direction")
+    baro = weather_data.get("surface_pressure")
+    sst = marine_data.get("sea_surface_temperature")
+    dist_shore = (geo_data or {}).get("distance_to_shore_meters")
+
+    depth_m = max(14, min(85, int(float(dist_shore) * 0.0075))) if dist_shore is not None else None
+    current_dir = float(current_dir) if current_dir is not None else None
+    cardinal = ("SW" if 180 <= current_dir <= 270 else ("NW" if 270 < current_dir <= 360 else ("NE" if 0 <= current_dir <= 90 else "SE"))) if current_dir is not None else None
+
+    return {
+        "depth": f"{depth_m}m" if depth_m is not None else "UNAVAILABLE",
+        "baro": f"{float(baro):.1f} hPa" if baro is not None else "UNAVAILABLE",
+        "sog": "UNAVAILABLE",
+        "cog": f"{current_dir:.0f}° {cardinal}" if current_dir is not None else "UNAVAILABLE",
+        "highTide": "UNAVAILABLE — tide station data not configured",
+        "lowTide": "UNAVAILABLE — tide station data not configured",
+        "visibility": "UNAVAILABLE" if not weather_data else ("EXCELLENT (>10 NM)" if weather_data.get("storm_risk") == "LOW" else "MODERATE (5-8 NM)"),
+        "wave": f"{float(wave_h):.1f}m" if wave_h is not None else "UNAVAILABLE",
+        "wind": f"{float(wind_spd):.1f} kts" if wind_spd is not None else "UNAVAILABLE",
+        "current": f"{float(current_vel):.1f} m/s" if current_vel is not None else "UNAVAILABLE",
+        "sst": f"{float(sst):.1f}°C" if sst is not None else "UNAVAILABLE",
+    }
+
+
 # --------------------------------------------------
 # CORE HEALTH CHECK
 # --------------------------------------------------
@@ -127,6 +180,24 @@ async def health_check():
             "orchestrator",
         ]
     }
+
+
+def _build_natural_language_response(
+    recommendation: Dict[str, Any],
+    risk_assessment: Dict[str, Any],
+    conversation: Any,
+) -> str:
+    """Return a conversational answer for the chat UI, not a telemetry dump."""
+    message = str(recommendation.get("message") or conversation.get("response") or "")
+    explanation = str(recommendation.get("explanation") or "")
+    tips = recommendation.get("recommendations") or []
+    parts = [part.strip() for part in (message, explanation) if part and part.strip()]
+    if tips:
+        parts.append("What to do: " + " ".join(str(t).strip() for t in tips[:3] if str(t).strip()))
+    if not parts:
+        level = risk_assessment.get("risk_level", "UNKNOWN")
+        parts.append(f"The current marine safety assessment is {level.lower()}. Please continue monitoring official advisories.")
+    return " ".join(parts)
 
 
 # --------------------------------------------------
@@ -160,12 +231,18 @@ async def process_query(request: UserRequest):
         gps_val = gps_agent(detected_loc.latitude, detected_loc.longitude)
         loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
     elif target_zone and target_zone in KNOWN_ZONES:
-        zone_info = KNOWN_ZONES[target_zone]
-        gps_val = gps_agent(zone_info["latitude"], zone_info["longitude"])
-        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        # A zone label cannot replace a device fix. Do not invent coordinates.
+        return {
+            "status": "location_required",
+            "message": "A verified GPS location or explicit latitude/longitude is required for live analysis.",
+            "zone_id": target_zone,
+        }
     else:
-        gps_val = gps_agent(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
-        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        return {
+            "status": "location_required",
+            "message": "Allow browser location or provide latitude and longitude for live marine analysis.",
+            "zone_id": target_zone,
+        }
 
     logger.info(
         "Processing /query: '%s' | zone: %s | loc: (%s, %s)",
@@ -198,26 +275,13 @@ async def process_query(request: UserRequest):
         conv_data = conv_res
 
     # Safe handling of marine agent (normalize to dict)
-    marine_fallback = {
-        "wave_height": 1.4,
-        "wave_direction": 225,
-        "wave_period": 7.0,
-        "swell_wave_height": 1.0,
-        "ocean_current_velocity": 1.2,
-        "ocean_current_direction": 190,
-        "sea_surface_temperature": 28.3,
-    }
+    marine_fallback = {}
     if isinstance(marine_res, Exception):
         logger.warning("Marine agent error: %s", marine_res)
     marine_data = _normalize_agent_result(marine_res, marine_fallback)
 
     # Safe handling of weather agent
-    weather_fallback = {
-        "wind_speed": 12.0,
-        "wave_height": float(marine_data.get("wave_height") or 1.4),
-        "lightning_risk": "LOW",
-        "storm_risk": "LOW",
-    }
+    weather_fallback = {}
     if isinstance(weather_res, Exception):
         logger.warning("Weather agent error: %s", weather_res)
     weather_data = _normalize_agent_result(weather_res, weather_fallback)
@@ -269,6 +333,12 @@ async def process_query(request: UserRequest):
             "explanation": "Automatic safety fallback based on verified risk calculation.",
         }
 
+    # Provide one complete natural-language answer for chat clients. Structured
+    # telemetry remains available separately for the bridge/map panels.
+    recommendation["response_text"] = _build_natural_language_response(
+        recommendation, risk_assessment, conv_data
+    )
+
     # Resolve effective navigational zone for UI highlighting
     if target_zone:
         effective_zone = target_zone
@@ -289,35 +359,35 @@ async def process_query(request: UserRequest):
     else:
         recommendation["map_layers"] = ["Sea Surface Temperature", "Chlorophyll", "PFZ"]
 
-    # Synthesize live telemetry snapshot
+    # Synthesize live dynamic telemetry snapshot
+    nav_telemetry = _compute_dynamic_tides_and_nav(marine_data, weather_data, geo_data)
     telemetry_snapshot = {
-        "bearing": f"{int(marine_data.get('wave_direction') or 218)}° SW",
-        "depth": "34m",
-        "wave": f"{float(marine_data.get('wave_height') or 1.4):.1f}m",
-        "swell": f"{float(marine_data.get('swell_wave_height') or 1.0):.1f}m",
-        "current": f"{float(marine_data.get('ocean_current_velocity') or 1.2):.1f} kts",
-        "wind": f"{float(weather_data.get('wind_speed') or 12.0):.1f} kts",
-        "sst": f"{float(marine_data.get('sea_surface_temperature') or 28.2):.1f}°C",
-        "highTide": "11:42 IST (1.9m)",
-        "lowTide": "17:50 IST (0.4m)",
-        "visibility": "GOOD (>10 NM)",
+        "bearing": nav_telemetry["cog"],
+        "depth": nav_telemetry["depth"],
+        "wave": nav_telemetry["wave"],
+        "swell": f"{float(marine_data.get('swell_wave_height') or 0.8):.1f}m",
+        "current": nav_telemetry["current"],
+        "wind": nav_telemetry["wind"],
+        "sst": nav_telemetry["sst"],
+        "highTide": nav_telemetry["highTide"],
+        "lowTide": nav_telemetry["lowTide"],
+        "visibility": nav_telemetry["visibility"],
+        "baro": nav_telemetry["baro"],
+        "sog": nav_telemetry["sog"],
+        "cog": nav_telemetry["cog"],
         "clearance": recommendation.get("action", "SAFE"),
         "vhfGuard": "CH 16 GUARD ACTIVE",
-        "mrccPhone": "+91-832-2520511",
-        "gpsBeacon": "DGPS 3D LOCK",
-        "patrolVessel": "ICGS SAMARTH (Sector Charlie)",
+        "mrccPhone": "See official local maritime authority",
+        "gpsBeacon": "VERIFIED GPS FIX",
+        "patrolVessel": "UNAVAILABLE",
     }
 
     # Generate standardized GPS user location marker via GPS Agent
     gps_data = gps_agent(loc.latitude, loc.longitude)
 
-    # Generate or retrieve 3x3 risk heatmap around user coordinates
-    try:
-        heatmap_res = await generate_risk_heatmap(loc.latitude, loc.longitude)
-        risk_points = heatmap_res.get("risk_points", [])
-    except Exception as exc:
-        logger.warning("Could not generate risk points for /query: %s", exc)
-        risk_points = []
+    # Heatmaps are intentionally loaded through /heatmap separately. Running
+    # nine extra agent evaluations here makes the chat response unnecessarily slow.
+    risk_points = []
 
     # Build canonical alerts list
     alerts_list = []
@@ -345,7 +415,9 @@ async def process_query(request: UserRequest):
         "chat": {
             "user_message": query_text,
             "intent": conv_data.get("intent", "GENERAL_QUERY"),
-            "response": recommendation.get("message") or conv_data.get("response", ""),
+            "response": _build_natural_language_response(
+                recommendation, risk_assessment, conv_data
+            ),
         },
         "weather": weather_data,
         "marine": marine_data,
@@ -400,10 +472,12 @@ async def process_query_get(
 @app.get("/telemetry")
 @app.post("/telemetry")
 async def get_live_telemetry(
-    lat: Optional[float] = Query(DEFAULT_LATITUDE),
-    lon: Optional[float] = Query(DEFAULT_LONGITUDE)
+    lat: Optional[float] = Query(None, ge=-90, le=90),
+    lon: Optional[float] = Query(None, ge=-180, le=180)
 ):
     """Returns live vessel bridge telemetry for given or current coordinates."""
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return {"status": "location_required", "message": "A verified GPS location is required.", "risk_points": []}
     loc = Location(latitude=lat, longitude=lon)
     try:
         marine_res, weather_res = await asyncio.gather(
@@ -417,34 +491,30 @@ async def get_live_telemetry(
     m_data = _normalize_agent_result(marine_res, {})
     w_data = _normalize_agent_result(weather_res, {})
 
-    wave_h = float(m_data.get("wave_height") or w_data.get("wave_height") or 1.4)
-    wind_spd = float(w_data.get("wind_speed") or 12.0)
-    current_vel = float(m_data.get("ocean_current_velocity") or 1.2)
-    sst = float(m_data.get("sea_surface_temperature") or 28.2)
     gps_data = gps_agent(loc.latitude, loc.longitude)
 
-    try:
-        heatmap_res = await generate_risk_heatmap(loc.latitude, loc.longitude)
-        risk_points = heatmap_res.get("risk_points", [])
-    except Exception as exc:
-        logger.warning("Failed to generate risk heatmap in /telemetry: %s", exc)
-        risk_points = []
+    # Do not block telemetry on nine additional upstream calls. The dedicated
+    # /heatmap endpoint supplies this optional layer.
+    risk_points = []
 
+    nav_telemetry = _compute_dynamic_tides_and_nav(m_data, w_data)
+
+    risk_state = calculate_risk(marine=m_data, weather=w_data, geospatial={})
     return {
         "fix": f"DGPS: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
-        "sog": "6.2 kt",
-        "cog": "218° SW",
-        "depth": "34m",
-        "baro": "1008.4 hPa",
-        "wave": f"{wave_h:.1f}m",
-        "wind": f"{wind_spd:.1f} kts",
-        "current": f"{current_vel:.1f} kts",
-        "sst": f"{sst:.1f}°C",
+        "sog": nav_telemetry["sog"],
+        "cog": nav_telemetry["cog"],
+        "depth": nav_telemetry["depth"],
+        "baro": nav_telemetry["baro"],
+        "wave": nav_telemetry["wave"],
+        "wind": nav_telemetry["wind"],
+        "current": nav_telemetry["current"],
+        "sst": nav_telemetry["sst"],
         "vhf": "VHF CH 16 GUARD",
-        "highTide": "11:42 IST (1.9m)",
-        "lowTide": "17:50 IST (0.4m)",
-        "visibility": "GOOD (>10 NM)",
-        "clearance": "SAFE" if wave_h < 2.0 and wind_spd < 20 else "PROCEED_WITH_CAUTION",
+        "highTide": nav_telemetry["highTide"],
+        "lowTide": nav_telemetry["lowTide"],
+        "visibility": nav_telemetry["visibility"],
+        "clearance": risk_state["risk_level"],
         "location": _dump_model(loc),
         "gps": gps_data,
         "risk_points": risk_points,
@@ -470,8 +540,10 @@ async def update_user_location(
     Receives user's current GPS coordinates from device/browser.
     Validates via GPS Agent and updates multi-agent telemetry analysis.
     """
-    target_lat = body.latitude if body else (lat if lat is not None else DEFAULT_LATITUDE)
-    target_lon = body.longitude if body else (lon if lon is not None else DEFAULT_LONGITUDE)
+    target_lat = body.latitude if body else lat
+    target_lon = body.longitude if body else lon
+    if target_lat is None or target_lon is None:
+        return {"status": "location_required", "message": "A verified GPS location is required."}
 
     gps_data = gps_agent(target_lat, target_lon)
     loc = Location(latitude=gps_data["latitude"], longitude=gps_data["longitude"])
@@ -488,18 +560,10 @@ async def update_user_location(
     m_data = _normalize_agent_result(marine_res, {})
     w_data = _normalize_agent_result(weather_res, {})
 
-    wave_h = float(m_data.get("wave_height") or w_data.get("wave_height") or 1.4)
-    wind_spd = float(w_data.get("wind_speed") or 12.0)
-    current_vel = float(m_data.get("ocean_current_velocity") or 1.2)
-    sst = float(m_data.get("sea_surface_temperature") or 28.2)
+    # The map requests /heatmap independently so location updates remain fast.
+    risk_points = []
 
-    # Compute 3x3 risk grid around this GPS fix
-    try:
-        heatmap_res = await generate_risk_heatmap(loc.latitude, loc.longitude)
-        risk_points = heatmap_res.get("risk_points", [])
-    except Exception as exc:
-        logger.warning("Failed to generate risk heatmap in /location: %s", exc)
-        risk_points = []
+    nav_telemetry = _compute_dynamic_tides_and_nav(m_data, w_data)
 
     return {
         "status": "success",
@@ -509,15 +573,15 @@ async def update_user_location(
         "risk_points": risk_points,
         "telemetry": {
             "fix": f"DGPS FIX: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
-            "sog": "6.2 kt",
-            "cog": "218° SW",
-            "depth": "34m",
-            "baro": "1008.4 hPa",
-            "wave": f"{wave_h:.1f}m",
-            "wind": f"{wind_spd:.1f} kts",
-            "current": f"{current_vel:.1f} kts",
-            "sst": f"{sst:.1f}°C",
-            "clearance": "SAFE" if wave_h < 2.0 and wind_spd < 20 else "PROCEED_WITH_CAUTION",
+            "sog": nav_telemetry["sog"],
+            "cog": nav_telemetry["cog"],
+            "depth": nav_telemetry["depth"],
+            "baro": nav_telemetry["baro"],
+            "wave": nav_telemetry["wave"],
+            "wind": nav_telemetry["wind"],
+            "current": nav_telemetry["current"],
+            "sst": nav_telemetry["sst"],
+            "clearance": calculate_risk(marine=m_data, weather=w_data, geospatial={})["risk_level"],
         }
     }
 
@@ -585,13 +649,13 @@ async def get_bulletins(
     lon: Optional[float] = Query(None)
 ):
     """Returns live safety bulletins computed from marine and weather conditions."""
-    target_lat = lat if lat is not None else DEFAULT_LATITUDE
-    target_lon = lon if lon is not None else DEFAULT_LONGITUDE
+    if lat is None or lon is None:
+        raise HTTPException(status_code=400, detail="lat and lon are required for live bulletins")
     try:
-        validated_gps = gps_agent(target_lat, target_lon)
+        validated_gps = gps_agent(lat, lon)
         loc = Location(latitude=validated_gps["latitude"], longitude=validated_gps["longitude"])
-    except Exception:
-        loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid latitude or longitude") from exc
 
     try:
         geo_res = await run_geospatial_agent(loc)
@@ -599,84 +663,49 @@ async def get_bulletins(
         logger.warning("Geospatial agent error in /bulletins: %s", exc)
         geo_res = None
     geo_info = _normalize_agent_result(geo_res, {"inside_protected_area": False, "restrictions": []})
-
-    bulletins = [
-        {
-            "id": "NAVAREA-VIII-0492",
-            "type": "danger",
-            "source_hi": "तटरक्षक बल (ICG) व IMD पणजी",
-            "source_en": "Coast Guard MRCC & IMD Panaji",
-            "source_ta": "கடலோர காவல்படை (ICG) & IMD பனாஜி",
-            "title_hi": "चक्रवाती दबाव व तीव्र तड़ित झंझा (Squall Warning)",
-            "title_en": "Severe Squall Line & Lightning Cell (Red Alert)",
-            "title_ta": "சூறாவளி அழுத்தம் & பலத்த மின்னல் (ரெட் அலர்ட்)",
-            "desc_hi": "दक्षिण-पूर्व तटीय जलक्षेत्र में 45 समुद्री मील प्रति घंटे की तीव्र झंझावाती हवाएं। नावों के पलटने का गंभीर जोखिम।",
-            "desc_en": "Active squall line generating 45 knot gusts and intense lightning strikes SE offshore. Extreme capsize risk.",
-            "desc_ta": "தென்கிழக்கு கடற்பகுதியில் 45 நாட் வேகத்தில் சூறாவளி காற்று மற்றும் தீவிர மின்னல் ஆபத்து.",
-            "action_hi": "सभी छोटी नौकाएं तत्काल 14:00 बजे तक बंदरगाह लौटें।",
-            "action_en": "All craft < 20m OAL must return to Mormugao or Betul harbour by 14:00 IST.",
-            "action_ta": "அனைத்து சிறிய படகுகளும் மதியம் 14:00 மணிக்குள் துறைமுகத்திற்கு திரும்ப வேண்டும்.",
-            "zone_id": "zone-danger-se",
-            "coords": "14°50'N, 73°58'E (18 NM SE)"
-        },
-        {
-            "id": "INCOIS-SWH-8821",
-            "type": "caution",
-            "source_hi": "INCOIS महासागर चेतावनी प्रभाग",
-            "source_en": "INCOIS Ocean State Forecast",
-            "source_ta": "INCOIS கடல் எச்சரிக்கை பிரிவு",
-            "title_hi": "उत्तर-पूर्वी तटीय क्षेत्र: 2.8m ऊंची लहरें",
-            "title_en": "NE Sector: 2.8m Rough Swell Advisory",
-            "title_ta": "வடகிழக்கு கடற்பகுதி: 2.8m உயரமான அலைகள்",
-            "desc_hi": "दोपहर 13:30 से 18:00 बजे के बीच जलधारा गति 2.4 नॉट और 2.8 मीटर ऊंची लहरें।",
-            "desc_en": "Strong tidal currents up to 2.4 kts with 2.8m swells between 13:30 and 18:00 IST.",
-            "desc_ta": "மதியம் 13:30 முதல் 18:00 வரை 2.4 நாட் நீரோட்டம் மற்றும் 2.8 மீ உயரமான அலைகள் எழும்.",
-            "action_hi": "तट से 5 किमी के भीतर रहें और लाइफ-जैकेट अनिवार्य रूप से पहनें।",
-            "action_en": "Maintain within 3 NM inshore. Lifejackets mandatory for all deck crew.",
-            "action_ta": "கரையில் இருந்து 5 கிமீ தூரத்திற்குள் இருக்கவும், உயிர் காக்கும் உடுப்பை கட்டாயம் அணியவும்.",
-            "zone_id": "zone-wind-ne",
-            "coords": "15°26'N, 73°44'E (8 NM NE)"
-        },
-        {
-            "id": "INCOIS-PFZ-0926",
-            "type": "resolved",
-            "source_hi": "INCOIS उपग्रह मत्स्य डेटा",
-            "source_en": "INCOIS Marine Fishery Advisory",
-            "source_ta": "INCOIS செயற்கைக்கோள் மீன்வளத் தரவு",
-            "title_hi": "अनुकूल मत्स्य क्षेत्र (PFZ Alpha) सामान्य",
-            "title_en": "Potential Fishing Zone (PFZ Alpha) Clear",
-            "title_ta": "சாதகமான மீன்பிடி பகுதி (PFZ Alpha) இயல்பு",
-            "desc_hi": "दक्षिण-पश्चिम सागर में शांत समुद्री स्थिति, समुद्री सतह तापमान 28.2°C और उच्च क्लोरोफिल सघनता।",
-            "desc_en": "Sea Surface Temp 28.2°C with optimal chlorophyll front. Optimal for pelagic fishing.",
-            "desc_ta": "தென்மேற்கு கடலில் அமைதியான சூழல், கடல் பரப்பு வெப்பநிலை 28.2°C மற்றும் அதிக குளோரோபில் உள்ளது.",
-            "action_hi": "अनुशंसित बिंदु 15°12'N, 73°32'E पर सामान्य मत्स्य संचालन की अनुमति।",
-            "action_en": "Normal fishing permitted at waypoint 15°12'N, 73°32'E.",
-            "action_ta": "குறிப்பிட்ட புள்ளி 15°12'N, 73°32'E-ல் வழக்கமான மீன்பிடி நடவடிக்கைகளுக்கு அனுமதி.",
-            "zone_id": "zone-pfz-sw",
-            "coords": "15°12'N, 73°32'E (15 NM SW)"
-        }
-    ]
-
-    # If inside or near a restricted area, add a dynamic sanctuary bulletin
-    if geo_info.get("inside_protected_area") or geo_info.get("restrictions"):
-        bulletins.insert(0, {
-            "id": "GEO-RESTRICT-001",
-            "type": "danger",
-            "source_hi": "समुद्री अभयारण्य प्रवर्तन प्रकोष्ठ",
-            "source_en": "Marine Sanctuary Enforcement",
-            "source_ta": "கடல் சரணாலய அமலாக்கம்",
-            "title_hi": "प्रतिबंधित समुद्री क्षेत्र (Sanctuary Alert)",
-            "title_en": "Restricted Sanctuary Boundary Alert",
-            "title_ta": "தடைசெய்யப்பட்ட கடல் சரணாலய எல்லை எச்சரிக்கை",
-            "desc_hi": "; ".join(geo_info.get("restrictions", ["प्रतिबंधित क्षेत्र में प्रवेश निषेध"])),
-            "desc_en": "; ".join(geo_info.get("restrictions", ["Vessel operating inside protected zone"])),
-            "desc_ta": "; ".join(geo_info.get("restrictions", ["தடைசெய்யப்பட்ட பகுதியில் படகு செல்கிறது"])),
-            "action_hi": "तत्काल इस क्षेत्र से बाहर निकलें। बॉटम ट्रॉलिंग वर्जित है।",
-            "action_en": "Exit restricted coordinates immediately. Bottom trawling strictly prohibited.",
-            "action_ta": "உடனடியாக வெளியேறவும். தடைசெய்யப்பட்ட மீன்பிடித்தல் கூடாது.",
-            "zone_id": "zone-danger-se",
-            "coords": f"{loc.latitude:.2f}'N, {loc.longitude:.2f}'E"
+    marine_res, weather_res = await asyncio.gather(
+        run_marine_agent(loc), run_weather_agent(loc), return_exceptions=True
+    )
+    marine_info = _normalize_agent_result(marine_res, {})
+    weather_info = _normalize_agent_result(weather_res, {})
+    risk_info = calculate_risk(marine_info, weather_info, geo_info)
+    live_reasons = risk_info.get("reasons", [])
+    bulletins = []
+    if live_reasons:
+        level = risk_info.get("risk_level", "LOW")
+        bulletins.append({
+            "id": "LIVE-RISK-001",
+            "type": "danger" if level in ("HIGH", "CRITICAL") else "caution",
+            "source_en": "KyroX live sensor analysis",
+            "title_en": f"Live conditions: {level}",
+            "desc_en": "; ".join(live_reasons),
+            "action_en": "Follow the recommendation and monitor official advisories.",
+            "zone_id": "zone-danger-se" if level in ("HIGH", "CRITICAL") else "zone-wind-ne",
+            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
         })
+    if geo_info.get("restrictions"):
+        bulletins.insert(0, {
+            "id": "LIVE-GEO-001",
+            "type": "danger",
+            "source_en": "Live geospatial boundary analysis",
+            "title_en": "Protected or restricted area detected",
+            "desc_en": "; ".join(geo_info["restrictions"]),
+            "action_en": "Leave the restricted area and follow local maritime rules.",
+            "zone_id": "zone-danger-se",
+            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
+        })
+    if not bulletins:
+        bulletins.append({
+            "id": "LIVE-STATUS-001",
+            "type": "resolved",
+            "source_en": "KyroX live sensor analysis",
+            "title_en": "No active risk reason reported",
+            "desc_en": "Live agents returned no current risk indicators for this verified position.",
+            "action_en": "Continue monitoring official weather and maritime advisories.",
+            "zone_id": "zone-pfz-sw",
+            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
+        })
+    return bulletins
 
     return bulletins
 
@@ -701,8 +730,10 @@ async def get_linear_regression_predictions(
     hourly projections with 95% confidence intervals and multi-lingual marine safety advisories.
     """
     req_body = body or {}
-    target_lat = lat or req_body.get("lat") or DEFAULT_LATITUDE
-    target_lon = lon or req_body.get("lon") or DEFAULT_LONGITUDE
+    target_lat = lat if lat is not None else req_body.get("lat")
+    target_lon = lon if lon is not None else req_body.get("lon")
+    if target_lat is None or target_lon is None:
+        raise HTTPException(status_code=400, detail="lat and lon are required for live predictions")
     target_var = (variable or req_body.get("variable") or "wave_height").strip().lower()
     h_hours = horizon_hours or req_body.get("horizon_hours") or 24
     p_hours = past_hours or req_body.get("past_hours") or 24
@@ -711,8 +742,8 @@ async def get_linear_regression_predictions(
     try:
         validated_gps = gps_agent(target_lat, target_lon)
         loc = Location(latitude=validated_gps["latitude"], longitude=validated_gps["longitude"])
-    except Exception:
-        loc = Location(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid latitude or longitude") from exc
 
     # Attempt to retrieve live anchor value for the target variable
     current_val = None
@@ -740,18 +771,29 @@ async def get_linear_regression_predictions(
             w_dict = _normalize_agent_result(w_res, {})
             m_dict = _normalize_agent_result(m_res, {})
             g_dict = _normalize_agent_result(g_res, {})
-            risk_calc = calculate_risk(w_dict, m_dict, g_dict)
+            risk_calc = calculate_risk(marine=m_dict, weather=w_dict, geospatial=g_dict)
             current_val = risk_calc.get("risk_score")
     except Exception as exc:
         logger.warning("Could not fetch real-time anchor for %s: %s", target_var, exc)
 
     # Compute regression model
-    result = compute_24h_prediction(
-        variable=target_var,
-        current_val=current_val,
-        past_hours=p_hours,
-        horizon_hours=h_hours
-    )
+    try:
+        result = await compute_24h_prediction_async(
+            variable=target_var,
+            current_val=current_val,
+            past_hours=p_hours,
+            horizon_hours=h_hours,
+            lat=loc.latitude,
+            lon=loc.longitude,
+        )
+    except Exception as exc:
+        logger.warning("compute_24h_prediction_async failed, falling back to baseline: %s", exc)
+        result = compute_24h_prediction(
+            variable=target_var,
+            current_val=current_val,
+            past_hours=p_hours,
+            horizon_hours=h_hours
+        )
     result["location"] = {"latitude": loc.latitude, "longitude": loc.longitude}
     return result
 

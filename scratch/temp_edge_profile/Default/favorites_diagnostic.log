@@ -1,0 +1,99 @@
+2026-09-11 15:12:20.254: [INFO] CurrentProfilePath: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:12:20.254: [INFO] Profiles total count: 1
+2026-09-11 15:12:20.254: [INFO] Profile: name=Profile 1 path=C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default lastActive=null
+2026-09-11 15:12:20.254: [INFO] LastUsedProfileDir: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:12:20.254: [INFO] VisibilityChanged: 0
+2026-09-11 15:12:20.267: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.268: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.269: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.270: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.271: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.272: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.273: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.275: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.276: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.277: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:20.301: [INFO] OnDoneLoading sync enabled: 0
+2026-09-11 15:12:20.301: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-11 15:12:20.301: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-11 15:12:20.301: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-11 15:12:20.304: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:22.024: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-09-11 15:12:22.029: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:22.032: [INFO] Primary account changed.
+2026-09-11 15:12:22.032: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-09-11 15:12:22.040: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.196: [INFO] CurrentProfilePath: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:12:39.196: [INFO] Profiles total count: 1
+2026-09-11 15:12:39.196: [INFO] Profile: name=Profile 1 path=C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default lastActive=null
+2026-09-11 15:12:39.196: [INFO] LastUsedProfileDir: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:12:39.196: [INFO] VisibilityChanged: 0
+2026-09-11 15:12:39.215: [INFO] OnDoneLoading sync enabled: 0
+2026-09-11 15:12:39.215: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-11 15:12:39.215: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-11 15:12:39.215: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-11 15:12:39.232: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.245: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.898: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.901: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.905: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.907: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.909: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.911: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:39.914: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:39.917: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:41.639: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:41.640: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:42.205: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:42.806: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:42.809: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-09-11 15:12:42.812: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-09-11 15:12:53.887: [INFO] CurrentProfilePath: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:12:53.887: [INFO] Profiles total count: 1
+2026-09-11 15:12:53.887: [INFO] Profile: name=Profile 1 path=C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default lastActive=null
+2026-09-11 15:12:53.887: [INFO] LastUsedProfileDir: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:12:53.887: [INFO] VisibilityChanged: 0
+2026-09-11 15:12:53.924: [INFO] OnDoneLoading sync enabled: 0
+2026-09-11 15:12:53.924: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-11 15:12:53.924: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-11 15:12:53.924: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-11 15:12:53.941: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:53.963: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.582: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.585: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.588: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.591: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.594: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.597: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:12:54.600: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:54.604: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:57.328: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:57.330: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:58.032: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:58.613: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:12:58.616: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-09-11 15:12:58.619: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6
+2026-09-11 15:13:47.914: [INFO] CurrentProfilePath: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:13:47.914: [INFO] Profiles total count: 1
+2026-09-11 15:13:47.914: [INFO] Profile: name=Profile 1 path=C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default lastActive=null
+2026-09-11 15:13:47.914: [INFO] LastUsedProfileDir: C:\Users\devas\OneDrive\Documents\KyroX\scratch\temp_edge_profile\Default
+2026-09-11 15:13:47.914: [INFO] VisibilityChanged: 0
+2026-09-11 15:13:47.958: [INFO] OnDoneLoading sync enabled: 0
+2026-09-11 15:13:47.958: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-11 15:13:47.959: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-11 15:13:47.959: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-11 15:13:47.979: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.005: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.918: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.920: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.923: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.925: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.927: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.930: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-09-11 15:13:48.931: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:13:48.937: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:13:49.701: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:13:49.704: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:13:50.471: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:13:51.095: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 5
+2026-09-11 15:13:51.098: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 6

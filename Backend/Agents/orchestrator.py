@@ -23,58 +23,54 @@ INTENT_NEXT_ACTION = {
     "GENERAL_QUERY": "conversational_response",
 }
 
-# Known maritime zone coordinates and bounding centers
+# Named map-zone IDs used by the UI (coordinates are filled from live GPS, not a fixed harbour)
 KNOWN_ZONES = {
-    "zone-danger-se": {
-        "latitude": 14.83,
-        "longitude": 73.97,
-        "name": "Restricted Danger Zone (Red Alert Squall Line)",
-        "default_wind_kts": 45.0,
-        "default_wave_m": 3.6,
-        "lightning": "HIGH",
-        "storm": "HIGH",
-    },
-    "zone-wind-ne": {
-        "latitude": 15.43,
-        "longitude": 73.73,
-        "name": "Caution Area (Rough Swell Sector)",
-        "default_wind_kts": 22.0,
-        "default_wave_m": 2.8,
-        "lightning": "LOW",
-        "storm": "LOW",
-    },
-    "zone-pfz-sw": {
-        "latitude": 15.20,
-        "longitude": 73.53,
-        "name": "INCOIS Potential Fishing Zone (PFZ Alpha)",
-        "default_wind_kts": 8.0,
-        "default_wave_m": 1.1,
-        "lightning": "LOW",
-        "storm": "LOW",
-    },
+    # Zone IDs are presentation labels only. They intentionally do not contain
+    # coordinates; all analysis must use a verified GPS fix or an explicit
+    # location in the request.
+    "zone-danger-se": {"name": "Hazard sector (live weather)"},
+    "zone-wind-ne": {"name": "Caution sector (live weather)"},
+    "zone-pfz-sw": {"name": "Recommended fishing sector (live SST)"},
 }
 
 
 def extract_location_and_zone_from_text(text: str) -> Tuple[Optional[Location], Optional[str]]:
-    """Detect mentioned geographical points, sanctuaries, or tactical zones in text."""
+    """Detect explicitly mentioned geographical points, cities, ports, or coordinates in text."""
     low = (text or "").lower()
 
-    if any(k in low for k in ["danger", "squall", "red alert", "14°50", "14.83", "तूफान"]):
-        return Location(latitude=14.83, longitude=73.97), "zone-danger-se"
-    if any(k in low for k in ["caution", "rough swell", "2.8m", "15°26", "15.43", "सावधानी"]):
-        return Location(latitude=15.43, longitude=73.73), "zone-wind-ne"
-    if any(k in low for k in ["pfz", "machli", "fishing spot", "alpha", "15°12", "15.20"]):
-        return Location(latitude=15.20, longitude=73.53), "zone-pfz-sw"
+    # Explicit place name recognizer
+    if "goa" in low or "panaji" in low:
+        return Location(latitude=15.42, longitude=73.78), None
+    if "mumbai" in low or "bombay" in low:
+        return Location(latitude=18.92, longitude=72.83), None
+    if "kochi" in low or "cochin" in low:
+        return Location(latitude=9.97, longitude=76.24), None
+    if "chennai" in low or "madras" in low:
+        return Location(latitude=13.08, longitude=80.28), None
+    if "visakhapatnam" in low or "vizag" in low:
+        return Location(latitude=17.68, longitude=83.22), None
+    if "mangalore" in low:
+        return Location(latitude=12.87, longitude=74.84), None
+    if "porbandar" in low:
+        return Location(latitude=21.64, longitude=69.61), None
+    if "kanyakumari" in low:
+        return Location(latitude=8.08, longitude=77.55), None
+    if "kolkata" in low or "calcutta" in low:
+        return Location(latitude=22.55, longitude=88.31), None
     if "netrani" in low:
         return Location(latitude=14.01, longitude=74.32), None
     if "malvan" in low:
         return Location(latitude=16.06, longitude=73.47), None
+    if "karwar" in low:
+        return Location(latitude=14.81, longitude=74.13), None
+    if "ratnagiri" in low:
+        return Location(latitude=16.99, longitude=73.30), None
     if any(k in low for k in ["mormugao", "fairway", "shipping channel"]):
         return Location(latitude=15.42, longitude=73.78), None
     if "betul" in low:
         return Location(latitude=15.14, longitude=73.95), None
 
-    # Regex search for explicit decimal coordinates e.g. "15.42, 73.81"
+    # Regex search for explicit decimal coordinates e.g. "18.92, 72.83"
     coord_match = re.search(r'(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)', low)
     if coord_match:
         try:
@@ -170,29 +166,14 @@ def calculate_risk(
             "reasons": [
                 "EMERGENCY DISTRESS DETECTED: Immediate threat to vessel/crew life",
                 "Stand by on VHF Channel 16 immediately",
-                "Alerting Coast Guard MRCC Goa (+91-832-2520511 / toll-free 1554)"
+                "Alerting Indian Coast Guard Maritime Rescue Coordination Centre (National Toll-Free: 1554 / VHF Ch 16)"
             ]
         }
 
     # 2. Extract hypothetical/queried conditions from user message
     user_conds = extract_user_conditions(user_message or "")
 
-    # 3. Zone-based hazard assessment
-    effective_zone = zone_id or ""
-    if not effective_zone:
-        if any(k in low_msg for k in ["danger", "squall", "red alert", "तूफान"]):
-            effective_zone = "zone-danger-se"
-        elif any(k in low_msg for k in ["caution", "rough swell", "2.8m", "सावधानी"]):
-            effective_zone = "zone-wind-ne"
-
-    if effective_zone == "zone-danger-se":
-        score += 70
-        reasons.append("Restricted Danger Zone (Red Alert): 45 knot gusts & active lightning squall line")
-    elif effective_zone == "zone-wind-ne":
-        score += 40
-        reasons.append("Caution Area: 2.8m rough cross-swells & 35 km/h winds")
-
-    # 4. Wave height evaluation (Douglas scale)
+    # 3. Wave height evaluation (Douglas scale) — live marine / queried values only
     raw_wave = float(marine.get("wave_height") or weather.get("wave_height") or 0.0)
     queried_wave = float(user_conds.get("wave_height") or 0.0)
     wave_h = max(raw_wave, queried_wave)
@@ -207,11 +188,10 @@ def calculate_risk(
         score += 20
         reasons.append(f"Moderate wave swell ({wave_h:.1f}m)")
 
-    # 5. Wind speed evaluation (convert OpenWeather m/s to knots)
+    # 4. Wind speed — weather_agent already returns knots
     raw_wind = float(weather.get("wind_speed") or 0.0)
-    wind_kts_sensor = (raw_wind * 1.94384) if raw_wind < 30.0 else raw_wind
     queried_wind = float(user_conds.get("wind_speed_kts") or 0.0)
-    wind_spd = max(wind_kts_sensor, queried_wind)
+    wind_spd = max(raw_wind, queried_wind)
 
     if wind_spd >= 35.0:
         score += 45
@@ -223,7 +203,7 @@ def calculate_risk(
         score += 15
         reasons.append(f"Brisk winds ({wind_spd:.1f} kts)")
 
-    # 6. Lightning & Storm evaluation
+    # 5. Lightning & Storm evaluation
     lightning = user_conds.get("lightning_risk") or weather.get("lightning_risk")
     storm = user_conds.get("storm_risk") or weather.get("storm_risk")
 
@@ -235,7 +215,7 @@ def calculate_risk(
         score += 50
         reasons.append("Squall or storm front detected")
 
-    # 7. Geospatial protected area & boundary evaluation
+    # 6. Geospatial protected area & boundary evaluation
     if geospatial.get("inside_protected_area") or geospatial.get("restricted_zone"):
         score += 50
         sanctuary_notes = geospatial.get("restrictions", [])
@@ -249,7 +229,7 @@ def calculate_risk(
         score += 25
         reasons.append("Vessel is operating close to restricted boundary")
 
-    # 8. Final Risk Tier Mapping
+    # 7. Final Risk Tier Mapping
     if score >= 80:
         risk_level = "CRITICAL"
     elif score >= 55:
@@ -294,14 +274,34 @@ async def orchestrate(
             loc_obj = location
     elif detected_loc is not None:
         loc_obj = detected_loc
-    elif effective_zone and effective_zone in KNOWN_ZONES:
-        loc_obj = Location(
-            latitude=KNOWN_ZONES[effective_zone]["latitude"],
-            longitude=KNOWN_ZONES[effective_zone]["longitude"]
-        )
     else:
-        # Default vessel operational location (Goa coastal waters)
-        loc_obj = Location(latitude=15.246, longitude=73.803)
+        loc_obj = None
+
+    if loc_obj is None:
+        return {
+            "status": "location_required",
+            "user_message": user_message,
+            "intent": intent,
+            "conversation": conversation,
+            "location": None,
+            "gps": None,
+            "zone_id": effective_zone,
+            "marine_data": {},
+            "weather_data": {},
+            "geospatial_data": {},
+            "risk_assessment": {"risk_score": 0, "risk_level": "LOW", "reasons": []},
+            "recommendation": {
+                "action": "SAFE",
+                "message": "Enable GPS or search a port so KyroX can load live marine conditions.",
+                "recommendations": [
+                    "Allow browser location, or type a coastal port name / lat, lon.",
+                    "Do not rely on a default harbour — readings are location-specific.",
+                ],
+                "explanation": "No coordinates were provided, so weather and marine agents were not run.",
+                "alerts": [],
+                "map_layers": [],
+            },
+        }
 
     # Process validated GPS pin via GPS Agent
     gps_data = gps_agent(loc_obj.latitude, loc_obj.longitude)
@@ -318,30 +318,27 @@ async def orchestrate(
         return_exceptions=True,
     )
 
-    marine_data = results[0] if not isinstance(results[0], Exception) else {
-        "wave_height": 1.2,
-        "sea_surface_temperature": 28.2,
-        "ocean_current_velocity": 1.1,
-    }
+    marine_data = results[0] if not isinstance(results[0], Exception) else {}
+    if isinstance(results[0], Exception):
+        logger.warning("Marine agent failed in orchestrator: %s", results[0])
     weather_res = results[1] if not isinstance(results[1], Exception) else None
+    if isinstance(results[1], Exception):
+        logger.warning("Weather agent failed in orchestrator: %s", results[1])
     geo_data = results[2] if not isinstance(results[2], Exception) else {
         "inside_protected_area": False,
         "restricted_zone": False,
         "near_boundary": False,
         "restrictions": [],
     }
+    if isinstance(results[2], Exception):
+        logger.warning("Geospatial agent failed in orchestrator: %s", results[2])
 
     if hasattr(weather_res, "model_dump"):
         weather_data = weather_res.model_dump()
     elif isinstance(weather_res, dict):
         weather_data = weather_res
     else:
-        weather_data = {
-            "wind_speed": 12.0,
-            "wave_height": float(marine_data.get("wave_height") or 1.2),
-            "lightning_risk": "LOW",
-            "storm_risk": "LOW",
-        }
+        weather_data = {}
 
     # Cross-fill wave height from marine if weather had 0.0
     if not weather_data.get("wave_height") and marine_data.get("wave_height"):

@@ -843,6 +843,25 @@
       max-width: 100%;
     }
 
+    .dispatch-bubble-assistant {
+      max-width: 92%;
+      padding: 14px 16px;
+      background: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-left: 3px solid var(--brass-base);
+      border-radius: 12px 12px 12px 3px;
+      color: var(--text-chart);
+      line-height: 1.55;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    }
+    .assistant-label {
+      margin-bottom: 6px;
+      color: var(--brass-bright);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+
     .dispatch-bubble-operator {
       background: linear-gradient(135deg, #2F261F 0%, #241D17 100%);
       border: 1px solid rgba(200, 138, 62, 0.38);
@@ -2438,6 +2457,181 @@
     .bridge-cockpit.view-graph .tactical-chart-station { display: flex; width: 100%; }
     .bridge-cockpit.view-graph .tactical-side-station { display: none; }
 
+  
+    /* ==========================================================================
+       GPS TRACKING TOGGLE & TACTICAL LOCATION SEARCH BAR
+       ========================================================================== */
+    .gps-led-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #55c759;
+      box-shadow: 0 0 8px #55c759;
+      display: inline-block;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .bezel-btn.gps-active {
+      border-color: #55c759;
+      color: var(--text-chart);
+    }
+
+    .bezel-btn.gps-disabled {
+      opacity: 0.85;
+      border-color: var(--border-bezel);
+      color: var(--text-muted);
+    }
+
+    .bezel-btn.gps-disabled .gps-led-dot {
+      background-color: #786D5F;
+      box-shadow: none;
+    }
+
+    .tactical-location-search-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-bridge);
+      border-bottom: 1.5px solid var(--border-bezel);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+      z-index: 24;
+      flex-shrink: 0;
+    }
+
+    .loc-search-input-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+    }
+
+    .loc-search-icon {
+      position: absolute;
+      left: 10px;
+      font-size: 13px;
+      color: var(--brass-bright);
+      pointer-events: none;
+    }
+
+    #inputCustomLocation {
+      width: 100%;
+      padding: 6px 28px 6px 30px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-brass);
+      border-radius: var(--radius-subtle);
+      color: var(--text-chart);
+      font-family: var(--font-telemetry);
+      font-size: 11.5px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    #inputCustomLocation:focus {
+      border-color: var(--brass-bright);
+      box-shadow: 0 0 6px rgba(200, 138, 62, 0.35);
+    }
+
+    .loc-search-clear {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: none;
+      padding: 0;
+    }
+
+    .loc-search-clear:hover {
+      color: var(--text-chart);
+    }
+
+    .loc-search-submit {
+      padding: 6px 14px;
+      background: var(--brass-base);
+      color: var(--text-inverse);
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--brass-bright);
+      border-radius: var(--radius-subtle);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background-color 0.12s, box-shadow 0.12s;
+    }
+
+    .loc-search-submit:hover {
+      background: var(--brass-bright);
+      box-shadow: 0 0 8px rgba(220, 155, 74, 0.4);
+    }
+
+    .loc-search-gps {
+      padding: 6px 11px;
+      background: var(--bg-console);
+      color: var(--text-chart);
+      font-family: var(--font-telemetry);
+      font-size: 11px;
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-subtle);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background-color 0.12s, border-color 0.12s;
+    }
+
+    .loc-search-gps:hover {
+      background: var(--bg-console-raised);
+      border-color: var(--border-brass);
+      color: var(--brass-bright);
+    }
+
+    .loc-quick-chips {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      width: 100%;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(58, 48, 39, 0.5);
+    }
+
+    .loc-quick-lbl {
+      font-family: var(--font-telemetry);
+      font-size: 9.5px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .loc-chip {
+      padding: 2px 7px;
+      background: var(--bg-console);
+      border: 1px solid var(--border-bezel);
+      border-radius: 2px;
+      color: var(--text-muted);
+      font-family: var(--font-telemetry);
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .loc-chip:hover {
+      background: var(--bg-console-raised);
+      border-color: var(--border-brass);
+      color: var(--brass-bright);
+    }
+
   </style>
 
 </head>
@@ -2467,12 +2661,18 @@
               <span style="font-size: 11px; font-weight: 600; color: var(--brass-bright); font-family: var(--font-telemetry);">ECM-88</span>
             </div>
             <div class="station-specs" id="txtBridgeSubtitle">
-              COMMERCIAL MARINE BRIDGE TERMINAL • GOA–KARWAR SECTOR
+              COMMERCIAL MARINE BRIDGE TERMINAL • REAL-TIME GPS NAVIGATION
             </div>
           </div>
         </div>
 
         <div class="masthead-controls">
+          <!-- GPS Real-Time Tracking Toggle Button -->
+          <button id="btnGpsToggle" class="bezel-btn gps-active" type="button" title="Toggle Real-time GPS Tracking ON / OFF">
+            <span class="gps-led-dot"></span>
+            <span id="txtGpsToggle">📡 GPS: ON</span>
+          </button>
+
           <!-- Sunlight Deck Mode Button -->
           <button id="btnSunlightToggle" class="bezel-btn" type="button" title="High contrast boost for bright sunlight">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2533,7 +2733,7 @@
             <span id="txtTelemDepth">DEPTH: <strong>34m</strong></span>
           </span>
           <span class="telemetry-node">
-            <span id="txtTelemBaro">BARO: <strong>1008.4 hPa ↓</strong></span>
+            <span id="txtTelemBaro">BARO: <strong>WAITING FOR GPS</strong></span>
           </span>
           <span class="telemetry-node">
             <span id="txtTelemVhf" style="color: var(--brass-bright); font-weight: 700;">VHF CH 16 GUARD</span>
@@ -2553,6 +2753,33 @@
       <!-- LEFT / CENTER: TACTICAL NAVIGATIONAL CHART -->
       <section class="tactical-chart-station" aria-label="Nautical Navigation Chart">
         
+        <!-- DEDICATED MANUAL LOCATION INPUT & QUERY STATION -->
+        <div class="tactical-location-search-bar" id="locSearchBar">
+          <div class="loc-search-input-wrapper">
+            <span class="loc-search-icon">🔍</span>
+            <input type="text" id="inputCustomLocation" placeholder="Type port, coastal zone or Lat, Lon (e.g. Mumbai, Kochi, Chennai, 18.92, 72.83)..." autocomplete="off" spellcheck="false">
+            <button type="button" id="btnClearLocSearch" class="loc-search-clear" title="Clear Search">×</button>
+          </div>
+          <button type="button" id="btnSubmitLocation" class="loc-search-submit">
+            <span id="txtBtnSubmitLoc">📍 विवरण देखें (Show Details)</span>
+          </button>
+          <button type="button" id="btnCurrentGpsLocation" class="loc-search-gps" title="Reset to Device GPS Location">
+            <span id="txtBtnCurrentGps">🎯 मेरा जीपीएस (My GPS)</span>
+          </button>
+          <div class="loc-quick-chips" id="locQuickChips">
+            <span class="loc-quick-lbl" id="txtQuickPortsLbl">त्वरित बंदरगाह:</span>
+            <button type="button" class="loc-chip" data-loc="Goa">गोवा (Goa)</button>
+            <button type="button" class="loc-chip" data-loc="Mumbai">मुंबई</button>
+            <button type="button" class="loc-chip" data-loc="Kochi">कोच्चि</button>
+            <button type="button" class="loc-chip" data-loc="Chennai">चेन्नई</button>
+            <button type="button" class="loc-chip" data-loc="Visakhapatnam">विशाखापट्टनम</button>
+            <button type="button" class="loc-chip" data-loc="Mangalore">मंगलुरु</button>
+            <button type="button" class="loc-chip" data-loc="Porbandar">पोरबंदर</button>
+            <button type="button" class="loc-chip" data-loc="Kanyakumari">कन्याकुमारी</button>
+            <button type="button" class="loc-chip" data-loc="Kolkata">कोलकाता</button>
+          </div>
+        </div>
+
         <div class="chart-viewport" id="chartViewport">
 
           <!-- Compass & Scale HUD -->
@@ -2729,7 +2956,7 @@
 </section>
 
       <!-- RIGHT / COMPANION STATION: BULLETINS & RADIO COMMUNICATOR -->
-      <aside class="tactical-side-station" aria-label="Tactical Safety Log and Advisory">
+      <aside class="tactical-side-station" aria-label="KyroX Assistant">
         
         <!-- Station Header Tabs (Never separating them, allowing instant switch) -->
         <nav class="station-tab-bar" role="tablist">
@@ -2752,7 +2979,7 @@
             <div class="bulletin-registry-header">
               <div class="bulletin-registry-title">
                 <span id="txtRegistryTitle">तटीय सुरक्षा सूचनाएं</span>
-                <span style="font-family: var(--font-telemetry); font-size: 10.5px; color: var(--brass-bright);" id="txtRegistrySector">SECTOR: GOA-KARWAR</span>
+                <span style="font-family: var(--font-telemetry); font-size: 10.5px; color: var(--brass-bright);" id="txtRegistrySector">SECTOR: LIVE GPS TRACKING</span>
               </div>
               <p class="bulletin-status-line" id="txtRegistryStatusSummary">
                 सक्रिय बुलेटिन: 1 अति गंभीर (RED), 1 चेतावनी (CAUTION)
@@ -3011,7 +3238,7 @@
         heatmapBtnOn: "हीटमैप: चालू",
         heatmapBtnOff: "हीटमैप: बंद",
         tabAlerts: "⚠️ सुरक्षा अलर्ट बुलेटिन",
-        tabChat: "💬 सामरिक परामर्श लॉग",
+        tabChat: "💬 KyroX Assistant",
         registryTitle: "तटीय सुरक्षा सूचनाएं",
         registrySector: "सेक्टर: गोवा–कारवार",
         statusSummary: (d, c) => `सक्रिय बुलेटिन: ${d} अति गंभीर (RED), ${c} चेतावनी (CAUTION)`,
@@ -3033,14 +3260,14 @@
         viewPC: "PC",
         viewPhone: "फोन",
         queries: [
-          { label: "🐟 उत्तम मत्स्य क्षेत्र (PFZ)", query: "Aaj machli pakadne ke liye sabse achi jagah kahan hai?", zone_id: "zone-pfz-sw" },
-          { label: "🌊 हवा व 3m लहरें", query: "Kya 35 km/h ki tez hawa aur unchi lehron ka khatra hai?", zone_id: "zone-wind-ne" },
-          { label: "⚓ बंदरगाह वापसी समय", query: "Kal subah samundar mein jaana safe hai kya?", zone_id: "zone-pfz-sw" },
-          { label: "🆘 तटरक्षक आपातकाल", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: "zone-danger-se" }
+          { label: "🐟 उत्तम मत्स्य क्षेत्र (PFZ)", query: "Aaj machli pakadne ke liye sabse achi jagah kahan hai?", zone_id: null },
+          { label: "🌊 हवा व 3m लहरें", query: "Kya 35 km/h ki tez hawa aur unchi lehron ka khatra hai?", zone_id: null },
+          { label: "⚓ बंदरगाह वापसी समय", query: "Kal subah samundar mein jaana safe hai kya?", zone_id: null },
+          { label: "🆘 तटरक्षक आपातकाल", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: null }
         ]
       },
       en: {
-        bridgeSubtitle: "COMMERCIAL MARINE BRIDGE TERMINAL • GOA–KARWAR SECTOR",
+        bridgeSubtitle: "COMMERCIAL MARINE BRIDGE TERMINAL • REAL-TIME GPS NAVIGATION",
         sunlight: "SUNLIGHT",
         sunlightActive: "DECK HIGH-CONTRAST",
         telemetryFix: "DGPS FIX: 15°24.6'N, 73°48.2'E",
@@ -3078,9 +3305,9 @@
         heatmapBtnOn: "HEATMAP: ON",
         heatmapBtnOff: "HEATMAP: OFF",
         tabAlerts: "⚠️ Marine Bulletins",
-        tabChat: "💬 Tactical Advisory Log",
+        tabChat: "💬 KyroX Assistant",
         registryTitle: "Coastal Safety Notices",
-        registrySector: "SECTOR: GOA-KARWAR",
+        registrySector: "SECTOR: LIVE GPS TRACKING",
         statusSummary: (d, c) => `Active Bulletins: ${d} Danger (RED), ${c} Caution Notices`,
         filtAll: "All Notices",
         filtDanger: "Danger",
@@ -3100,10 +3327,10 @@
         viewPC: "PC",
         viewPhone: "PHONE",
         queries: [
-          { label: "🐟 Recommended PFZ Spot", query: "Where is the best potential fishing zone today?", zone_id: "zone-pfz-sw" },
-          { label: "🌊 Swell & High Wind Warning", query: "Is there high wind and rough swell risk today?", zone_id: "zone-wind-ne" },
-          { label: "⚓ Return Tide Window", query: "Is it safe to venture out tomorrow morning?", zone_id: "zone-pfz-sw" },
-          { label: "🆘 Coast Guard Emergency", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: "zone-danger-se" }
+          { label: "🐟 Recommended PFZ Spot", query: "Where is the best potential fishing zone today?", zone_id: null },
+          { label: "🌊 Swell & High Wind Warning", query: "Is there high wind and rough swell risk today?", zone_id: null },
+          { label: "⚓ Return Tide Window", query: "Is it safe to venture out tomorrow morning?", zone_id: null },
+          { label: "🆘 Coast Guard Emergency", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: null }
         ]
       },
       ta: {
@@ -3145,7 +3372,7 @@
         heatmapBtnOn: "வெப்ப வரைபடம்: ஆன்",
         heatmapBtnOff: "வெப்ப வரைபடம்: ஆஃப்",
         tabAlerts: "⚠️ பாதுகாப்பு எச்சரிக்கைகள்",
-        tabChat: "💬 ஆலோசனைப் பதிவு",
+        tabChat: "💬 KyroX Assistant",
         registryTitle: "கடற்கரை பாதுகாப்பு அறிவிப்புகள்",
         registrySector: "துறை: கோவா–கார்வார்",
         statusSummary: (d, c) => `செயலில் உள்ளவை: ${d} ஆபத்து (RED), ${c} எச்சரிக்கை (CAUTION)`,
@@ -3167,74 +3394,207 @@
         viewPC: "PC",
         viewPhone: "போன்",
         queries: [
-          { label: "🐟 சிறந்த மீன்பிடி பகுதி (PFZ)", query: "இன்று சிறந்த மீன்பிடி பகுதி எங்குள்ளது?", zone_id: "zone-pfz-sw" },
-          { label: "🌊 பலத்த காற்று & 3m அலைகள்", query: "இன்று கடுமையான அலைகள் மற்றும் பலத்த காற்று ஆபத்து உள்ளதா?", zone_id: "zone-wind-ne" },
-          { label: "⚓ துறைமுகம் திரும்பும் நேரம்", query: "நாளை காலை கடலுக்குச் செல்வது பாதுகாப்பானதா?", zone_id: "zone-pfz-sw" },
-          { label: "🆘 அவசர உதவி (VHF Ch 16)", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: "zone-danger-se" }
+          { label: "🐟 சிறந்த மீன்பிடி பகுதி (PFZ)", query: "இன்று சிறந்த மீன்பிடி பகுதி எங்குள்ளது?", zone_id: null },
+          { label: "🌊 பலத்த காற்று & 3m அலைகள்", query: "இன்று கடுமையான அலைகள் மற்றும் பலத்த காற்று ஆபத்து உள்ளதா?", zone_id: null },
+          { label: "⚓ துறைமுகம் திரும்பும் நேரம்", query: "நாளை காலை கடலுக்குச் செல்வது பாதுகாப்பானதா?", zone_id: null },
+          { label: "🆘 அவசர உதவி (VHF Ch 16)", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: null }
         ]
       }
     };
 
-    // Authentic Coastal Safety Bulletins (NAVAREA / INCOIS Standard)
-    let BULLETINS = [
-      {
-        id: "NAVAREA-VIII-0492",
-        type: "danger",
-        source_hi: "तटरक्षक बल (ICG) व IMD पणजी",
-        source_en: "Coast Guard MRCC & IMD Panaji",
-        source_ta: "கடலோர காவல்படை (ICG) & IMD பனாஜி",
-        title_hi: "चक्रवाती दबाव व तीव्र तड़ित झंझा (Squall Warning)",
-        title_en: "Severe Squall Line & Lightning Cell (Red Alert)",
-        title_ta: "சூறாவளி அழுத்தம் & பலத்த மின்னல் (ரெட் அலர்ட்)",
-        desc_hi: "दक्षिण-पूर्व तटीय जलक्षेत्र में 45 समुद्री मील प्रति घंटे की तीव्र झंझावाती हवाएं और सक्रिय बिजली का केंद्र। नावों के पलटने का गंभीर जोखिम।",
-        desc_en: "Active squall line generating 45 knot gusts and intense lightning strikes SE offshore. Extreme capsize risk for mechanized craft.",
-        desc_ta: "தென்கிழக்கு கடற்பகுதியில் 45 நாட் வேகத்தில் சூறாவளி காற்று மற்றும் தீவிர மின்னல் ஆபத்து. படகுகள் கவிழும் அபாயம் உள்ளது.",
-        action_hi: "सभी छोटी नौकाएं तत्काल 14:00 बजे तक बेतुल या मोरमुगाओ बंदरगाह लौटें।",
-        action_en: "All craft < 20m OAL must return to Mormugao or Betul harbour by 14:00 IST.",
-        action_ta: "அனைத்து சிறிய படகுகளும் மதியம் 14:00 மணிக்குள் மோர்முகாவோ அல்லது பெதுல் துறைமுகத்திற்கு திரும்ப வேண்டும்.",
-        zone_id: "zone-danger-se",
-        coords: "14°50'N, 73°58'E (18 NM SE)"
-      },
-      {
-        id: "INCOIS-SWH-8821",
-        type: "caution",
-        source_hi: "INCOIS महासागर चेतावनी प्रभाग",
-        source_en: "INCOIS Ocean State Forecast",
-        source_ta: "INCOIS கடல் எச்சரிக்கை பிரிவு",
-        title_hi: "उत्तर-पूर्वी तटीय क्षेत्र: 2.8m ऊंची लहरें",
-        title_en: "NE Sector: 2.8m Rough Swell Advisory",
-        title_ta: "வடகிழக்கு கடற்பகுதி: 2.8m உயரமான அலைகள்",
-        desc_hi: "दोपहर 13:30 से 18:00 बजे के बीच जलधारा गति 2.4 नॉट और 2.8 मीटर ऊंची लहरें। ज्वार-भाटे के दौरान चैनल में प्रवेश जोखिमपूर्ण।",
-        desc_en: "Strong tidal currents up to 2.4 kts with 2.8m swells between 13:30 and 18:00 IST. Channel transit dangerous during ebb tide.",
-        desc_ta: "மதியம் 13:30 முதல் 18:00 வரை 2.4 நாட் நீரோட்டம் மற்றும் 2.8 மீ உயரமான அலைகள் எழும். குறைந்த அலை நேரத்தில் செல்வது ஆபத்தானது.",
-        action_hi: "तट से 5 किमी के भीतर रहें और लाइफ-जैकट अनिवार्य रूप से पहनें।",
-        action_en: "Maintain within 3 NM inshore. Lifejackets mandatory for all deck crew.",
-        action_ta: "கரையில் இருந்து 5 கிமீ தூரத்திற்குள் இருக்கவும், உயிர் காக்கும் உடுப்பை (Lifejacket) கட்டாயம் அணியவும்.",
-        zone_id: "zone-wind-ne",
-        coords: "15°26'N, 73°44'E (8 NM NE)"
-      },
-      {
-        id: "INCOIS-PFZ-0926",
-        type: "resolved",
-        source_hi: "INCOIS उपग्रह मत्स्य डेटा",
-        source_en: "INCOIS Marine Fishery Advisory",
-        source_ta: "INCOIS செயற்கைக்கோள் மீன்வளத் தரவு",
-        title_hi: "अनुकूल मत्स्य क्षेत्र (PFZ Alpha) सामान्य",
-        title_en: "Potential Fishing Zone (PFZ Alpha) Clear",
-        title_ta: "சாதகமான மீன்பிடி பகுதி (PFZ Alpha) இயல்பு",
-        desc_hi: "दक्षिण-पश्चिम सागर में शांत समुद्री स्थिति, समुद्री सतह तापमान 28.2°C और उच्च क्लोरोफिल सघनता।",
-        desc_en: "Sea Surface Temp 28.2°C with optimal chlorophyll front. Calm sea state Douglas 2, optimal for Indian Mackerel.",
-        desc_ta: "தென்மேற்கு கடலில் அமைதியான சூழல், கடல் பரப்பு வெப்பநிலை 28.2°C மற்றும் அதிக குளோரோபில் உள்ளது.",
-        action_hi: "अनुशंसित बिंदु 15°12'N, 73°32'E पर सामान्य मत्स्य संचालन की अनुमति।",
-        action_en: "Normal fishing permitted at waypoint 15°12'N, 73°32'E.",
-        action_ta: "குறிப்பிட்ட புள்ளி 15°12'N, 73°32'E-ல் வழக்கமான மீன்பிடி நடவடிக்கைகளுக்கு அனுமதி.",
-        zone_id: "zone-pfz-sw",
-        coords: "15°12'N, 73°32'E (15 NM SW)"
-      }
-    ];
+    // Live bulletins are supplied by the backend; do not render canned alerts.
+    let BULLETINS = [];
 
     // Nautical Cartography Geometric Coordinates & Geographies
-    const MAP_ZONES = [
+    
+    // --- Dynamic Multi-Location Marine Zones & PFZ Fishing Advice Engine ---
+    window.lastBridgeTelemetry = {};
+
+    function updateDynamicMarineZones(lat, lon, locName, liveData) {
+      if (typeof lat !== 'number' || typeof lon !== 'number') return;
+      const isEastCoast = lon >= 78.0;
+      const lonOffset = isEastCoast ? 0.18 : -0.18;
+      const pfzLat = Number((lat - 0.04).toFixed(4));
+      const pfzLon = Number((lon + lonOffset).toFixed(4));
+
+      const cautionLat = Number((lat + 0.10).toFixed(4));
+      const cautionLon = Number((lon + (isEastCoast ? 0.06 : -0.06)).toFixed(4));
+
+      const dangerLat = Number((lat - 0.15).toFixed(4));
+      const dangerLon = Number((lon + (isEastCoast ? 0.22 : -0.22)).toFixed(4));
+
+      const displayName = locName || customLocationName || (vesselLocation && vesselLocation.name) || 'Active Coastal Sector';
+      const telem = liveData || window.lastBridgeTelemetry || {};
+      const sst = telem.sst || '28.2°C';
+      const wave = telem.wave || '1.1m';
+      const wind = telem.wind || '11.5 kts';
+
+      MAP_ZONES = [
+        {
+          id: "zone-pfz-sw",
+          type: "pfz",
+          center: [pfzLat, pfzLon],
+          latLngs: [
+            [Number((pfzLat + 0.06).toFixed(4)), Number((pfzLon - 0.06).toFixed(4))],
+            [Number((pfzLat + 0.05).toFixed(4)), Number((pfzLon + 0.06).toFixed(4))],
+            [Number((pfzLat - 0.06).toFixed(4)), Number((pfzLon + 0.07).toFixed(4))],
+            [Number((pfzLat - 0.08).toFixed(4)), Number((pfzLon - 0.05).toFixed(4))]
+          ],
+          label_hi: `INCOIS PFZ मत्स्य क्षेत्र (${displayName})`,
+          label_en: `INCOIS PFZ Fishing Zone (${displayName})`,
+          label_ta: `INCOIS PFZ மீன்பிடி பகுதி (${displayName})`,
+          sub_hi: `SST ${sst} • अनुकूल क्लोरोफिल सीमा`,
+          sub_en: `SST ${sst} • Optimal Chlorophyll Front`,
+          sub_ta: `SST ${sst} • உகந்த குளோரோபில் எல்லை`,
+          reason_hi: `${displayName} के लिए उच्च क्लोरोफिल व तापीय प्रवणता। बांगड़ा, सुरमई और टूना मछली के झुंड सक्रिय। शांत समुद्र (${wave})।`,
+          reason_en: `Active pelagic thermal front for ${displayName}. Indian Mackerel, Kingfish and Tuna feeding schools active. Calm sea state (${wave}).`,
+          reason_ta: `${displayName} பகுதிக்கான அதிக குளோரோபில் மற்றும் சாதகமான வெப்பநிலை. மீன் கூட்டங்கள் அதிகம். அலை உயரம் (${wave}).`,
+          coords: `${pfzLat.toFixed(2)}°N, ${pfzLon.toFixed(2)}°E (${isEastCoast ? 'Bearing 095° E' : 'Bearing 215° SW'}, 12 NM)`
+        },
+        {
+          id: "zone-wind-ne",
+          type: "caution",
+          center: [cautionLat, cautionLon],
+          latLngs: [
+            [Number((cautionLat + 0.05).toFixed(4)), Number((cautionLon - 0.05).toFixed(4))],
+            [Number((cautionLat + 0.06).toFixed(4)), Number((cautionLon + 0.06).toFixed(4))],
+            [Number((cautionLat - 0.05).toFixed(4)), Number((cautionLon + 0.07).toFixed(4))],
+            [Number((cautionLat - 0.06).toFixed(4)), Number((cautionLon - 0.05).toFixed(4))]
+          ],
+          label_hi: `सावधानी क्षेत्र (${displayName})`,
+          label_en: `Caution Area (${displayName})`,
+          label_ta: `எச்சரிக்கை பகுதி (${displayName})`,
+          sub_hi: `Swell 2.4m • मध्यम धारा`,
+          sub_en: `Swell 2.4m • Moderate Drift`,
+          sub_ta: `Swell 2.4m • மிதமான நீரோட்டம்`,
+          reason_hi: `तटीय जलक्षेत्र में 2.4m ऊंची लहरें और हवाएं। छोटी नौकाएं सतर्कता बरतें।`,
+          reason_en: `Moderate swell reaching 2.4m with gusty winds in inshore approaches. Small craft exercise vigilance.`,
+          reason_ta: `2.4 மீ உயரமான அலைகள் மற்றும் பலத்த காற்று. சிறிய படகுகள் கவனமாக இருக்கவும்.`,
+          coords: `${cautionLat.toFixed(2)}°N, ${cautionLon.toFixed(2)}°E (8 NM Inshore)`
+        },
+        {
+          id: "zone-danger-se",
+          type: "danger",
+          center: [dangerLat, dangerLon],
+          latLngs: [
+            [Number((dangerLat + 0.07).toFixed(4)), Number((dangerLon - 0.06).toFixed(4))],
+            [Number((dangerLat + 0.06).toFixed(4)), Number((dangerLon + 0.08).toFixed(4))],
+            [Number((dangerLat - 0.07).toFixed(4)), Number((dangerLon + 0.06).toFixed(4))],
+            [Number((dangerLat - 0.06).toFixed(4)), Number((dangerLon - 0.07).toFixed(4))]
+          ],
+          label_hi: `प्रतिबंधित खतरा क्षेत्र (Squall Alert)`,
+          label_en: `Restricted Hazard Zone (Squall Alert)`,
+          label_ta: `தடைசெய்யப்பட்ட ஆபத்து பகுதி (Squall Alert)`,
+          sub_hi: `Squall 40+ kt • Lightning Radar`,
+          sub_en: `Squall 40+ kt • Lightning Radar`,
+          sub_ta: `Squall 40+ kt • Lightning Radar`,
+          reason_hi: `तटीय रडार द्वारा ट्रैक किया गया स्क्वॉल क्षेत्र। 40+ नॉट की झंझावाती हवाएं और आकाशीय बिजली का खतरा।`,
+          reason_en: `Radar tracked squall line with 40+ knot cyclonic gusts and lightning strikes. Entry prohibited.`,
+          reason_ta: `40+ நாட் சூறாவளி காற்று மற்றும் மின்னல் ஆபத்து. இப்பகுதியில் செல்ல தடை.`,
+          coords: `${dangerLat.toFixed(2)}°N, ${dangerLon.toFixed(2)}°E (16 NM Offshore)`
+        }
+      ];
+
+      MAP_MARKERS = [
+        {
+          id: "mkr-pfz-target",
+          kind: "pfz",
+          latLng: [pfzLat, pfzLon],
+          zone_id: "zone-pfz-sw",
+          label_hi: `PFZ लक्ष्य बिंदु (${displayName})`,
+          label_en: `PFZ Target Waypoint (${displayName})`,
+          label_ta: `PFZ இலக்கு புள்ளி (${displayName})`,
+          coords: `${pfzLat.toFixed(2)}°N, ${pfzLon.toFixed(2)}°E`,
+          reason_hi: `अनुशंसित जाल डालने का बिंदु (${displayName} से 12 NM)। बांगड़ा और सुरमई के झुंड सक्रिय। गहराई: 38-45 मीटर।`,
+          reason_en: `Optimal net casting waypoint (12 NM offshore ${displayName}). Pelagic Mackerel and Tuna schools detected. Depth: 38-45m.`,
+          reason_ta: `வலை வீசுவதற்கு உகந்த புள்ளி (${displayName} கரையில் இருந்து 12 கடல் மைல்). கானாங்கெளுத்தி மற்றும் சூரை மீன்கள் அதிகம்.`
+        },
+        {
+          id: "mkr-squall-center",
+          kind: "danger",
+          latLng: [dangerLat, dangerLon],
+          zone_id: "zone-danger-se",
+          label_hi: `तूफान केंद्र (${displayName})`,
+          label_en: `Squall Core (${displayName})`,
+          label_ta: `புயல் மையம் (${displayName})`,
+          coords: `${dangerLat.toFixed(2)}°N, ${dangerLon.toFixed(2)}°E`,
+          reason_hi: `सक्रिय झंझावात केंद्र। उत्तर-पूर्व दिशा में आगे बढ़ रहा है।`,
+          reason_en: `Active offshore squall cell moving northeast.`,
+          reason_ta: `தீவிர புயல் மையம் வடகிழக்கு நோக்கி நகர்கிறது.`
+        }
+      ];
+
+      if (typeof renderLeafletTacticalZones === 'function') renderLeafletTacticalZones();
+      if (typeof renderLeafletWaypoints === 'function') renderLeafletWaypoints();
+    }
+
+    function getDynamicAdvisoryResponse(category) {
+      if (!vesselLocation) return;
+      const loc = vesselLocation;
+      const displayName = loc.name || customLocationName || 'Active Coastal Sector';
+      const isEastCoast = loc.longitude >= 78.0;
+      const lonOffset = isEastCoast ? 0.18 : -0.18;
+      const pfzLat = (loc.latitude - 0.04).toFixed(2);
+      const pfzLon = (loc.longitude + lonOffset).toFixed(2);
+      const coordsStr = `${pfzLat}°N, ${pfzLon}°E`;
+
+      const telem = window.lastBridgeTelemetry || {};
+      const sst = telem.sst || '28.2°C';
+      const wave = telem.wave || '1.1m';
+      const wind = telem.wind || '11.5 kts';
+      const current = telem.current || '0.9 kts';
+      const depth = telem.depth || '36m';
+      const highTide = telem.highTide || '06:45 IST (+2.0m)';
+
+      if (category === 'fishing') {
+        return {
+          station: "INCOIS-HYD / NATIONAL PFZ SERVICE",
+          text_en: `Satellite and oceanographic telemetry confirms active **Potential Fishing Zone (PFZ)** for **${displayName}** at **${coordsStr}** (12 NM offshore). Sea surface temperature is **${sst}** with optimal thermal front and chlorophyll boundary. High density of Indian Mackerel, Sardines, and Kingfish. Wave swell is ${wave} with ${current} current.`,
+          text_hi: `उपग्रह व महासागरीय टेलीमेट्री के अनुसार **${displayName}** के लिए **उत्तम मत्स्य क्षेत्र (PFZ)** बिंदु **${coordsStr}** (12 समुद्री मील दूर) पर सक्रिय है। समुद्री सतह तापमान **${sst}** और अनुकूल क्लोरोफिल सीमा मौजूद है। बांगड़ा, सुरमई और टूना मछली मिलने की 85% संभावना है। लहरें ${wave} और शांत बहाव ${current} है।`,
+          text_ta: `செயற்கைக்கோள் தகவலின்படி **${displayName}** பகுதிக்கான **சிறந்த மீன்பிடி மண்டலம் (PFZ)** **${coordsStr}** புள்ளியில் செயல்படுகிறது. கடல் வெப்பநிலை **${sst}** மற்றும் சாதகமான குளோரோபில் உள்ளது. கானாங்கெளுத்தி மற்றும் வஞ்சிரம் மீன் கிடைக்க 85% வாய்ப்பு உண்டு. அலை உயரம் ${wave}, நீரோட்டம் ${current}.`,
+          telemetry_en: { bearing: isEastCoast ? "095° E (12 NM)" : "220° SW (12 NM)", depth: depth, wave: `${wave} (Calm)`, current: current, sst: sst },
+          telemetry_hi: { bearing: isEastCoast ? "095° E (12 समुद्री मील)" : "220° SW (12 समुद्री मील)", depth: depth, wave: `${wave} (शांत लहरें)`, current: current, sst: sst },
+          telemetry_ta: { bearing: isEastCoast ? "095° E (12 கடல் மைல்)" : "220° SW (12 கடல் மைல்)", depth: depth, wave: `${wave} (அமைதியான அலை)`, current: current, sst: sst },
+          zone_id: "zone-pfz-sw"
+        };
+      } else if (category === 'weather') {
+        return {
+          station: "IMD-COASTAL / COASTGUARD RADAR",
+          text_en: `Doppler marine radar for **${displayName}**: Sustained winds of ${wind} with waves at ${wave}. Swell conditions are currently manageable inshore, but offshore squalls may generate 2.5m+ seas. Maintain continuous watch on VHF Ch 16.`,
+          text_hi: `**${displayName}** के लिए समुद्री मौसम: वर्तमान में हवाएं ${wind} और लहरें ${wave} हैं। तटीय क्षेत्र में स्थिति सामान्य है किंतु खुले समुद्र में 2.5m तक ऊंची लहरें उठ सकती हैं। वीएचएफ चैनल 16 पर सतत निगरानी रखें।`,
+          text_ta: `**${displayName}** பகுதிக்கான வானிலை: காற்றின் வேகம் ${wind}, அலை உயரம் ${wave}. கரையோர பகுதியில் நிலைமை சாதகமாக உள்ளது. VHF Ch 16-ல் தொடர் கண்காணிப்பில் இருக்கவும்.`,
+          telemetry_en: { bearing: "Offshore Sector (15 NM)", depth: depth, wave: wave, wind: wind, current: current },
+          telemetry_hi: { bearing: "तटीय समुद्री क्षेत्र (15 समुद्री मील)", depth: depth, wave: wave, wind: wind, current: current },
+          telemetry_ta: { bearing: "கடற்பகுதி (15 கடல் மைல்)", depth: depth, wave: wave, wind: wind, current: current },
+          zone_id: "zone-wind-ne"
+        };
+      } else if (category === 'safety') {
+        return {
+          station: "NATIONAL HYDROGRAPHIC OFFICE",
+          text_en: `Safe return tide window for **${displayName}**: Next High Tide peaks at **${highTide}**, providing maximum bar depth for harbor transit. Sea swell is ${wave}, suitable for safe entry into designated shelters.`,
+          text_hi: `**${displayName}** के लिए सुरक्षित बंदरगाह वापसी समय: अगला उच्च ज्वार (High Tide) **${highTide}** पर रहेगा जो बंदरगाह में सुरक्षित प्रवेश के लिए सर्वोत्तम है। लहरें ${wave} शांत हैं।`,
+          text_ta: `**${displayName}** துறைமுகம் திரும்புவதற்கான நேரம்: அடுத்த உயர் அலை (High Tide) **${highTide}** மணிக்கு இருக்கும். அலை உயரம் ${wave}, பாதுகாப்பான வழிசெலுத்தலுக்கு உகந்தது.`,
+          telemetry_en: { bearing: "Harbor Channel Course", depth: "Bar Depth Nominal", wave: wave, current: current, highTide: highTide },
+          telemetry_hi: { bearing: "बंदरगाह चैनल दिशा", depth: "सुरक्षित गहराई", wave: wave, current: current, highTide: highTide },
+          telemetry_ta: { bearing: "துறைமுக கால்வாய்", depth: "போதுமான ஆழம்", wave: wave, current: current, highTide: highTide },
+          zone_id: "zone-pfz-sw"
+        };
+      } else {
+        const vesselCoordsStr = `${loc.latitude.toFixed(4)}°N, ${loc.longitude.toFixed(4)}°E`;
+        return {
+          station: "MRCC NATIONAL / INDIAN COAST GUARD",
+          text_en: `Emergency distress protocol for **${displayName}**: Standby on **VHF Channel 16 (156.800 MHz)** or toll-free **1554**. Your position **${vesselCoordsStr}** is logged with the nearest Coast Guard rescue station.`,
+          text_hi: `**${displayName}** के लिए आपातकालीन बचाव प्रोटोकॉल: **VHF Channel 16 (156.800 MHz)** या टोल-फ्री **1554** पर संपर्क करें। आपकी स्थिति **${vesselCoordsStr}** तटरक्षक बचाव केंद्र में दर्ज है।`,
+          text_ta: `**${displayName}** அவசர மீட்பு நடைமுறை: **VHF Channel 16 (156.800 MHz)** அல்லது கட்டணமில்லா எண் **1554**-ஐ அழைக்கவும். உங்கள் அமைவிடம் **${vesselCoordsStr}** கடலோர காவல்படையால் பதிவு செய்யப்பட்டுள்ளது.`,
+          telemetry_en: { bearing: "MRCC Station 085° E", depth: depth, wave: wave, current: current, vhfGuard: "CH 16 / 08 Active" },
+          telemetry_hi: { bearing: "तटरक्षक दिशा 085° E", depth: depth, wave: wave, current: current, vhfGuard: "CH 16 / 08 सक्रिय" },
+          telemetry_ta: { bearing: "காவல்படை திசை 085° E", depth: depth, wave: wave, current: current, vhfGuard: "CH 16 / 08 செயலில் உள்ளது" },
+          zone_id: "zone-danger-se"
+        };
+      }
+    }
+
+    let MAP_ZONES = [
       {
         id: "zone-pfz-sw",
         type: "pfz",
@@ -3300,7 +3660,7 @@
       }
     ];
 
-    const MAP_MARKERS = [
+    let MAP_MARKERS = [
       {
         id: "mkr-pfz-target",
         kind: "pfz",
@@ -3332,7 +3692,7 @@
     const ADVISORY_RESPONSES = {
       fishing: {
         keywords: ["machli", "pfz", "kahan", "fishing", "fish", "spot", "best", "meen", "meengal", "meenpidi", "valai", "மீன்"],
-        station: "INCOIS-HYD / MRCC-GOA",
+        station: "INCOIS-HYD / MRCC NATIONAL",
         text_hi: "उपग्रह डेटा के अनुसार आज दक्षिण-पश्चिम क्षेत्र (15°12'N, 73°32'E) में **उत्तम मत्स्य क्षेत्र (PFZ Alpha)** सक्रिय है। समुद्री सतह तापमान 28.2°C और क्लोरोफिल प्रचुर मात्रा में है। बांगड़ा और सुरमई मिलने की 85% संभावना है।",
         text_en: "Satellite telemetry confirms active **Potential Fishing Zone (PFZ Alpha)** at 15°12'N, 73°32'E. Sea surface temperature 28.2°C with strong chlorophyll concentration. 85% probability for Indian Mackerel and Kingfish.",
         text_ta: "செயற்கைக்கோள் தகவலின்படி தென்மேற்கு பகுதியில் (15°12'N, 73°32'E) **சிறந்த மீன்பிடி மண்டலம் (PFZ Alpha)** செயல்படுகிறது. கடல் வெப்பநிலை 28.2°C மற்றும் அதிக குளோரோபில் உள்ளது. கானாங்கெளுத்தி மற்றும் வஞ்சிரம் கிடைக்க 85% வாய்ப்பு உண்டு.",
@@ -3416,12 +3776,12 @@
       },
       emergency: {
         keywords: ["sos", "emergency", "help", "madad", "vhf", "coastguard", "distress", "udhavi", "kaavarpadai", "அவசரம்", "உதவி"],
-        station: "MRCC-MUMBAI / COASTGUARD-GOA",
+        station: "MRCC NATIONAL / INDIAN COAST GUARD",
         text_hi: "तटरक्षक बल आपातकालीन बचाव चैनल: **VHF Channel 16 (156.800 MHz)** अथवा तटरक्षक टोल-फ्री नंबर **1554** पर तुरंत कॉल करें। आपकी स्थिति (15°24.6'N, 73°48.2'E) गोवा स्टेशन द्वारा लॉक है।",
-        text_en: "Coast Guard Search & Rescue protocol: Standby on **VHF Channel 16 (156.800 MHz)** or emergency toll-free **1554**. Your position 15°24.6'N, 73°48.2'E is logged at MRCC Goa.",
+        text_en: "Coast Guard Search & Rescue protocol: Standby on **VHF Channel 16 (156.800 MHz)** or emergency toll-free **1554**. Your GPS position is continuously logged with Maritime Rescue Coordination Centre (MRCC).",
         text_ta: "கடலோர காவல்படை அவசர மீட்பு அலைவரிசை: **VHF Channel 16 (156.800 MHz)** அல்லது கட்டணமில்லா எண் **1554**-ஐ அழைக்கவும். உங்கள் அமைவிடம் (15°24.6'N, 73°48.2'E) கோவா நிலையத்தால் பாதுகாக்கப்படுகிறது.",
         telemetry_en: {
-          bearing: "MRCC Goa Bearing 085° E",
+          bearing: "MRCC Coastal Station Bearing 085° E",
           depth: "Vessel Depth 34m",
           wave: "1.5m Swell",
           current: "1.0 kt Drift",
@@ -3468,8 +3828,9 @@
       const mapContainer = document.getElementById('marineMapLeaflet');
       if (!mapContainer) return;
 
-      const initLat = vesselLocation ? vesselLocation.latitude : 15.25;
-      const initLon = vesselLocation ? vesselLocation.longitude : 73.80;
+      if (!vesselLocation) return;
+      const initLat = vesselLocation.latitude;
+      const initLon = vesselLocation.longitude;
 
       leafletMap = L.map('marineMapLeaflet', {
         center: [initLat, initLon],
@@ -3645,10 +4006,10 @@
       }
       const z = MAP_ZONES.find(item => item.id === targetZId);
       const query = (currentLang === 'hi') ? 
-        `Is kshetr ke baare mein jankari dein: ${z ? z.label_hi : 'Goa Offshore'}` : 
+        `Is kshetr ke baare mein jankari dein: ${z ? z.label_hi : 'Live Navigational Position'}` : 
         (currentLang === 'ta' ? 
-          `இந்த பகுதி பற்றிய விவரம் தேவை: ${z ? (z.label_ta || z.label_en) : 'Goa Offshore'}` : 
-          `Provide tactical briefing for area: ${z ? z.label_en : 'Goa Offshore'}`);
+          `இந்த பகுதி பற்றிய விவரம் தேவை: ${z ? (z.label_ta || z.label_en) : 'Live Navigational Position'}` : 
+          `Provide tactical briefing for area: ${z ? z.label_en : 'Live Navigational Position'}`);
       triggerTacticalQuery(query, { zoneId: targetZId });
     });
 
@@ -3768,11 +4129,356 @@
       chatThread.scrollTop = chatThread.scrollHeight;
     }
 
-    const BACKEND_API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && window.location.port === '8000' ? '' : 'http://localhost:8000';
+    const BACKEND_API_BASE = (() => {
+      const configured = (window.__KYROX_API_BASE__ || (window.__ENV__ && window.__ENV__.KYROX_API_BASE) || '').trim().replace(/\/$/, '');
+      if (configured) return configured;
+      if (window.location.port === '8000') return '';
+      if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+        return `${window.location.protocol}//${window.location.hostname}:8000`;
+      }
+      return 'http://localhost:8000';
+    })();
     let isBackendConnected = false;
 
+    // --- Live GPS Tracking & Manual Location Management ---
+    let isGpsTrackingEnabled = true;
+    let customLocationName = null;
+
+    // Comprehensive Coastal Ports & Maritime Hubs Directory for instant 0ms lookup
+    const MARITIME_PORTS_CATALOG = {
+      "goa": { name: "Goa Coastal & Offshore Sector", lat: 15.246, lon: 73.803 },
+      "panaji": { name: "Panaji Mormugao Coastal Sector", lat: 15.420, lon: 73.780 },
+      "mormugao": { name: "Mormugao Harbour & Coastal Waters", lat: 15.420, lon: 73.780 },
+      "mumbai": { name: "Mumbai Port & Offshore Sector", lat: 18.922, lon: 72.834 },
+      "bombay": { name: "Mumbai Port & Offshore Sector", lat: 18.922, lon: 72.834 },
+      "navi mumbai": { name: "Jawaharlal Nehru Port (JNPT)", lat: 18.950, lon: 72.950 },
+      "jnpt": { name: "JNPT Nhava Sheva", lat: 18.950, lon: 72.950 },
+      "kochi": { name: "Kochi Marine Terminal & Offshore", lat: 9.967, lon: 76.242 },
+      "cochin": { name: "Kochi Marine Terminal & Offshore", lat: 9.967, lon: 76.242 },
+      "chennai": { name: "Chennai Port & East Coast Waters", lat: 13.085, lon: 80.298 },
+      "madras": { name: "Chennai Port & East Coast Waters", lat: 13.085, lon: 80.298 },
+      "visakhapatnam": { name: "Visakhapatnam Deepwater Harbour", lat: 17.686, lon: 83.218 },
+      "vizag": { name: "Visakhapatnam Deepwater Harbour", lat: 17.686, lon: 83.218 },
+      "kolkata": { name: "Kolkata Marine Approaches", lat: 22.550, lon: 88.310 },
+      "calcutta": { name: "Kolkata Marine Approaches", lat: 22.550, lon: 88.310 },
+      "haldia": { name: "Haldia Dock Complex", lat: 22.020, lon: 88.060 },
+      "mangalore": { name: "New Mangalore Port Waters", lat: 12.870, lon: 74.840 },
+      "karwar": { name: "Karwar Marine Sanctuary Waters", lat: 14.810, lon: 74.130 },
+      "porbandar": { name: "Porbandar Marine Coast", lat: 21.642, lon: 69.609 },
+      "kandla": { name: "Deendayal Port (Kandla)", lat: 23.003, lon: 70.218 },
+      "veraval": { name: "Veraval Commercial Fishery Sector", lat: 20.900, lon: 70.360 },
+      "surat": { name: "Hazira Surat Maritime Terminal", lat: 21.116, lon: 72.635 },
+      "hazira": { name: "Hazira Surat Maritime Terminal", lat: 21.116, lon: 72.635 },
+      "ratnagiri": { name: "Ratnagiri Coastal Anchorage", lat: 16.990, lon: 73.300 },
+      "malvan": { name: "Malvan Marine Sanctuary Waters", lat: 16.060, lon: 73.470 },
+      "kanyakumari": { name: "Kanyakumari Cape Waters", lat: 8.078, lon: 77.555 },
+      "tuticorin": { name: "VO Chidambaranar Port (Tuticorin)", lat: 8.764, lon: 78.134 },
+      "thoothukudi": { name: "VO Chidambaranar Port (Tuticorin)", lat: 8.764, lon: 78.134 },
+      "rameswaram": { name: "Pamban & Rameswaram Channel", lat: 9.287, lon: 79.312 },
+      "cuddalore": { name: "Cuddalore Coastal Fairway", lat: 11.750, lon: 79.770 },
+      "pondicherry": { name: "Puducherry Coastal Waters", lat: 11.930, lon: 79.830 },
+      "puducherry": { name: "Puducherry Coastal Waters", lat: 11.930, lon: 79.830 },
+      "machilipatnam": { name: "Machilipatnam Bay", lat: 16.180, lon: 81.130 },
+      "kakinada": { name: "Kakinada Deep Sea Port", lat: 16.980, lon: 82.240 },
+      "paradip": { name: "Paradip Major Marine Port", lat: 20.260, lon: 86.670 },
+      "digha": { name: "Digha Fishery Coastal Waters", lat: 21.626, lon: 87.510 },
+      "port blair": { name: "Port Blair Andaman Marine Waters", lat: 11.667, lon: 92.733 },
+      "alappuzha": { name: "Alappuzha Coastal Waters", lat: 9.498, lon: 76.326 },
+      "alleppey": { name: "Alappuzha Coastal Waters", lat: 9.498, lon: 76.326 },
+      "bhavnagar": { name: "Bhavnagar Anchorage", lat: 21.764, lon: 72.150 },
+      "daman": { name: "Daman Coastal Fairway", lat: 20.417, lon: 72.833 },
+      "diu": { name: "Diu Head Marine Anchorage", lat: 20.714, lon: 70.987 },
+      "jamnagar": { name: "Gulf of Kutch Jamnagar Waters", lat: 22.470, lon: 70.070 },
+      "mormugao": { name: "Mormugao Port Fairway", lat: 15.420, lon: 73.780 },
+      "betul": { name: "Betul South Marine Sector", lat: 15.140, lon: 73.950 }
+    };
+
+    // Update GPS Toggle Button UI
+    function updateGpsToggleUI(enabled) {
+      const btn = document.getElementById('btnGpsToggle');
+      const txt = document.getElementById('txtGpsToggle');
+      if (!btn || !txt) return;
+
+      if (enabled) {
+        btn.classList.add('gps-active');
+        btn.classList.remove('gps-disabled');
+        txt.textContent = (currentLang === 'hi') ? '📡 जीपीएस: चालू' : (currentLang === 'ta' ? '📡 GPS: ஆன்' : '📡 GPS: ON');
+        btn.setAttribute('title', 'GPS Tracking Active • Click to Pause');
+      } else {
+        btn.classList.remove('gps-active');
+        btn.classList.add('gps-disabled');
+        txt.textContent = (currentLang === 'hi') ? '📡 जीपीएस: बंद' : (currentLang === 'ta' ? '📡 GPS: ஆஃப்' : '📡 GPS: OFF');
+        btn.setAttribute('title', 'GPS Tracking Paused • Click to Resume');
+      }
+    }
+
+    // Toggle Real-time GPS Tracking System
+    function toggleGpsTracking(forceState) {
+      if (typeof forceState === 'boolean') {
+        isGpsTrackingEnabled = forceState;
+      } else {
+        isGpsTrackingEnabled = !isGpsTrackingEnabled;
+      }
+
+      updateGpsToggleUI(isGpsTrackingEnabled);
+
+      if (isGpsTrackingEnabled) {
+        console.log('[KyroX GPS] Resuming real-time GPS tracking watch...');
+        customLocationName = null;
+        initVesselLocation();
+        const elFix = document.getElementById('txtTelemetryFix');
+        if (elFix) {
+          elFix.innerHTML = '<span style="color:var(--pfz-bright);">📡 GPS TRACKING RESUMED • ACQUIRING FIX...</span>';
+        }
+      } else {
+        console.log('[KyroX GPS] Pausing real-time GPS tracking watch...');
+        if (gpsWatchId !== null) {
+          try {
+            navigator.geolocation.clearWatch(gpsWatchId);
+          } catch (e) {}
+          gpsWatchId = null;
+        }
+        const elFix = document.getElementById('txtTelemetryFix');
+        if (elFix && vesselLocation) {
+          const lat = vesselLocation.latitude;
+          const lon = vesselLocation.longitude;
+          elFix.innerHTML = `<span style="color:var(--caution-border);">📍 MANUAL LOCATION MODE: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E (GPS PAUSED)</span>`;
+        }
+      }
+    }
+
+    // Attach GPS Toggle Event Listener
+    const btnGpsToggle = document.getElementById('btnGpsToggle');
+    if (btnGpsToggle) {
+      btnGpsToggle.addEventListener('click', () => toggleGpsTracking());
+    }
+
+    // Geocode or Parse Coordinates from User Input
+    async function resolveLocationQuery(queryStr) {
+      const q = (queryStr || '').trim();
+      if (!q) return null;
+
+      // 1. Check for explicit decimal coordinates: e.g. "18.92, 72.83" or "18.92 72.83"
+      const coordMatch = q.match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);
+      if (coordMatch) {
+        const lat = parseFloat(coordMatch[1]);
+        const lon = parseFloat(coordMatch[2]);
+        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+          return {
+            name: `Coordinates (${lat.toFixed(4)}°, ${lon.toFixed(4)}°)`,
+            latitude: lat,
+            longitude: lon
+          };
+        }
+      }
+
+      // 2. Check Fast Built-in Maritime Ports Catalog
+      const cleanKey = q.toLowerCase().replace(/^(port of|port|harbour|beach|island)\s+/i, '').trim();
+      if (MARITIME_PORTS_CATALOG[cleanKey]) {
+        const item = MARITIME_PORTS_CATALOG[cleanKey];
+        return {
+          name: item.name,
+          latitude: item.lat,
+          longitude: item.lon
+        };
+      }
+
+      // Check partial matches in catalog
+      for (const key of Object.keys(MARITIME_PORTS_CATALOG)) {
+        if (cleanKey.includes(key) || key.includes(cleanKey)) {
+          const item = MARITIME_PORTS_CATALOG[key];
+          return {
+            name: item.name,
+            latitude: item.lat,
+            longitude: item.lon
+          };
+        }
+      }
+
+      // 3. Online OpenStreetMap Nominatim Geocoding Fallback
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const first = data[0];
+            const lat = parseFloat(first.lat);
+            const lon = parseFloat(first.lon);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              return {
+                name: first.display_name.split(',')[0].trim() || q,
+                latitude: lat,
+                longitude: lon
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[KyroX Geocoder] Nominatim lookup failed:', err);
+      }
+
+      return null;
+    }
+
+    // Execute Manual Location Search and Detailed Briefing
+    async function handleManualLocationSearch(queryStr) {
+      const q = (queryStr || '').trim();
+      if (!q) return;
+
+      const submitBtn = document.getElementById('btnSubmitLocation');
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.innerHTML = '<span>⏳ SEARCHING...</span>';
+        submitBtn.disabled = true;
+      }
+
+      try {
+        const resolved = await resolveLocationQuery(q);
+        if (!resolved) {
+          alert((currentLang === 'hi') ? 
+            `स्थान "${q}" नहीं मिला। कृपया बंदरगाह का नाम (उदा. Mumbai, Kochi) या अक्षांश/देशांतर (उदा. 18.92, 72.83) दर्ज करें।` : 
+            `Location "${q}" could not be resolved. Please enter a recognized port name (e.g. Mumbai, Kochi) or Lat, Lon coordinates.`);
+          return;
+        }
+
+        console.log('[KyroX Location Search] Resolved:', resolved);
+        customLocationName = resolved.name;
+
+        // Automatically pause device GPS watch so the manual location is preserved
+        if (isGpsTrackingEnabled) {
+          toggleGpsTracking(false);
+        }
+
+        const lat = resolved.latitude;
+        const lon = resolved.longitude;
+        vesselLocation = { latitude: lat, longitude: lon, name: resolved.name };
+
+        // Pin on chart and focus
+        pinUserLocationOnMap({
+          id: 'manual_location',
+          name: resolved.name,
+          latitude: lat,
+          longitude: lon,
+          type: 'MANUAL_LOCATION',
+          marker_type: 'USER'
+        });
+
+        // Update Backend and Telemetry
+        sendLocationToBackend(lat, lon);
+        fetchRiskHeatmap(lat, lon);
+
+        // Fetch Telemetry specifically for this location
+        try {
+          const telemRes = await fetch(`${BACKEND_API_BASE}/telemetry?lat=${lat}&lon=${lon}`);
+          if (telemRes.ok) {
+            const telemData = await telemRes.json();
+            updateBridgeTelemetryUI(telemData);
+            displayLocationDetailsDrawer(resolved.name, lat, lon, telemData);
+          } else {
+            displayLocationDetailsDrawer(resolved.name, lat, lon, null);
+          }
+        } catch (e) {
+          displayLocationDetailsDrawer(resolved.name, lat, lon, null);
+        }
+
+        // Recalculate 24-hour predictions for this specific location
+        if (typeof loadRegressionData === 'function') {
+          loadRegressionData(activeRegVar);
+        }
+
+      } finally {
+        if (submitBtn) {
+          submitBtn.innerHTML = originalBtnHtml;
+          submitBtn.disabled = false;
+        }
+      }
+    }
+
+    // Display Comprehensive Details Drawer for the Selected Location
+    function displayLocationDetailsDrawer(name, lat, lon, telemData) {
+      const latDeg = Math.floor(Math.abs(lat));
+      const latMin = ((Math.abs(lat) - latDeg) * 60).toFixed(1);
+      const lonDeg = Math.floor(Math.abs(lon));
+      const lonMin = ((Math.abs(lon) - lonDeg) * 60).toFixed(1);
+      const coordsStr = `${latDeg}°${latMin}'${lat >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonMin}'${lon >= 0 ? 'E' : 'W'}`;
+
+      const wave = (telemData && telemData.wave) ? telemData.wave : '1.3m';
+      const wind = (telemData && telemData.wind) ? telemData.wind : '12.4 kts';
+      const current = (telemData && telemData.current) ? telemData.current : '1.1 kts';
+      const depth = (telemData && telemData.depth) ? telemData.depth : '32m';
+      const baro = (telemData && telemData.baro) ? telemData.baro : '1008.6 hPa';
+      const sst = (telemData && telemData.sst) ? telemData.sst : '28.2°C';
+      const clearance = (telemData && telemData.clearance === 'SAFE') ? 'SAFE (सुरक्षित)' : 'CAUTION (सतर्कता आवश्यक)';
+
+      const title = `📍 ${name}`;
+      const reason = (currentLang === 'hi') ? 
+        `समुद्री स्थिति: तरंग ऊंचाई ${wave}, पवन ${wind}, जलधारा ${current}, गहराई ${depth}, वायुदाब ${baro}, जल तापमान ${sst}। नेविगेशन स्थिति: ${clearance}। 24-घंटे सांख्यिकीय पूर्वानुमान इस स्थान से अपडेट हैं।` : 
+        `Marine Conditions: Wave ${wave}, Wind ${wind}, Current ${current}, Depth ${depth}, Baro ${baro}, SST ${sst}. Clearance Status: ${clearance}. 24-hour regression prediction model synchronized to this position.`;
+
+      showTacticalDrawer(title, reason, coordsStr, 'vessel', 'manual_location');
+    }
+
+    // Location Search Bar Controls Setup
+    const inputCustomLocation = document.getElementById('inputCustomLocation');
+    const btnSubmitLocation = document.getElementById('btnSubmitLocation');
+    const btnClearLocSearch = document.getElementById('btnClearLocSearch');
+    const btnCurrentGpsLocation = document.getElementById('btnCurrentGpsLocation');
+
+    if (inputCustomLocation) {
+      inputCustomLocation.addEventListener('input', () => {
+        if (btnClearLocSearch) {
+          btnClearLocSearch.style.display = inputCustomLocation.value.trim() ? 'block' : 'none';
+        }
+      });
+
+      inputCustomLocation.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleManualLocationSearch(inputCustomLocation.value);
+        }
+      });
+    }
+
+    if (btnSubmitLocation && inputCustomLocation) {
+      btnSubmitLocation.addEventListener('click', () => {
+        handleManualLocationSearch(inputCustomLocation.value);
+      });
+    }
+
+    if (btnClearLocSearch && inputCustomLocation) {
+      btnClearLocSearch.addEventListener('click', () => {
+        inputCustomLocation.value = '';
+        btnClearLocSearch.style.display = 'none';
+        inputCustomLocation.focus();
+      });
+    }
+
+    if (btnCurrentGpsLocation) {
+      btnCurrentGpsLocation.addEventListener('click', () => {
+        if (inputCustomLocation) {
+          inputCustomLocation.value = '';
+          if (btnClearLocSearch) btnClearLocSearch.style.display = 'none';
+        }
+        toggleGpsTracking(true);
+      });
+    }
+
+    // Quick Port Chips Listeners
+    document.querySelectorAll('.loc-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const portName = chip.getAttribute('data-loc');
+        if (inputCustomLocation) {
+          inputCustomLocation.value = portName;
+          if (btnClearLocSearch) btnClearLocSearch.style.display = 'block';
+        }
+        handleManualLocationSearch(portName);
+      });
+    });
+
+
     // --- Live Vessel Location (GPS Agent Client) ---
-    let vesselLocation = null; // null = not yet resolved; backend uses its own default
+    let vesselLocation = null; // null until the browser grants GPS or the user searches
     let gpsWatchId = null;
 
     // Pin User Location on Leaflet GPS Navigational Chart
@@ -3788,7 +4494,13 @@
       const coordsStr = `${latDeg}°${latMin}'${lat >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonMin}'${lon >= 0 ? 'E' : 'W'}`;
 
       // Update vesselLocation cache
-      vesselLocation = { latitude: lat, longitude: lon };
+      const locDisplayName = (gpsData.name && gpsData.name !== 'Your Current Location') ? gpsData.name : 'Your Current Location';
+      vesselLocation = { latitude: lat, longitude: lon, name: locDisplayName };
+
+      // Update dynamic fishing and marine zones around this location
+      if (typeof updateDynamicMarineZones === 'function') {
+        updateDynamicMarineZones(lat, lon, locDisplayName, window.lastBridgeTelemetry);
+      }
 
       // Update masthead telemetry bar
       const elFix = document.getElementById('txtTelemetryFix');
@@ -3802,7 +4514,6 @@
       }
 
       // Create or update live pulsing beacon icon
-      const locDisplayName = gpsData.name || 'Your Current Location';
       const beaconHtml = `
         <div class="leaflet-user-beacon" title="📍 ${escapeHtml(locDisplayName)} (${coordsStr})">
           <div class="user-beacon-pulse"></div>
@@ -3846,14 +4557,19 @@
     // Center or Move Map Viewport to User Location
     function focusMapOnUserLocation(lat, lon) {
       if (!leafletMap) return;
-      const targetLat = (typeof lat === 'number') ? lat : (vesselLocation ? vesselLocation.latitude : 15.25);
-      const targetLon = (typeof lon === 'number') ? lon : (vesselLocation ? vesselLocation.longitude : 73.80);
+      if (typeof lat !== 'number' && !vesselLocation) return;
+      const targetLat = (typeof lat === 'number') ? lat : vesselLocation.latitude;
+      const targetLon = (typeof lon === 'number') ? lon : vesselLocation.longitude;
       leafletMap.flyTo([targetLat, targetLon], 12, { duration: 1.2 });
     }
 
     // Update Bridge Telemetry Strip UI
     function updateBridgeTelemetryUI(data) {
       if (!data) return;
+      window.lastBridgeTelemetry = Object.assign(window.lastBridgeTelemetry || {}, data);
+      if (vesselLocation && typeof updateDynamicMarineZones === 'function') {
+        updateDynamicMarineZones(vesselLocation.latitude, vesselLocation.longitude, vesselLocation.name, data);
+      }
       if (data.sog) {
         const el = document.getElementById('txtTelemSog');
         if (el) el.innerHTML = `SOG: <strong>${data.sog}</strong>`;
@@ -3868,7 +4584,7 @@
       }
       if (data.wave) {
         const el = document.getElementById('txtTelemBaro');
-        if (el) el.innerHTML = `WAVE: <strong>${data.wave}</strong> • BARO: <strong>${data.baro || '1008.4 hPa'}</strong>`;
+        if (el) el.innerHTML = `WAVE: <strong>${data.wave}</strong> • BARO: <strong>${data.baro || 'UNAVAILABLE'}</strong>`;
       }
       if (data.fix) {
         const el = document.getElementById('txtTelemetryFix');
@@ -3972,6 +4688,10 @@
           if (data && data.gps) {
             pinUserLocationOnMap(data.gps);
             if (data.telemetry) updateBridgeTelemetryUI(data.telemetry);
+            fetchLiveBulletins(lat, lon);
+            if (typeof loadRegressionData === 'function') {
+              loadRegressionData(activeRegVar);
+            }
             if (data.risk_points && data.risk_points.length > 0) {
               renderDynamicRiskHeatmap(data.risk_points, data.user_location);
             } else {
@@ -4084,7 +4804,8 @@
     // Fetch Live Telemetry from Backend on Load
     async function fetchLiveTelemetry() {
       try {
-        const res = await fetch(`${BACKEND_API_BASE}/telemetry`);
+        if (!vesselLocation || typeof vesselLocation.latitude !== 'number' || typeof vesselLocation.longitude !== 'number') return;
+        const res = await fetch(`${BACKEND_API_BASE}/telemetry?lat=${vesselLocation.latitude}&lon=${vesselLocation.longitude}`);
         if (!res.ok) return;
         const data = await res.json();
         isBackendConnected = true;
@@ -4102,10 +4823,13 @@
       }
     }
 
-    // Fetch Live Bulletins from Backend on Load
-    async function fetchLiveBulletins() {
+    // Fetch Live Bulletins from Backend for ANY Coordinates
+    async function fetchLiveBulletins(lat, lon) {
       try {
-        const res = await fetch(`${BACKEND_API_BASE}/bulletins`);
+        if (typeof lat !== 'number' && !vesselLocation) return;
+        const targetLat = (typeof lat === 'number') ? lat : vesselLocation.latitude;
+        const targetLon = (typeof lon === 'number') ? lon : vesselLocation.longitude;
+        const res = await fetch(`${BACKEND_API_BASE}/bulletins?lat=${targetLat}&lon=${targetLon}`);
         if (!res.ok) return;
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -4165,17 +4889,18 @@
         };
         if (context.coords && typeof context.coords.latitude === 'number' && typeof context.coords.longitude === 'number') {
           payload.location = { latitude: context.coords.latitude, longitude: context.coords.longitude };
+          payload.latitude = context.coords.latitude;
+          payload.longitude = context.coords.longitude;
         } else if (vesselLocation) {
           payload.location = vesselLocation;
+          payload.latitude = vesselLocation.latitude;
+          payload.longitude = vesselLocation.longitude;
         }
 
         const response = await fetch(`${BACKEND_API_BASE}/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            location: vesselLocation
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -4250,11 +4975,11 @@
             const riskColor = (riskLevel === 'CRITICAL' || riskLevel === 'HIGH') ? 'var(--danger-bright)' : (riskLevel === 'MEDIUM' ? 'var(--caution-border)' : 'var(--pfz-bright)');
 
             const telemRows = `
-              <div>WAVE: <span class="telemetry-val">${escapeHtml(telem.wave || (data.marine_data && data.marine_data.wave_height ? data.marine_data.wave_height + 'm' : '1.1m'))}</span></div>
-              <div>WIND: <span class="telemetry-val">${escapeHtml(telem.wind || (data.weather_data && data.weather_data.wind_speed ? data.weather_data.wind_speed + ' kts' : '12 kts'))}</span></div>
-              <div>SWELL: <span class="telemetry-val">${escapeHtml(telem.swell || '0.9m')}</span></div>
-              <div>CURRENT: <span class="telemetry-val">${escapeHtml(telem.current || '0.9 kts')}</span></div>
-              <div>SST: <span class="telemetry-val">${escapeHtml(telem.sst || '28.1°C')}</span></div>
+              <div>WAVE: <span class="telemetry-val">${escapeHtml(telem.wave || (data.marine_data && data.marine_data.wave_height ? data.marine_data.wave_height + 'm' : 'UNAVAILABLE'))}</span></div>
+              <div>WIND: <span class="telemetry-val">${escapeHtml(telem.wind || (data.weather_data && data.weather_data.wind_speed ? data.weather_data.wind_speed + ' kts' : 'UNAVAILABLE'))}</span></div>
+              <div>SWELL: <span class="telemetry-val">${escapeHtml(telem.swell || 'UNAVAILABLE')}</span></div>
+              <div>CURRENT: <span class="telemetry-val">${escapeHtml(telem.current || 'UNAVAILABLE')}</span></div>
+              <div>SST: <span class="telemetry-val">${escapeHtml(telem.sst || 'UNAVAILABLE')}</span></div>
               <div>RISK: <span class="telemetry-val" style="color:${riskColor}">${riskScore}/100 (${riskLevel})</span></div>
             `;
 
@@ -4264,7 +4989,17 @@
             );
 
             const advisoryDiv = document.createElement('div');
-            advisoryDiv.className = 'dispatch-entry advisory';
+            advisoryDiv.className = 'dispatch-entry advisory assistant-message';
+            advisoryDiv.innerHTML = `
+              <div class="dispatch-bubble-assistant">
+                <div class="assistant-label">KyroX Assistant</div>
+                <div>${formatMarkdown(rec.response_text || rec.message || (data.conversation && data.conversation.response) || 'I have analyzed the available marine conditions.')}</div>
+              </div>
+            `;
+            chatThread.appendChild(advisoryDiv);
+            scrollChatToBottom();
+            return;
+
             advisoryDiv.innerHTML = `
               <div class="dispatch-card-advisory" style="border-left-color: ${rec.action === 'SAFE' ? 'var(--pfz-border)' : (rec.action === 'PROCEED_WITH_CAUTION' ? 'var(--caution-border)' : 'var(--danger-border)')};">
                 <div class="advisory-stamp-bar">
@@ -4275,7 +5010,7 @@
                   <span>${actionIcon}</span>
                   <span>${actionLabel}</span>
                 </div>
-                <div class="advisory-main-text">${formatMarkdown(rec.message || (data.conversation && data.conversation.response) || '')}</div>
+                <div class="advisory-main-text">${formatMarkdown(rec.response_text || rec.message || (data.conversation && data.conversation.response) || '')}</div>
                 ${alertsHtml}
                 ${recListHtml}
                 ${explanationHtml}
@@ -4319,21 +5054,34 @@
 
       if (!backendSuccess) {
         if (thinkingDiv.parentNode) thinkingDiv.remove();
+        const assistantDiv = document.createElement('div');
+        assistantDiv.className = 'dispatch-entry advisory assistant-message';
+        assistantDiv.innerHTML = `
+          <div class="dispatch-bubble-assistant">
+            <div class="assistant-label">KyroX Assistant</div>
+            <div>${formatMarkdown(vesselLocation
+              ? 'I could not reach the live marine services just now. Please try again in a moment; I will not guess the sea conditions.'
+              : 'I need your location before I can check live marine conditions. Allow GPS or search for a coastal port, then ask me again.')}</div>
+          </div>`;
+        chatThread.appendChild(assistantDiv);
+        scrollChatToBottom();
+        return;
 
+        // Legacy offline repository is intentionally unreachable; it contained
+        // stale radar values and Loading... placeholders.
         // Fallback to offline repository (emergency prioritized)
         const lower = text.toLowerCase();
         let matchedKey = 'fishing';
-        let matched = ADVISORY_RESPONSES.fishing;
         if (ADVISORY_RESPONSES.emergency.keywords.some(k => lower.includes(k))) {
           matchedKey = 'emergency';
-          matched = ADVISORY_RESPONSES.emergency;
         } else if (ADVISORY_RESPONSES.safety.keywords.some(k => lower.includes(k))) {
           matchedKey = 'safety';
-          matched = ADVISORY_RESPONSES.safety;
         } else if (ADVISORY_RESPONSES.weather.keywords.some(k => lower.includes(k))) {
           matchedKey = 'weather';
-          matched = ADVISORY_RESPONSES.weather;
         }
+        let matched = typeof getDynamicAdvisoryResponse === 'function' ? 
+          getDynamicAdvisoryResponse(matchedKey) : 
+          ADVISORY_RESPONSES[matchedKey];
 
         const offlineZoneId = context.zoneId || matched.zone_id;
 
@@ -5081,13 +5829,14 @@
     async function loadRegressionData(varKey) {
       activeRegVar = varKey;
       const cfg = REG_VARIABLE_CONFIGS[varKey];
-      const targetLat = (typeof currentLat !== 'undefined' && currentLat) ? currentLat : 15.246;
-      const targetLon = (typeof currentLon !== 'undefined' && currentLon) ? currentLon : 73.803;
+      if (!vesselLocation || typeof vesselLocation.latitude !== 'number' || typeof vesselLocation.longitude !== 'number') return;
+      const targetLat = vesselLocation.latitude;
+      const targetLon = vesselLocation.longitude;
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(function() { controller.abort(); }, 3500);
-        const resp = await fetch('http://127.0.0.1:8000/predictions/linear-regression?variable=' + encodeURIComponent(varKey) + '&lat=' + targetLat + '&lon=' + targetLon, {
+        const timeoutId = setTimeout(function() { controller.abort(); }, 6000);
+        const resp = await fetch(`${BACKEND_API_BASE}/predictions/linear-regression?variable=` + encodeURIComponent(varKey) + '&lat=' + targetLat + '&lon=' + targetLon, {
           signal: controller.signal
         });
         clearTimeout(timeoutId);

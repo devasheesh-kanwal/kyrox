@@ -11,8 +11,11 @@ import math
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
+import httpx
 
 logger = logging.getLogger(__name__)
+
+from Tools.marine_tools import _find_nearest_coastal_anchor
 
 # Standard maritime safety threshold limits for operational craft (<20m)
 VARIABLE_THRESHOLDS = {
@@ -189,29 +192,222 @@ def generate_baseline_telemetry(
     return data_points
 
 
+async def fetch_real_hourly_series(
+    variable: str,
+    lat: float,
+    lon: float,
+    past_hours: int = 24
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Fetches real observed hourly time series from Open-Meteo Marine or Weather APIs.
+    Returns a list of point dictionaries aligned to hour offsets (-past_hours to 0).
+    """
+    target_var = variable.strip().lower()
+    config = VARIABLE_THRESHOLDS.get(target_var, VARIABLE_THRESHOLDS["wave_height"])
+    req_timeout = httpx.Timeout(12.0, connect=6.0)
+
+    try:
+        async with httpx.AsyncClient(timeout=req_timeout) as client:
+            if target_var in ("wave_height", "swell_wave_height", "ocean_current_velocity"):
+                q_lat, q_lon = lat, lon
+                # If inland, query closest coastal anchor
+                r = await client.get(
+                    "https://marine-api.open-meteo.com/v1/marine",
+                    params={
+                        "latitude": q_lat,
+                        "longitude": q_lon,
+                        "hourly": target_var,
+                        "past_days": 1,
+                        "forecast_days": 1,
+                    },
+                    headers={"User-Agent": "KyroX-Marine-AI/2.0"},
+                )
+                r.raise_for_status()
+                data = r.json()
+                hourly_block = data.get("hourly") or {}
+                vals = hourly_block.get(target_var) or []
+
+                # If values are None (inland), fallback to nearest coastal anchor
+                if not vals or vals[0] is None:
+                    c_lat, c_lon = _find_nearest_coastal_anchor(lat, lon)
+                    r = await client.get(
+                        "https://marine-api.open-meteo.com/v1/marine",
+                        params={
+                            "latitude": c_lat,
+                            "longitude": c_lon,
+                            "hourly": target_var,
+                            "past_days": 1,
+                            "forecast_days": 1,
+                        },
+                        headers={"User-Agent": "KyroX-Marine-AI/2.0"},
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+                    hourly_block = data.get("hourly") or {}
+                    vals = hourly_block.get(target_var) or []
+
+                times = hourly_block.get("time") or []
+
+            elif target_var == "wind_speed":
+                r = await client.get(
+                    "https://api.open-meteo.com/v1/forecast",
+                    params={
+                        "latitude": lat,
+                        "longitude": lon,
+                        "hourly": "wind_speed_10m",
+                        "wind_speed_unit": "kn",
+                        "past_days": 1,
+                        "forecast_days": 1,
+                    },
+                    headers={"User-Agent": "KyroX-Marine-AI/2.0"},
+                )
+                r.raise_for_status()
+                data = r.json()
+                hourly_block = data.get("hourly") or {}
+                vals = hourly_block.get("wind_speed_10m") or []
+                times = hourly_block.get("time") or []
+
+            elif target_var == "risk_score":
+                # Compute risk score series by combining wind and waves
+                c_lat, c_lon = lat, lon
+                m_vals = []
+                w_vals = []
+                times = []
+
+                try:
+                    r_weather = await client.get(
+                        "https://api.open-meteo.com/v1/forecast",
+                        params={
+                            "latitude": lat,
+                            "longitude": lon,
+                            "hourly": "wind_speed_10m",
+                            "wind_speed_unit": "kn",
+                            "past_days": 1,
+                            "forecast_days": 1,
+                        },
+                        headers={"User-Agent": "KyroX-Marine-AI/2.0"},
+                    )
+                    if r_weather.status_code == 200:
+                        w_json = r_weather.json().get("hourly") or {}
+                        w_vals = w_json.get("wind_speed_10m") or []
+                        times = w_json.get("time") or []
+                except Exception as e_w:
+                    logger.warning("Weather series fetch for risk_score: %s", e_w)
+
+                try:
+                    r_marine = await client.get(
+                        "https://marine-api.open-meteo.com/v1/marine",
+                        params={
+                            "latitude": c_lat,
+                            "longitude": c_lon,
+                            "hourly": "wave_height",
+                            "past_days": 1,
+                            "forecast_days": 1,
+                        },
+                        headers={"User-Agent": "KyroX-Marine-AI/2.0"},
+                    )
+                    if r_marine.status_code == 200:
+                        m_vals = (r_marine.json().get("hourly") or {}).get("wave_height") or []
+                    if not m_vals or m_vals[0] is None:
+                        c_lat, c_lon = _find_nearest_coastal_anchor(lat, lon)
+                        r_marine2 = await client.get(
+                            "https://marine-api.open-meteo.com/v1/marine",
+                            params={"latitude": c_lat, "longitude": c_lon, "hourly": "wave_height", "past_days": 1, "forecast_days": 1},
+                            headers={"User-Agent": "KyroX-Marine-AI/2.0"},
+                        )
+                        if r_marine2.status_code == 200:
+                            m_vals = (r_marine2.json().get("hourly") or {}).get("wave_height") or []
+                except Exception as e_m:
+                    logger.warning("Marine series fetch for risk_score: %s", e_m)
+
+                vals = []
+                for i in range(min(len(m_vals), len(w_vals))):
+                    wv = float(m_vals[i] or 1.2)
+                    wd = float(w_vals[i] or 12.0)
+                    r_score = min(100.0, (wv * 15.0) + (wd * 1.5))
+                    vals.append(r_score)
+            else:
+                return None
+
+            if not vals or not times or len(vals) < 20:
+                return None
+
+            # Map hourly data to past_hours up to hour 0
+            now = datetime.now(timezone.utc)
+            # Find the time entry closest to now
+            best_idx = 0
+            best_diff = float("inf")
+            for idx, t_str in enumerate(times):
+                try:
+                    dt = datetime.fromisoformat(t_str).replace(tzinfo=timezone.utc)
+                    diff = abs((dt - now).total_seconds())
+                    if diff < best_diff:
+                        best_diff = diff
+                        best_idx = idx
+                except Exception:
+                    continue
+
+            start_idx = max(0, best_idx - past_hours)
+            slice_vals = vals[start_idx: best_idx + 1]
+            slice_times = times[start_idx: best_idx + 1]
+
+            history_points = []
+            n_pts = len(slice_vals)
+            for i, (v, t_str) in enumerate(zip(slice_vals, slice_times)):
+                h_offset = i - (n_pts - 1)
+                num_val = float(v) if v is not None else 1.2
+                num_val = max(config["min_physical"], min(config["max_physical"], num_val))
+                try:
+                    dt = datetime.fromisoformat(t_str).replace(tzinfo=timezone.utc)
+                    t_label = dt.strftime("%H:%M UTC")
+                    iso_t = dt.isoformat()
+                except Exception:
+                    t_label = f"{h_offset:+d}h"
+                    iso_t = (now + timedelta(hours=h_offset)).isoformat()
+
+                history_points.append({
+                    "hour_offset": h_offset,
+                    "timestamp": iso_t,
+                    "time_label": t_label,
+                    "value": round(num_val, 2),
+                    "is_historical": True,
+                    "is_current": (h_offset == 0)
+                })
+
+            return history_points if len(history_points) >= 5 else None
+
+    except Exception as exc:
+        logger.info("Live hourly series fetch skipped (%s), using deterministic telemetry", exc)
+        return None
+
+
 def compute_24h_prediction(
     variable: str = "wave_height",
     current_val: Optional[float] = None,
     past_hours: int = 24,
-    horizon_hours: int = 24
+    horizon_hours: int = 24,
+    history: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Core function for 24-hour Linear Regression prediction modelling.
-    Returns:
-      - variable config and thresholds
-      - historical observed telemetry (-past_hours to 0)
-      - regression metrics (slope, intercept, R², SE, equation)
-      - 24-hour predictions (1 to horizon_hours) with 95% confidence bands
-      - maritime safety advisory and status classification
+    Accepts real historical hourly telemetry or generates baseline telemetry.
     """
+    past_hours = int(past_hours) if past_hours else 24
+    horizon_hours = int(horizon_hours) if horizon_hours else 24
+
     if variable not in VARIABLE_THRESHOLDS:
         variable = "wave_height"
 
     cfg = VARIABLE_THRESHOLDS[variable]
-    history = generate_baseline_telemetry(variable, current_val, past_hours)
+    if history and len(history) >= 2:
+        hist_data = history
+    else:
+        if current_val is None:
+            raise ValueError("Live telemetry is unavailable for this prediction")
+        hist_data = generate_baseline_telemetry(variable, current_val, past_hours)
 
-    x_hist = [pt["hour_offset"] for pt in history]
-    y_hist = [pt["value"] for pt in history]
+    x_hist = [pt["hour_offset"] for pt in hist_data]
+    y_hist = [pt["value"] for pt in hist_data]
 
     metrics = fit_linear_regression(x_hist, y_hist)
     slope = metrics["slope"]
@@ -327,6 +523,29 @@ def compute_24h_prediction(
             "advisory_en": advisory_en,
             "advisory_ta": advisory_ta
         },
-        "history": history,
+        "history": hist_data,
         "predictions": predictions
     }
+
+
+async def compute_24h_prediction_async(
+    variable: str = "wave_height",
+    current_val: Optional[float] = None,
+    past_hours: int = 24,
+    horizon_hours: int = 24,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Asynchronously compute 24h linear regression prediction using live hourly data if available.
+    """
+    if lat is None or lon is None:
+        raise ValueError("Latitude and longitude are required for live predictions")
+    hist_points = await fetch_real_hourly_series(variable, lat, lon, past_hours=past_hours)
+    return compute_24h_prediction(
+        variable=variable,
+        current_val=current_val,
+        past_hours=past_hours,
+        horizon_hours=horizon_hours,
+        history=hist_points,
+    )
