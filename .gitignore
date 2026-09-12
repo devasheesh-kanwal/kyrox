@@ -6,3 +6,4 @@
 .env.*
 env.js
 **/env.js
+**/.venv/
