@@ -2083,11 +2083,28 @@ body {
 }
 
 .graph-canvas-container {
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
+  min-height: 0;
   position: relative;
   background: radial-gradient(circle at 50% 50%, rgba(10, 24, 48, 0.4) 0%, #03060E 100%);
-  min-height: 220px;
+  overflow: hidden;
+}
+
+#regressionPlotly,
+#regressionPlotly .plot-container,
+#regressionPlotly .svg-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#modelEvaluationPanel {
+  flex: 0 0 auto;
+  max-height: 54px;
+  overflow: auto;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
 }
 
 #regressionCanvas {

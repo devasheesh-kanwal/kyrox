@@ -27,5 +27,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
+.venv\Scripts\python.exe -m pip install --disable-pip-version-check --no-deps googletrans==4.0.2
+if errorlevel 1 (
+    echo Could not install the googletrans translation library.
+    pause
+    exit /b 1
+)
+
 echo Starting KyroX backend at http://localhost:8000/
 .venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000

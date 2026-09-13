@@ -144,6 +144,12 @@
             <button id="btnLangHI" class="lang-opt-btn" type="button">HI</button>
             <button id="btnLangEN" class="lang-opt-btn selected" type="button">EN</button>
             <button id="btnLangTA" class="lang-opt-btn" type="button">TA</button>
+            <button id="btnLangMore" class="lang-opt-btn" type="button" title="More Languages">▼</button>
+          </div>
+
+          <!-- Expanded Language Dropdown -->
+          <div id="expandedLangDropdown" class="expanded-lang-dropdown" style="display: none;">
+            <div class="lang-grid"></div>
           </div>
         </div>
       </div>
@@ -166,6 +172,9 @@
           </span>
           <span class="telemetry-node">
             <span id="txtTelemBaro">BARO: <strong>1008.4 hPa ↓</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemSsh">SSH: <strong>-- cm</strong></span>
           </span>
           <span class="telemetry-node">
             <span id="txtTelemVhf" style="color: var(--cyan-primary); font-weight: 700;">VHF CH 16 GUARD</span>

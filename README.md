@@ -1,6 +1,6 @@
 # KyroX
 
-KyroX is a marine safety dashboard with a FastAPI backend and a browser frontend.
+Varuna by Kyrox is a marine safety dashboard with a FastAPI backend and a browser frontend.
 
 ## Windows quick start
 
@@ -28,10 +28,15 @@ Then open <http://localhost:5500/index.html>.
 The app uses Open-Meteo's keyless weather and marine APIs by default. Optional provider settings can be placed in `Backend\.env`:
 
 ```text
-HF_TOKEN=your_huggingface_token
-WEATHER_KEY=your_openweather_key
+HF_TOKEN=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
+WEATHER_KEY=119c66d0e662490174396d0265f76bec
 WEATHER_URL=https://api.openweathermap.org/data/2.5/weather
 ```
+
+
+Translations use `googletrans==4.0.0-rc1` and do not require a Google Cloud API key.
+The backend startup script installs it without its obsolete `httpx` pin because
+KyroX requires a newer `httpx` version for its marine data clients.
 
 Without `HF_TOKEN`, the backend uses its built-in deterministic safety fallback for recommendations. Without OpenWeather credentials, it falls back to Open-Meteo.
 

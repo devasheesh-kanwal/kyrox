@@ -23,6 +23,9 @@
   <script src="../map_config.js" onerror=""></script>
   <script src="../../map_config.js" onerror=""></script>
 
+  <!-- Plotly gives the analytics view zoom, hover, and export controls. -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
   <!-- ORCA Cyber-Ocean Theme Stylesheet -->
   <link rel="stylesheet" href="css/orca-theme.css">
   <link rel="stylesheet" href="../css/orca-theme.css" onerror="">
@@ -196,6 +199,9 @@
           </span>
           <span class="telemetry-node">
             <span id="txtTelemBaro">BARO: <strong>1008.4 hPa ↓</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemSsh">SSH: <strong>-- cm</strong></span>
           </span>
           <span class="telemetry-node">
             <span id="txtTelemVhf" style="color: var(--cyan-primary); font-weight: 700;">VHF CH 16 GUARD</span>
@@ -391,6 +397,7 @@
                   <button type="button" class="loc-chip" data-loc="visakhapatnam">Visakhapatnam</button>
                   <button type="button" class="loc-chip" data-loc="kochi">Kochi</button>
                   <button type="button" class="loc-chip" data-loc="mangalore">Mangalore</button>
+                  <button type="button" class="loc-chip" data-loc="andaman">Andaman &amp; Nicobar</button>
                 </div>
               </div>
 
@@ -583,8 +590,10 @@
 
             <!-- Canvas Stage -->
             <div class="graph-canvas-container" id="graphCanvasContainer">
-              <canvas id="regressionCanvas"></canvas>
+              <div id="regressionPlotly" style="width:100%;height:100%;"></div>
+              <canvas id="regressionCanvas" style="display:none;"></canvas>
             </div>
+            <div id="modelEvaluationPanel" style="margin: 0 16px 10px; font-size: 0.78rem;"></div>
 
             <!-- Bottom Telemetry Bar -->
             <div class="graph-bottom-telemetry-bar">

@@ -1,0 +1,461 @@
+127.0.0.1 - - [13/Sep/2026 11:24:29] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:27:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:27:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:28:11] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:28:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:28:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:28:11] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:28:11] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:28:11] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:28:11] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:28:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:28:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:28:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:28:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:30] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:30] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:31] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:29:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:29:53] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:53] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:29:54] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:29:54] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:30:36] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:30:36] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:10] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:10] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:31:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:31:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:15] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:32:15] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:15] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:15] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:32:15] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:15] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:15] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:15] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:58] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:58] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:59] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:32:59] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:59] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:59] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:59] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:32:59] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:32:59] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:33:18] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:33:18] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:33:18] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:33:18] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:33:18] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:33:18] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:33:18] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:33:18] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:34:41] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:34:41] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:34:41] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:34:41] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:34:41] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:34:41] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:34:41] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:34:42] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:34:42] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:35:02] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:35:02] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:35:02] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:35:02] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:35:02] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:35:02] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:35:02] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:35:02] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:38:37] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:38:37] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:10] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:10] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:20] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:20] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:20] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:20] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:20] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:20] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:20] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:25] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:25] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:25] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:25] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:25] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:25] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:25] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:59] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:40:59] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:59] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:59] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:59] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:40:59] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:40:59] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:04] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:41:04] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:04] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:04] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:04] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:04] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:04] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:55] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:41:55] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:55] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:55] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:41:55] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:41:55] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:41:55] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:41:56] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:56] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:56] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:56] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:56] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:56] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:56] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:56] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:41:56] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:41:56] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:42:08] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:42:08] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:42:08] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:42:08] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:42:08] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:42:08] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:42:08] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:42:13] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:42:13] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:42:13] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:42:13] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:42:13] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:42:13] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:42:13] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:11] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:24] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:24] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:43:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:29] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:43:30] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:30] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:30] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:43:30] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:30] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:43:30] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:43:30] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:11] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:11] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:12] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:12] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:24] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:24] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:44:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:29] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:44:29] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:29] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:29] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:44:29] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:29] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:44:29] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:44:29] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:31] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:31] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:44] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:44] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:44] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:44] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:45:44] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:44] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:44] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:44] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:49] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:45:49] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:49] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:49] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:45:49] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:49] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:45:49] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:45:49] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:32] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:32] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:45] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:45] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:45] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:45] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:46:45] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:45] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:45] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:45] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:50] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:46:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:50] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:46:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:46:50] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:46:50] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:25] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:25] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:25] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:25] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:25] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:25] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:25] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:26] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:26] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:26] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:26] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:26] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:26] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:26] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:47:26] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:26] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:26] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:26] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:38] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:38] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:38] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:38] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:47:38] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:38] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:38] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:38] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:43] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 11:47:44] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:44] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:44] "GET /js/orca-dashboard.js HTTP/1.1" 304 -
+127.0.0.1 - - [13/Sep/2026 11:47:44] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:44] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 11:47:44] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 11:47:44] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /css/orca-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /js/orca-dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /js/species-data.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /map_config.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:06] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:06] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:07] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:07] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:07] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:07] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:07] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:07] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:19] "GET /Alerts/alerts.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:19] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:19] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:19] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:19] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:19] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:19] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:24] "GET /Chat/chat.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Sep/2026 12:00:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:24] "GET /env.js HTTP/1.1" 404 -
+127.0.0.1 - - [13/Sep/2026 12:00:24] code 404, message File not found
+127.0.0.1 - - [13/Sep/2026 12:00:24] "GET /env.js HTTP/1.1" 404 -

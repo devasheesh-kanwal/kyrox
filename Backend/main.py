@@ -38,7 +38,15 @@ from Agents.conversational_agent import conversational_agent as run_conversation
 from Agents.gps_agent import gps_agent
 from Agents.risk_agent import generate_risk_heatmap
 from Services.prediction_service import compute_24h_prediction, compute_24h_prediction_async
-from Services.translation_service import translate_text, translate_to_all_indian_languages
+from Services.translation_service import (
+    LANGUAGE_CODE_TO_NAME,
+    MAX_TRANSLATE_BATCH,
+    is_supported_language,
+    translate_batch,
+    translate_text,
+    translate_to_all_indian_languages,
+)
+from Tools.marine_tools import get_nearest_maritime_sector
 from Agents.orchestrator import (
     calculate_risk,
     orchestrate,
@@ -152,8 +160,8 @@ def _compute_dynamic_tides_and_nav(
         "baro": f"{float(baro):.1f} hPa" if baro is not None else "UNAVAILABLE",
         "sog": "UNAVAILABLE",
         "cog": f"{current_dir:.0f}° {cardinal}" if current_dir is not None else "UNAVAILABLE",
-        "highTide": "UNAVAILABLE — tide station data not configured",
-        "lowTide": "UNAVAILABLE — tide station data not configured",
+        "highTide": "UNAVAILABLE - tide station data not configured",
+        "lowTide": "UNAVAILABLE - tide station data not configured",
         "visibility": "UNAVAILABLE" if not weather_data else ("EXCELLENT (>10 NM)" if weather_data.get("storm_risk") == "LOW" else "MODERATE (5-8 NM)"),
         "wave": f"{float(wave_h):.1f}m" if wave_h is not None else "UNAVAILABLE",
         "wind": f"{float(wind_spd):.1f} kts" if wind_spd is not None else "UNAVAILABLE",
@@ -182,6 +190,26 @@ async def health_check():
         ]
     }
 
+
+async def _noop() -> None:
+    """Awaitable placeholder used when an optional translation is not requested."""
+    # Returning None keeps asyncio.gather unpacking symmetric with the
+    # real translation call when the language bundle is not requested.
+    return None
+
+async def _localized_text(text: str, language: str) -> str:
+    """Return `text` in `language`, falling back to the English original.
+
+    Translation is best-effort: an unavailable translator must never break a
+    safety response, so failures simply return the English text.
+    """
+    if not text or not language or language == "en":
+        return text
+    result = await translate_text(text, language, "en")
+    if result.get("success") and result.get("translated_text"):
+        return result["translated_text"]
+    logger.warning("Localization to '%s' failed: %s", language, result.get("error"))
+    return text
 
 def _build_natural_language_response(
     recommendation: Dict[str, Any],
@@ -235,13 +263,21 @@ async def process_query(request: UserRequest):
         # A zone label cannot replace a device fix. Do not invent coordinates.
         return {
             "status": "location_required",
-            "message": "A verified GPS location or explicit latitude/longitude is required for live analysis.",
+            "message": await _localized_text(
+                "A verified GPS location or explicit latitude/longitude is required for live analysis.",
+                (request.language or "en").lower(),
+            ),
+            "language": (request.language or "en").lower(),
             "zone_id": target_zone,
         }
     else:
         return {
             "status": "location_required",
-            "message": "Allow browser location or provide latitude and longitude for live marine analysis.",
+            "message": await _localized_text(
+                "Allow browser location or provide latitude and longitude for live marine analysis.",
+                (request.language or "en").lower(),
+            ),
+            "language": (request.language or "en").lower(),
             "zone_id": target_zone,
         }
 
@@ -340,25 +376,39 @@ async def process_query(request: UserRequest):
         recommendation, risk_assessment, conv_data
     )
     recommendation["response_text"] = response_text
-    
-    # Add translations for multi-language support
-    try:
-        translations = translate_to_all_indian_languages(response_text, "en")
-        recommendation["translations"] = translations["translations"]
-    except Exception as exc:
-        logger.warning("Translation failed: %s", exc)
-        recommendation["translations"] = {}
 
-    # Localize the user-facing answer requested by the chat client. Keep the
-    # structured recommendation in English for existing dashboard consumers.
+    # Localize the user-facing answer for the language the chat client asked
+    # for. The structured recommendation stays in English for the dashboard.
     response_language = (request.language or "en").lower()
-    localized_response = response_text
-    translation_success = response_language == "en"
-    if response_language != "en":
-        language_result = translate_text(response_text, response_language, "en")
-        if language_result.get("success"):
-            localized_response = language_result["translated_text"]
-            translation_success = True
+    if response_language != "en" and not is_supported_language(response_language):
+        logger.warning("Unsupported response language requested: %s", response_language)
+        response_language = "en"
+
+    # A non-English response language doubles as the client's request for the
+    # full language bundle, so both translations are requested in parallel
+    # instead of two sequential round trips.
+    wants_bundle = response_language != "en"
+    language_result, all_languages = await asyncio.gather(
+        translate_text(response_text, response_language, "en"),
+        translate_to_all_indian_languages(response_text, "en") if wants_bundle else _noop(),
+    )
+
+    localized_response = language_result.get("translated_text") or response_text
+    translation_success = bool(language_result.get("success"))
+    if not translation_success and response_language != "en":
+        logger.warning(
+            "Translation to %s failed: %s", response_language, language_result.get("error")
+        )
+    if wants_bundle and isinstance(all_languages, dict):
+        translations = all_languages.get("translations")
+        if translations:
+            # The bundle is generated from English, so make sure the language
+            # the client actually asked for holds the localized answer.
+            translated_entry = translations.get(LANGUAGE_CODE_TO_NAME.get(response_language, ""))
+            if translated_entry is not None and translation_success:
+                translated_entry["text"] = localized_response
+                translated_entry["success"] = True
+            recommendation["translations"] = translations
 
     # Resolve effective navigational zone for UI highlighting
     if target_zone:
@@ -382,6 +432,7 @@ async def process_query(request: UserRequest):
 
     # Synthesize live dynamic telemetry snapshot
     nav_telemetry = _compute_dynamic_tides_and_nav(marine_data, weather_data, geo_data)
+    maritime_sector = get_nearest_maritime_sector(loc.latitude, loc.longitude)
     telemetry_snapshot = {
         "bearing": nav_telemetry["cog"],
         "depth": nav_telemetry["depth"],
@@ -394,6 +445,8 @@ async def process_query(request: UserRequest):
         "lowTide": nav_telemetry["lowTide"],
         "visibility": nav_telemetry["visibility"],
         "baro": nav_telemetry["baro"],
+        "sea_surface_height_anomaly": maritime_sector["ssh_anomaly_cm"],
+        "sea_surface_height_unit": maritime_sector["ssh_unit"],
         "sog": nav_telemetry["sog"],
         "cog": nav_telemetry["cog"],
         "clearance": recommendation.get("action", "SAFE"),
@@ -439,6 +492,7 @@ async def process_query(request: UserRequest):
             "response": localized_response,
             "language": response_language,
             "translation_success": translation_success,
+            "translations": recommendation.get("translations", {}),
         },
         "weather": weather_data,
         "marine": marine_data,
@@ -523,6 +577,7 @@ async def get_live_telemetry(
     nav_telemetry = _compute_dynamic_tides_and_nav(m_data, w_data)
 
     risk_state = calculate_risk(marine=m_data, weather=w_data, geospatial={})
+    maritime_sector = get_nearest_maritime_sector(loc.latitude, loc.longitude)
     return {
         "fix": f"DGPS: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
         "sog": nav_telemetry["sog"],
@@ -533,6 +588,8 @@ async def get_live_telemetry(
         "wind": nav_telemetry["wind"],
         "current": nav_telemetry["current"],
         "sst": nav_telemetry["sst"],
+        "sea_surface_height_anomaly": maritime_sector["ssh_anomaly_cm"],
+        "sea_surface_height_unit": maritime_sector["ssh_unit"],
         "vhf": "VHF CH 16 GUARD",
         "highTide": nav_telemetry["highTide"],
         "lowTide": nav_telemetry["lowTide"],
@@ -541,6 +598,7 @@ async def get_live_telemetry(
         "location": _dump_model(loc),
         "gps": gps_data,
         "risk_points": risk_points,
+        "maritime_intelligence": maritime_sector,
     }
 
 
@@ -587,6 +645,7 @@ async def update_user_location(
     risk_points = []
 
     nav_telemetry = _compute_dynamic_tides_and_nav(m_data, w_data)
+    maritime_sector = get_nearest_maritime_sector(loc.latitude, loc.longitude)
 
     return {
         "status": "success",
@@ -605,7 +664,10 @@ async def update_user_location(
             "current": nav_telemetry["current"],
             "sst": nav_telemetry["sst"],
             "clearance": calculate_risk(marine=m_data, weather=w_data, geospatial={})["risk_level"],
-        }
+            "sea_surface_height_anomaly": maritime_sector["ssh_anomaly_cm"],
+            "sea_surface_height_unit": maritime_sector["ssh_unit"],
+        },
+        "maritime_intelligence": maritime_sector
     }
 
 
@@ -652,7 +714,7 @@ async def get_risk_heatmap(
 
     try:
         heatmap_data = await generate_risk_heatmap(target_lat, target_lon, step=target_step)
-        
+
         # If no real data is available, return empty risk_points with a message
         if not heatmap_data.get("risk_points") or len(heatmap_data["risk_points"]) == 0:
             logger.info("No real data available for heatmap at (%.4f, %.4f)", target_lat, target_lon)
@@ -662,7 +724,7 @@ async def get_risk_heatmap(
                 "message": "No real data available for this location",
                 "has_data": False
             }
-        
+
         heatmap_data["has_data"] = True
         return heatmap_data
     except Exception as exc:
@@ -694,7 +756,7 @@ async def translate_endpoint(
 ):
     """
     Translate text to a specific language (supports all 22 official Indian languages)
-    
+
     Returns:
         {
             "translated_text": "...",
@@ -706,13 +768,41 @@ async def translate_endpoint(
     target_text = body.text if body else text
     if not target_text:
         raise HTTPException(status_code=400, detail="text is required")
-    
+
     target = body.target_lang if body else target_lang
     source = body.source_lang if body else source_lang
-    
-    result = translate_text(target_text, target, source)
+
+    result = await translate_text(target_text, target, source)
     return result
 
+
+class BatchTranslationRequest(BaseModel):
+    texts: List[str] = Field(..., description="Texts to translate, in display order")
+    target_lang: str = Field("hi", description="Target language code (e.g., 'hi' for Hindi)")
+    source_lang: str = Field("en", description="Source language code (default: 'en')")
+
+@app.post("/translate/batch")
+async def translate_batch_endpoint(body: BatchTranslationRequest):
+    """Translate a list of UI strings in a single Google Translate request.
+
+    The response preserves the input order, so clients can map results back to
+    the interface elements they came from.
+    """
+    if not body.texts:
+        return {"translations": [], "count": 0}
+    if len(body.texts) > MAX_TRANSLATE_BATCH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"At most {MAX_TRANSLATE_BATCH} texts can be translated per request",
+        )
+
+    results = await translate_batch(body.texts, body.target_lang, body.source_lang)
+    return {
+        "source_language": (body.source_lang or "en").lower(),
+        "target_language": (body.target_lang or "hi").lower(),
+        "translations": results,
+        "count": len(results),
+    }
 
 class MultiLanguageTranslationRequest(BaseModel):
     text: str = Field(..., description="Text to translate")
@@ -728,7 +818,7 @@ async def translate_all_endpoint(
 ):
     """
     Translate text to all 22 official Indian languages
-    
+
     Returns:
         {
             "source_text": "...",
@@ -744,10 +834,10 @@ async def translate_all_endpoint(
     target_text = body.text if body else text
     if not target_text:
         raise HTTPException(status_code=400, detail="text is required")
-    
+
     source = body.source_lang if body else source_lang
-    
-    result = translate_to_all_indian_languages(target_text, source)
+
+    result = await translate_to_all_indian_languages(target_text, source)
     return result
 
 
@@ -755,7 +845,7 @@ async def translate_all_endpoint(
 async def get_supported_languages():
     """
     Get list of all supported Indian languages with their codes
-    
+
     Returns:
         {
             "languages": {
@@ -856,7 +946,7 @@ async def get_linear_regression_predictions(
     """
     24-Hour Marine Linear Regression Modelling Endpoint.
     Computes an Ordinary Least Squares (OLS) line of best fit over marine time-series,
-    determines R², slope, intercept, standard error, and returns forward 24-hour
+    determines R-squared, slope, intercept, standard error, and returns forward 24-hour
     hourly projections with 95% confidence intervals and multi-lingual marine safety advisories.
     """
     req_body = body or {}

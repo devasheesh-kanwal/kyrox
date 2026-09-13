@@ -7,7 +7,11 @@
   'use strict';
 
   // State management
+  // Restore the last selected language.
   let currentLang = localStorage.getItem('orca_marine_lang') || 'en';
+  // Incremented on every language change so in-flight replies for the previous
+  // language can be discarded instead of overwriting a newer answer.
+  let languageEpoch = 0;
   let currentAlertFilter = 'all';
   let activeZoneId = null;
   let currentDeviceMode = localStorage.getItem('orca_marine_device_mode') || 'pc';
@@ -94,6 +98,17 @@
       mobSpecies: "Species",
       viewPC: "PC",
       viewPhone: "PHONE",
+      chatPilotQuery: "PILOT QUERY",
+      chatProcessing: "PROCESSING...",
+      chatAnalyzing: "Analyzing satellite telemetry & environmental risk matrix...",
+      chatLive: "LIVE",
+      chatNominal: "NOMINAL",
+      chatDispatch: "ORCA NEURAL DISPATCH",
+      chatSpeak: "Speak this response",
+      bulletinBadgeDanger: "DANGER",
+      bulletinBadgeCaution: "CAUTION",
+      bulletinBadgeResolved: "NOMINAL",
+      bulletinActionLabel: "Action:",
       queries: [
         { label: "🐋 Recent Species Detections", query: "What marine species were detected recently?", zone_id: null },
         { label: "🧪 Show Pollution Hotspots", query: "Show pollution hotspots and risk areas", zone_id: null },
@@ -155,6 +170,17 @@
       mobSpecies: "प्रजातियां",
       viewPC: "PC",
       viewPhone: "फोन",
+      chatPilotQuery: "पायलट प्रश्न",
+      chatProcessing: "प्रक्रिया जारी...",
+      chatAnalyzing: "उपग्रह टेलीमेट्री एवं पर्यावरणीय जोखिम मैट्रिक्स का विश्लेषण...",
+      chatLive: "लाइव",
+      chatNominal: "सामान्य",
+      chatDispatch: "ORCA न्यूरल प्रेषण",
+      chatSpeak: "यह उत्तर सुनें",
+      bulletinBadgeDanger: "खतरा",
+      bulletinBadgeCaution: "सावधानी",
+      bulletinBadgeResolved: "सामान्य",
+      bulletinActionLabel: "कार्रवाई:",
       queries: [
         { label: "🐋 हालिया प्रजाति खोज", query: "हाल ही में कौन सी समुद्री प्रजातियां देखी गईं?", zone_id: null },
         { label: "🧪 प्रदूषण हॉटस्पॉट दिखाएं", query: "प्रदूषण हॉटस्पॉट और जोखिम क्षेत्र दिखाएं", zone_id: null },
@@ -216,6 +242,17 @@
       mobSpecies: "உயிரினங்கள்",
       viewPC: "PC",
       viewPhone: "போன்",
+      chatPilotQuery: "விமானி கேள்வி",
+      chatProcessing: "செயலாக்கம்...",
+      chatAnalyzing: "செயற்கைக்கோள் தரவு மற்றும் சுற்றுச்சூழல் அபாய பரிசோதனை...",
+      chatLive: "நேரலை",
+      chatNominal: "இயல்பு",
+      chatDispatch: "ORCA அனுப்புதல்",
+      chatSpeak: "இந்த பதிலை கேள்",
+      bulletinBadgeDanger: "ஆபத்து",
+      bulletinBadgeCaution: "எச்சரிக்கை",
+      bulletinBadgeResolved: "இயல்பு",
+      bulletinActionLabel: "நடவடிக்கை:",
       queries: [
         { label: "🐋 அண்மைக்கால உயிரினங்கள்", query: "அண்மையில் கண்டறியப்பட்ட கடல் உயிரினங்கள் எவை?", zone_id: null },
         { label: "🧪 மாசு பகுதிகளைக் காட்டு", query: "கடல் மாசு பகுதிகளைக் காட்டு", zone_id: null },
@@ -226,6 +263,60 @@
       ]
     }
   };
+
+  // All 22 official Indian languages offered in the selector. Hindi and Tamil
+  // also ship hand-written UI strings above; every other language uses the
+  // backend translator for its interface labels.
+  const LANGUAGE_OPTIONS = [
+    { code: 'en', label: 'English', native: 'English' },
+    { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
+    { code: 'ta', label: 'Tamil', native: 'தமிழ்' },
+    { code: 'as', label: 'Assamese', native: 'অসমীয়া' },
+    { code: 'bn', label: 'Bengali', native: 'বাংলা' },
+    { code: 'brx', label: 'Bodo', native: 'बड़ो' },
+    { code: 'doi', label: 'Dogri', native: 'डोगरी' },
+    { code: 'gu', label: 'Gujarati', native: 'ગુજરાતી' },
+    { code: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ' },
+    { code: 'ks', label: 'Kashmiri', native: 'کٲشُر' },
+    { code: 'kok', label: 'Konkani', native: 'कोंकणी' },
+    { code: 'mai', label: 'Maithili', native: 'मैथिली' },
+    { code: 'ml', label: 'Malayalam', native: 'മലയാളം' },
+    { code: 'mni', label: 'Manipuri', native: 'ꯃꯤꯇꯩ ꯂꯣꯟ' },
+    { code: 'mr', label: 'Marathi', native: 'मराठी' },
+    { code: 'ne', label: 'Nepali', native: 'नेपाली' },
+    { code: 'or', label: 'Odia', native: 'ଓଡ଼ିଆ' },
+    { code: 'pa', label: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+    { code: 'sa', label: 'Sanskrit', native: 'संस्कृतम्' },
+    { code: 'sat', label: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ' },
+    { code: 'sd', label: 'Sindhi', native: 'سنڌي' },
+    { code: 'te', label: 'Telugu', native: 'తెలుగు' },
+    { code: 'ur', label: 'Urdu', native: 'اردو' }
+  ];
+  const LANGUAGE_CODES = new Set(LANGUAGE_OPTIONS.map(option => option.code));
+
+  // Static UI strings that only exist in English in the markup. They are
+  // refreshed through the backend translator whenever a non-English language
+  // is selected.
+  const TRANSLATABLE_STATIC_TEXT = [
+    'Dashboard', 'Live Ocean Map', 'Alerts & Bulletins', 'Species Tracker',
+    'Analytics Studio', 'Ask ORCA AI', 'Ocean Health', 'Species Detected',
+    'Active Alerts', 'Pollution Risk', 'Sea Surface Temp', 'Monitored Zones',
+    'Heatmap', 'Legend', 'Advisories', 'All Advisories', 'Critical',
+    'Precaution', 'Nominal', 'Map', 'Ask AI', 'SUNLIGHT', 'HIGH CONTRAST',
+    'GPS: ON', 'GPS: OFF', 'Vessel Position (GPS)', 'Potential Fishing Zone',
+    'Environmental Caution Area', 'Hazard / Squall Warning',
+    'Ocean Risk & SST Heatmap', 'Low Risk (Nominal)', 'Critical Alert Zone',
+    'Live Map', 'Alerts', 'Ask ORCA', 'Analytics', 'Species',
+    'Search coastal port or coordinates', 'Locate', 'My GPS', 'Quick Ports',
+    'ORCA Ocean Neural Assistant', 'Multi-Agent Link Online',
+    'Marine Met', 'Satellite SAR', 'Species Acoustic', 'Risk Matrix',
+    'Ocean LLM', 'Voice Command',
+    'Atmospheric Pressure', 'Relative Humidity', 'Wind Speed', 'Wind Direction',
+    'Visibility', 'Cloud Cover', 'Rainfall', 'Air Temperature',
+    'Significant Wave Height', 'Swell Height', 'Swell Period', 'Tide State',
+    'Chlorophyll-a', 'Sea Surface Salinity', 'Current Speed', 'Fishing Suitability',
+  ];
+  const STATIC_TEXT_TARGETS = '.kpi-title, .kpi-footer-meta span, .panel-title-text, .sidebar-nav-btn > span:not(.nav-icon):not(.nav-badge), .mobile-dock-btn > span, .map-control-btn, .loc-search-submit span, .loc-search-gps span, .loc-quick-lbl, .bulletin-badge, .brief-title span, .brief-swarm-badge span:not(.pulse-dot), .agent-tag, .bulletin-action-bar .btn-bulletin-action';
 
   // Coastal Ports Directory
   const MARITIME_PORTS_CATALOG = {
@@ -240,15 +331,17 @@
     "kolkata": { name: "Kolkata Approaches & Sundarbans", lat: 22.550, lon: 88.310 },
     "nellore": { name: "Nellore Coastal Waters", lat: 14.442, lon: 79.986 },
     "puducherry": { name: "Puducherry Coast", lat: 11.941, lon: 79.808 },
-    "vizag": { name: "Visakhapatnam Deepwater Harbour", lat: 17.686, lon: 83.218 }
+    "vizag": { name: "Visakhapatnam Deepwater Harbour", lat: 17.686, lon: 83.218 },
+    "andaman": { name: "Port Blair and Andaman Sea", lat: 11.623, lon: 92.726 },
+    "nicobar": { name: "Great Nicobar Maritime Sector", lat: 7.030, lon: 93.790 }
   };
 
   const BACKEND_API_BASE = (() => {
     const configured = (window.__KYROX_API_BASE__ || (window.__ENV__ && window.__ENV__.KYROX_API_BASE) || '').trim().replace(/\/$/, '');
     if (configured) return configured;
-    if (window.location.port === '8001') return '';
-    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') return `${window.location.protocol}//${window.location.hostname}:8001`;
-    return 'http://localhost:8001';
+    if (window.location.port === '8000') return '';
+    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') return `${window.location.protocol}//${window.location.hostname}:8000`;
+    return 'http://localhost:8000';
   })();
 
   // 1. HERO PARTICLE SIMULATION
@@ -296,11 +389,19 @@
 
   // 2. VIEW NAVIGATION SYSTEM
   function switchActiveView(viewName) {
+    const viewChanged = currentActiveView !== viewName;
     currentActiveView = viewName;
     const navButtons = document.querySelectorAll('.sidebar-nav-btn');
     navButtons.forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
     });
+
+    // Views that were hidden while a language was selected still hold English
+    // text, so localize them once they become visible.
+    if (viewChanged && currentLang !== 'en') {
+      localizeDynamicContent(currentLang);
+      applyTranslatedStaticText(currentLang);
+    }
 
     const mobButtons = document.querySelectorAll('.mobile-dock-btn');
     mobButtons.forEach(btn => {
@@ -385,13 +486,23 @@
     speciesLayer = L.layerGroup().addTo(leafletMap);
     incidentsLayer = L.layerGroup().addTo(leafletMap);
 
-    renderLeafletTacticalZones();
-    renderLeafletWaypoints();
+    // Do not draw the old generated PFZ/squall scheme on startup. The map is
+    // populated from the live heatmap endpoint below; species and incident
+    // feeds remain separate layers.
+    if (tacticalZonesLayer) tacticalZonesLayer.clearLayers();
+    if (waypointsLayer) waypointsLayer.clearLayers();
     renderSpeciesMarkers();
     renderIncidentMarkers();
 
-    leafletMap.on('click', () => {
+    leafletMap.on('click', (event) => {
       closeTacticalDrawer();
+      // A plain map click becomes the new active analysis location. Marker and
+      // polygon handlers stop propagation, so selecting an existing feature
+      // keeps its current behavior.
+      const lat = Number(event.latlng.lat.toFixed(6));
+      const lon = Number(event.latlng.lng.toFixed(6));
+      stopGpsTracking();
+      updateLocation(lat, lon, `Map selection: ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`, 'map');
     });
 
     updateHeatmapVisuals();
@@ -512,7 +623,7 @@
         fillOpacity: 0.2
       });
 
-      const label = (currentLang === 'hi') ? z.label_hi : (currentLang === 'ta' ? (z.label_ta || z.label_en) : z.label_en);
+      const label = languageValue(z, 'label', currentLang);
       polygon.bindTooltip(label, { permanent: false, direction: 'center', className: 'tactical-map-tooltip' });
 
       polygon.on('click', (e) => {
@@ -535,7 +646,7 @@
       const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [26, 26], iconAnchor: [13, 13] });
       const marker = L.marker(m.latLng, { icon: customIcon });
 
-      const label = (currentLang === 'hi') ? m.label_hi : m.label_en;
+      const label = languageValue(m, 'label', currentLang);
       marker.bindTooltip(label, { permanent: false, direction: 'top', className: 'tactical-map-tooltip' });
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
@@ -606,8 +717,8 @@
     activeZoneId = zoneId;
     const zone = MAP_ZONES.find(z => z.id === zoneId);
     if (!zone) return;
-    const title = (currentLang === 'hi') ? zone.label_hi : (currentLang === 'ta' ? (zone.label_ta || zone.label_en) : zone.label_en);
-    const reason = (currentLang === 'hi') ? zone.reason_hi : (currentLang === 'ta' ? (zone.reason_ta || zone.reason_en) : zone.reason_en);
+    const title = languageValue(zone, 'label', currentLang);
+    const reason = languageValue(zone, 'reason', currentLang);
     showTacticalDrawer(title, reason, zone.coords, zone.type, zoneId);
   }
 
@@ -629,19 +740,19 @@
   function renderDynamicRiskHeatmap(riskPoints, userLocation) {
     if (!riskHeatmapLayer) return;
     riskHeatmapLayer.clearLayers();
-    
+
     // Validate that we have real data before rendering
     if (!isHeatmapActive || !Array.isArray(riskPoints) || riskPoints.length === 0) {
       return;
     }
-    
+
     // Check if the data contains valid risk information
-    const hasValidData = riskPoints.some(pt => 
-      pt.risk !== undefined && pt.risk !== null && 
-      pt.risk_level !== undefined && 
+    const hasValidData = riskPoints.some(pt =>
+      pt.risk !== undefined && pt.risk !== null &&
+      pt.risk_level !== undefined &&
       pt.latitude !== undefined && pt.longitude !== undefined
     );
-    
+
     if (!hasValidData) {
       console.warn('Invalid heatmap data - skipping render');
       return;
@@ -649,11 +760,11 @@
 
     riskPoints.forEach((pt, idx) => {
       // Skip invalid points
-      if (pt.risk === undefined || pt.risk === null || 
+      if (pt.risk === undefined || pt.risk === null ||
           pt.latitude === undefined || pt.longitude === undefined) {
         return;
       }
-      
+
       const risk = Number(pt.risk) || 0;
       const isCenter = (idx === 4);
       let fillColor = '#00F5D4';
@@ -694,7 +805,7 @@
 
       riskHeatmapLayer.addLayer(circle);
     });
-    
+
     // Update button text to show data is available
     const heatmapText = document.getElementById('txtHeatmapToggle');
     if (heatmapText) {
@@ -727,7 +838,7 @@
     if (riskHeatmapLayer) {
       riskHeatmapLayer.clearLayers();
     }
-    
+
     // Show a message that heatmap data is unavailable
     const heatmapBtn = document.getElementById('btnToggleHeatmap');
     const heatmapText = document.getElementById('txtHeatmapToggle');
@@ -735,7 +846,7 @@
       heatmapBtn.classList.remove('active');
       heatmapText.textContent = 'HEATMAP: NO DATA';
     }
-    
+
     console.log('No real heatmap data available - heatmap disabled');
   }
 
@@ -743,10 +854,10 @@
     const btn = document.getElementById('btnToggleHeatmap');
     const scale = document.getElementById('heatmapLegendScale');
     const txt = document.getElementById('txtHeatmapToggle');
-    
+
     if (btn) btn.classList.toggle('active', isHeatmapActive);
     if (scale) scale.style.display = isHeatmapActive ? 'flex' : 'none';
-    
+
     if (txt) {
       if (!isHeatmapActive) {
         txt.textContent = 'HEATMAP: OFF';
@@ -754,7 +865,7 @@
         txt.textContent = 'HEATMAP: ON';
       }
     }
-    
+
     if (riskHeatmapLayer) {
       if (isHeatmapActive) {
         if (vesselLocation) fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
@@ -841,7 +952,7 @@
     let html = '';
     filtered.forEach(b => {
       const type = b.type || 'normal';
-      const badgeText = type.toUpperCase();
+      const badgeText = t(`bulletinBadge${type.charAt(0).toUpperCase()}${type.slice(1)}`, type.toUpperCase());
       html += `
         <div class="bulletin-card ${type}">
           <div class="bulletin-header-meta">
@@ -849,7 +960,7 @@
             <span class="bulletin-badge ${type}">${badgeText}</span>
           </div>
           <p class="bulletin-desc">${escapeHtml(b.desc_en || b.desc_hi || '')}</p>
-          ${b.action_en ? `<div class="bulletin-action-rec">⚡ <strong>Action:</strong> ${escapeHtml(b.action_en)}</div>` : ''}
+          ${b.action_en ? `<div class="bulletin-action-rec">⚡ <strong>${escapeHtml(t('bulletinActionLabel', 'Action:'))}</strong> ${escapeHtml(b.action_en)}</div>` : ''}
           <div class="bulletin-action-bar">
             <button type="button" class="btn-bulletin-action" onclick="window.orcaMapFocusZone('${b.zone_id || ''}')">🗺️ Map</button>
             <button type="button" class="btn-bulletin-action" onclick="window.orcaAskInChat('${escapeHtml(b.title_en || '')}')">💬 Ask AI</button>
@@ -882,7 +993,7 @@
 
     let html = '';
     window.ORCA_SPECIES_CATALOG.forEach(sp => {
-      const name = (currentLang === 'hi') ? sp.name_hi : (currentLang === 'ta' ? sp.name_ta : sp.name_en);
+      const name = languageValue(sp, 'name', currentLang);
       const iucnClass = sp.iucn;
       html += `
         <div class="species-card">
@@ -989,6 +1100,8 @@
     if (depth) depth.innerHTML = `DEPTH: <strong>${value('depth')}</strong>`;
     const baro = document.getElementById('txtTelemBaro');
     if (baro) baro.innerHTML = `BARO: <strong>${value('baro')}</strong>`;
+    const ssh = document.getElementById('txtTelemSsh');
+    if (ssh) ssh.innerHTML = `SSH: <strong>${value('sea_surface_height_anomaly')} ${value('sea_surface_height_unit')}</strong>`;
   }
 
   function updateUserLocationMarker() {
@@ -1010,7 +1123,8 @@
     locationSource = source || 'manual';
     updateUserLocationMarker();
     if (leafletMap) leafletMap.flyTo([lat, lon], 11, { duration: 0.8 });
-    updateDynamicMarineZones(lat, lon, vesselLocation.name);
+    // Refresh live feeds for the newly selected point. Synthetic zones are not
+    // regenerated here, so a map click cannot recreate the old fixed scheme.
     fetchLiveTelemetry(lat, lon);
     fetchLiveBulletins(lat, lon);
     if (isHeatmapActive) fetchRiskHeatmap(lat, lon);
@@ -1051,33 +1165,33 @@
   function resolveLocationInput(raw) {
     const input = String(raw || '').trim();
     if (!input) return null;
-    
+
     // Try coordinate parsing first (support multiple formats)
     const coords = input.split(/[,\s]+/).map(Number);
     if (coords.length === 2 && coords.every(Number.isFinite) && Math.abs(coords[0]) <= 90 && Math.abs(coords[1]) <= 180) {
       return { lat: coords[0], lon: coords[1], name: 'Manual Coordinates' };
     }
-    
+
     // Try port name matching (case-insensitive, partial match)
     const key = input.toLowerCase();
-    
+
     // Direct key match
     if (MARITIME_PORTS_CATALOG[key]) {
       const port = MARITIME_PORTS_CATALOG[key];
       return { lat: port.lat, lon: port.lon, name: port.name };
     }
-    
+
     // Partial match - check if input contains port key or port key contains input
-    const match = Object.keys(MARITIME_PORTS_CATALOG).find(k => 
-      key.includes(k) || k.includes(key) || 
+    const match = Object.keys(MARITIME_PORTS_CATALOG).find(k =>
+      key.includes(k) || k.includes(key) ||
       MARITIME_PORTS_CATALOG[k].name.toLowerCase().includes(key)
     );
-    
+
     if (match) {
       const port = MARITIME_PORTS_CATALOG[match];
       return { lat: port.lat, lon: port.lon, name: port.name };
     }
-    
+
     return null;
   }
 
@@ -1092,7 +1206,7 @@
     const userBubble = document.createElement('div');
     userBubble.className = 'chat-bubble user';
     userBubble.innerHTML = `
-      <div class="chat-bubble-header"><span>PILOT QUERY</span><span>NOW</span></div>
+      <div class="chat-bubble-header"><span>${escapeHtml(t('chatPilotQuery', 'PILOT QUERY'))}</span><span>NOW</span></div>
       <div>${escapeHtml(text)}</div>
     `;
     thread.appendChild(userBubble);
@@ -1101,7 +1215,7 @@
     // Loading Bubble
     const loadingBubble = document.createElement('div');
     loadingBubble.className = 'chat-bubble assistant';
-    loadingBubble.innerHTML = `<div class="chat-bubble-header"><span>ORCA NEURAL AI</span><span>PROCESSING...</span></div><div>Analyzing satellite telemetry & environmental risk matrix...</div>`;
+    loadingBubble.innerHTML = `<div class="chat-bubble-header"><span>ORCA NEURAL AI</span><span>${escapeHtml(t('chatProcessing', 'PROCESSING...'))}</span></div><div>${escapeHtml(t('chatAnalyzing', 'Analyzing satellite telemetry & environmental risk matrix...'))}</div>`;
     thread.appendChild(loadingBubble);
     thread.scrollTop = thread.scrollHeight;
 
@@ -1121,19 +1235,25 @@
       });
 
       if (res.ok) {
+        const requestEpoch = languageEpoch;
+        const requestLanguage = currentLang;
         const data = await res.json();
         let reply = (data.chat && data.chat.response) || (data.recommendation && (data.recommendation.response_text || data.recommendation.message)) || data.reply || data.response || data.message || 'Analysis complete.';
-        if (currentLang !== 'en' && (!data.chat || !data.chat.translation_success)) {
-          reply = await translateForLanguage(reply, currentLang);
+        // The backend localizes responses, so only translate when that failed.
+        if (requestLanguage !== 'en' && (!data.chat || !data.chat.translation_success)) {
+          reply = await translateForLanguage(reply, requestLanguage);
         }
-        
+        // The pilot switched language while this reply was in flight; a new
+        // bubbleset will be produced for the new language instead.
+        if (requestEpoch !== languageEpoch) return;
+
         loadingBubble.innerHTML = `
-          <div class="chat-bubble-header"><span>ORCA NEURAL DISPATCH</span><span>LIVE</span></div>
+          <div class="chat-bubble-header"><span>${escapeHtml(t('chatDispatch', 'ORCA NEURAL DISPATCH'))}</span><span>${escapeHtml(t('chatLive', 'LIVE'))}</span></div>
           <div>${formatMarkdown(reply)}</div>
           ${speakerButtonMarkup(reply)}
         `;
         thread.scrollTop = thread.scrollHeight;
-        
+
         return;
       }
     } catch (e) {}
@@ -1148,9 +1268,9 @@
       }
 
       smartReply = await translateForLanguage(smartReply, currentLang);
-      
+
       loadingBubble.innerHTML = `
-        <div class="chat-bubble-header"><span>ORCA NEURAL DISPATCH</span><span>NOMINAL</span></div>
+        <div class="chat-bubble-header"><span>${escapeHtml(t('chatDispatch', 'ORCA NEURAL DISPATCH'))}</span><span>${escapeHtml(t('chatNominal', 'NOMINAL'))}</span></div>
         <div>${formatMarkdown(smartReply)}</div>
         ${speakerButtonMarkup(smartReply)}
       `;
@@ -1169,7 +1289,7 @@
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'ta' ? 'ta-IN' : 'en-IN');
+    recognition.lang = speechLanguage(currentLang);
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
@@ -1187,7 +1307,7 @@
     if (!recognition) initVoiceRecognition();
     if (!recognition) return;
     try {
-      recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'ta' ? 'ta-IN' : 'en-IN');
+      recognition.lang = speechLanguage(currentLang);
       recognition.start();
       isListening = true;
       const btn = document.getElementById('btnVoiceCommand');
@@ -1303,9 +1423,50 @@
   async function loadRegressionData(varKey) {
     varKey = varKey || activeRegVar;
     activeRegVar = varKey;
-    regressionDataCache = computeLocal24hPrediction(varKey);
-    drawRegressionCanvas();
+    const lat = vesselLocation ? vesselLocation.latitude : 15.246;
+    const lon = vesselLocation ? vesselLocation.longitude : 73.803;
+    try {
+      const params = new URLSearchParams({ variable: varKey, lat, lon, horizon_hours: 24, past_hours: 24 });
+      const response = await fetch(`${BACKEND_API_BASE}/predictions/linear-regression?${params}`);
+      if (!response.ok) throw new Error(`Prediction request failed (${response.status})`);
+      regressionDataCache = await response.json();
+    } catch (error) {
+      console.warn('Backend model evaluation unavailable; using local OLS:', error);
+      regressionDataCache = computeLocal24hPrediction(varKey);
+    }
+    drawRegressionPlotly();
     updateRegressionHUD();
+  }
+
+  function drawRegressionPlotly() {
+    const plot = document.getElementById('regressionPlotly');
+    const data = regressionDataCache;
+    if (!plot || !data || typeof window.Plotly === 'undefined') {
+      drawRegressionCanvas();
+      return;
+    }
+    const history = data.history || [];
+    const predictions = data.predictions || [];
+    const evaluation = data.model_evaluation || {};
+    const traces = [
+      { x: history.map(point => point.hour_offset), y: history.map(point => point.value), mode: 'lines+markers', name: 'Observed', line: { color: '#00F0FF' } },
+      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.predicted_value), mode: 'lines', name: `${evaluation.best_model || 'OLS'} forecast`, line: { color: '#FFB703', dash: 'dash' } },
+      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.ci_upper), mode: 'lines', name: '95% upper bound', line: { color: 'rgba(255,183,3,0.25)', width: 1 }, hoverinfo: 'skip' },
+      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.ci_lower), mode: 'lines', name: '95% lower bound', line: { color: 'rgba(255,183,3,0.25)', width: 1 }, fill: 'tonexty', fillcolor: 'rgba(255,183,3,0.08)', hoverinfo: 'skip' }
+    ];
+    const thresholds = data.thresholds || {};
+    const shapes = [];
+    if (Number.isFinite(thresholds.safe_max)) shapes.push({ type: 'line', x0: -24, x1: 24, y0: thresholds.safe_max, y1: thresholds.safe_max, line: { color: '#00F5D4', dash: 'dot' } });
+    if (Number.isFinite(thresholds.danger_min)) shapes.push({ type: 'line', x0: -24, x1: 24, y0: thresholds.danger_min, y1: thresholds.danger_min, line: { color: '#FF3366', dash: 'dot' } });
+    const variableLabel = data.label || data.variable || activeRegVar;
+    window.Plotly.react(plot, traces, { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#C9D6E8' }, autosize: true, margin: { l: 55, r: 20, t: 20, b: 45 }, xaxis: { title: 'Hours from now', gridcolor: 'rgba(0,240,255,0.1)' }, yaxis: { title: `${variableLabel} (${data.unit || ''})`, gridcolor: 'rgba(0,240,255,0.1)' }, shapes, legend: { orientation: 'h', y: 1.08 } }, { responsive: true, displaylogo: false });
+    const panel = document.getElementById('modelEvaluationPanel');
+    if (panel && evaluation.models) {
+      const rows = Object.entries(evaluation.models).map(([name, model]) => `${name}: RMSE ${model.rmse}, R² ${model.r_squared}`).join(' &nbsp; | &nbsp; ');
+      const matrix = evaluation.confusion_matrix && evaluation.confusion_matrix.matrix;
+      const matrixText = matrix ? Object.entries(matrix).map(([actual, values]) => `${actual}→ S:${values.safe} C:${values.caution} D:${values.danger}`).join(' &nbsp; | &nbsp; ') : 'unavailable';
+      panel.innerHTML = `<strong>Selected model:</strong> ${evaluation.best_model || 'OLS'} &nbsp; <strong>Validation:</strong> ${rows}<br><strong>Confusion matrix:</strong> ${matrixText}`;
+    }
   }
 
   function drawRegressionCanvas() {
@@ -1411,29 +1572,31 @@
   function updateRegressionHUD() {
     if (!regressionDataCache) return;
     const d = regressionDataCache;
-    const s = d.summary;
-    const m = d.metrics;
+    const s = d.summary || {};
+    const m = d.metrics || {};
     const p = d.predictions || [];
 
     const valCur = document.getElementById('valBtmCurrent');
     const valMid = document.getElementById('valBtmMid');
     const valPeak = document.getElementById('valBtmPeak');
-    if (valCur) valCur.textContent = `${s.val_now.toFixed(2)} ${d.unit}`;
-    if (valMid && p.length >= 6) valMid.textContent = `${p[5].predicted_value.toFixed(2)} ${d.unit}`;
-    if (valPeak) valPeak.textContent = `${s.peak_val.toFixed(2)} ${d.unit}`;
+    if (valCur) valCur.textContent = `${Number(s.val_now || 0).toFixed(2)} ${d.unit || ''}`;
+    if (valMid && p.length >= 6) valMid.textContent = `${Number(p[5].predicted_value || 0).toFixed(2)} ${d.unit || ''}`;
+    if (valPeak) valPeak.textContent = `${Number(s.peak_val || 0).toFixed(2)} ${d.unit || ''}`;
 
     const eqEl = document.getElementById('txtRegEquation');
     const r2El = document.getElementById('txtRegR2');
-    if (eqEl) eqEl.textContent = m.equation;
-    if (r2El) r2El.textContent = m.rSquared.toFixed(3);
+    if (eqEl) eqEl.textContent = m.equation || `Best model: ${(d.model_evaluation || {}).best_model || 'OLS'}`;
+    if (r2El) r2El.textContent = Number(m.r_squared ?? m.rSquared ?? 0).toFixed(3);
 
     const advBody = document.getElementById('txtRegAdvisoryBody');
-    if (advBody) advBody.textContent = s.advisory_en;
+    if (advBody) advBody.textContent = s.advisory_en || 'Prediction data is not available for this location.';
   }
 
   // 10. LANGUAGE & UTILITIES
   function setLanguage(lang) {
-    currentLang = lang;
+    currentLang = LANGUAGE_CODES.has(lang) ? lang : 'en';
+    lang = currentLang;
+    languageEpoch += 1;
     document.documentElement.lang = lang;
     localStorage.setItem('orca_marine_lang', lang);
 
@@ -1443,19 +1606,14 @@
       if (el) el.classList.remove('selected');
     });
 
-    // Set active state for main buttons
-    if (lang === 'hi') {
-      const btnHi = document.getElementById('btnLangHI');
-      if (btnHi) btnHi.classList.add('selected');
-    } else if (lang === 'ta') {
-      const btnTa = document.getElementById('btnLangTA');
-      if (btnTa) btnTa.classList.add('selected');
-    } else {
-      const activeButton = lang === 'en' ? document.getElementById('btnLangEN') : document.getElementById('btnLangMore');
-      if (activeButton) activeButton.classList.add('selected');
-    }
+    // Mark the matching shortcut button, or the "more" button for anything
+    // beyond the HI/EN/TA shortcuts.
+    const shortcutButton = { hi: 'btnLangHI', en: 'btnLangEN', ta: 'btnLangTA' }[lang];
+    const activeButton = document.getElementById(shortcutButton || 'btnLangMore');
+    if (activeButton) activeButton.classList.add('selected');
+
     const moreButton = document.getElementById('btnLangMore');
-    if (moreButton) moreButton.textContent = lang === 'en' || lang === 'hi' || lang === 'ta' ? '▼' : lang.toUpperCase();
+    if (moreButton) moreButton.textContent = shortcutButton ? '▼' : lang.toUpperCase();
 
     // Update expanded language dropdown buttons
     const langGridBtns = document.querySelectorAll('.lang-grid-btn');
@@ -1480,23 +1638,74 @@
       const element = document.getElementById(id);
       if (element && dict[key]) element.textContent = dict[key];
     });
+    // Languages without a hand-written dictionary keep the English placeholder
+    // until the translated one arrives.
     const input = document.getElementById('tacticalQueryInput');
     if (input && dict.inputPlaceholder) input.placeholder = dict.inputPlaceholder;
     const submit = document.querySelector('#btnSubmitQuery span');
     if (submit && dict.submitBtn) submit.textContent = dict.submitBtn;
+    localizeInputPlaceholder(lang);
     [['btnFiltAll', 'filtAll'], ['btnFiltDanger', 'filtDanger'], ['btnFiltCaution', 'filtCaution'], ['btnFiltResolved', 'filtResolved']].forEach(([id, key]) => {
       const element = document.getElementById(id);
       if (element && dict[key]) element.textContent = dict[key];
     });
     document.querySelectorAll('.sidebar-nav-btn').forEach((button) => {
       const key = `nav${button.dataset.view.charAt(0).toUpperCase()}${button.dataset.view.slice(1)}`;
-      const label = button.querySelector(':scope > span:not(.nav-icon):not(.nav-badge)');
+      // Prefer the span carrying the label text; fall back to the first span so
+      // buttons that also render a count badge are still translated.
+      const label = button.querySelector(':scope > span:not(.nav-icon):not(.nav-badge):not([id^="sidebar"])')
+        || button.querySelector(':scope > span:not(.nav-icon)');
       if (label && dict[key]) label.textContent = dict[key];
     });
 
     renderQuickQueries();
     renderSpeciesCatalog();
     renderLeafletTacticalZones();
+    renderBulletinsList();
+    renderSpeciesMarkers();
+    applyTranslatedStaticText(lang);
+    localizeDynamicContent(lang);
+  }
+
+  // Bulletins and advisories arrive in English from the backend. Translate the
+  // rendered text once per language and cache it for later switches.
+  async function localizeDynamicContent(lang, attempt = 0) {
+    if (lang === 'en') return;
+    window.clearTimeout(localizeDynamicContent.retry);
+    // Bulletins arrive from the backend on a delay. Retry a few times so the
+    // cards get localized once they actually exist in the DOM.
+    const hasBulletins = document.querySelector('.bulletin-card');
+    const nodes = Array.from(document.querySelectorAll(
+      '.bulletin-title, .bulletin-desc, .bulletin-action-rec, .bulletin-action-bar .btn-bulletin-action, #txtDrawerReason, #txtRegAdvisoryBody, #drawerTitle'
+    )).filter(node => {
+      const text = (node.textContent || '').trim();
+      return text.length > 1 && !/^\d+$/.test(text);
+    });
+    if (!nodes.length) return;
+
+    const translated = await translateBatchForLanguage(
+      nodes.map(node => node.textContent.trim()),
+      lang
+    );
+      if (lang !== currentLang) return;
+      nodes.forEach((node, index) => {
+        const value = translated[index];
+        if (value) node.textContent = value;
+      });
+
+        // First pass had no bulletins yet, so try again shortly to catch them.
+        if (!hasBulletins && attempt < 4) {
+          localizeDynamicContent.retry = window.setTimeout(() => {
+            if (lang === currentLang) localizeDynamicContent(lang, attempt + 1);
+          }, 2500);
+        }
+      }
+    function renderLanguageOptions() {
+    const container = document.querySelector('#expandedLangDropdown .lang-grid');
+    if (!container) return;
+    container.innerHTML = LANGUAGE_OPTIONS.map(option => (
+      `<button class="lang-grid-btn" type="button" data-lang="${option.code}" title="${option.label}">${option.native}</button>`
+    )).join('');
   }
 
   function renderQuickQueries() {
@@ -1508,6 +1717,35 @@
       html += `<button type="button" class="quick-query-pill" onclick="window.orcaQuickQuery('${escapeHtml(q.query)}')">${q.label}</button>`;
     });
     container.innerHTML = html;
+
+    // Languages without a hand-written dictionary keep the English prompt that
+    // gets sent to the backend, but their visible labels are translated.
+    localizeQuickQueryLabels(currentLang);
+  }
+
+  async function localizeInputPlaceholder(lang) {
+    const input = document.getElementById('tacticalQueryInput');
+    if (!input || lang === 'en' || I18N[lang]) return;
+    const original = input.getAttribute('data-original-placeholder') || input.placeholder;
+    if (!original) return;
+    input.setAttribute('data-original-placeholder', original);
+    const translated = await translateForLanguage(original, lang);
+    if (lang !== currentLang) return;
+    input.placeholder = translated || original;
+  }
+
+  async function localizeQuickQueryLabels(lang) {
+    if (lang === 'en' || I18N[lang]) return;
+    const labels = Array.from(document.querySelectorAll('#quickQueriesRow .quick-query-pill'));
+    if (!labels.length) return;
+    const translated = await translateBatchForLanguage(
+      labels.map(button => button.textContent.trim()),
+      lang
+    );
+    if (lang !== currentLang) return;
+    labels.forEach((button, index) => {
+      if (translated[index]) button.textContent = translated[index];
+    });
   }
 
   window.orcaQuickQuery = function(queryText) {
@@ -1515,6 +1753,22 @@
     if (input) input.value = queryText;
     triggerTacticalQuery(queryText);
   };
+
+  // Pick the best available localized field (``name_hi`` / ``label_ta``...).
+  // Hand-written hi/ta strings win; every other language falls back to English
+  // and is translated later by localizeDynamicContent().
+  function languageValue(record, prefix, lang) {
+    if (!record) return '';
+    if (lang === 'hi') return record[`${prefix}_hi`] || record[`${prefix}_en`] || '';
+    if (lang === 'ta') return record[`${prefix}_ta`] || record[`${prefix}_en`] || '';
+    return record[`${prefix}_en`] || '';
+  }
+
+  // Look up one translated UI string, falling back to English.
+  function t(key, fallback) {
+    const dict = I18N[currentLang];
+    return (dict && dict[key]) || fallback;
+  }
 
   function escapeHtml(str) {
     if (!str) return '';
@@ -1527,35 +1781,122 @@
   }
 
   function speakerButtonMarkup(text) {
-    return `<button type="button" class="chat-speak-btn" data-speak-text="${escapeHtml(String(text).replace(/[*_`#]/g, ''))}" data-speak-lang="${speechLanguage(currentLang)}" title="Speak this response" aria-label="Speak this response">🔊</button>`;
+    const label = escapeHtml(t('chatSpeak', 'Speak this response'));
+    return `<button type="button" class="chat-speak-btn" data-speak-text="${escapeHtml(String(text).replace(/[*_`#]/g, ''))}" data-speak-lang="${speechLanguage(currentLang)}" title="${label}" aria-label="${label}">🔊</button>`;
+  }
+
+  // Translation cache: repeated strings (quick queries, advisories, static
+  // labels) are only ever sent to the backend once per language.
+  const translationCache = new Map();
+
+  function translationCacheKey(lang, text) {
+    return `${lang}\u0000${text}`;
+  }
+
+  // Translate a batch of strings in one request. Rejections are swallowed so a
+  // translation outage can never break the dashboard.
+  async function translateBatchForLanguage(texts, lang) {
+    if (!texts || !texts.length || lang === 'en') return [];
+    try {
+      const response = await fetch(`${BACKEND_API_BASE}/translate/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts, target_lang: lang, source_lang: 'en' })
+      });
+      if (!response.ok) throw new Error(`Translation request failed (${response.status})`);
+      const data = await response.json();
+      if (Array.isArray(data.translations)) {
+        data.translations.forEach((entry, index) => {
+          if (entry && entry.success && entry.translated_text) {
+            translationCache.set(translationCacheKey(lang, texts[index]), entry.translated_text);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Batch translation failed:', error);
+    }
+    return texts.map(text => translationCache.get(translationCacheKey(lang, text)) || text);
   }
 
   async function translateForLanguage(text, lang) {
     if (!text || lang === 'en') return text;
-    try {
-      const response = await fetch(`${BACKEND_API_BASE}/translate?text=${encodeURIComponent(String(text).replace(/[*_`#]/g, ''))}&target_lang=${encodeURIComponent(lang)}&source_lang=en`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.translated_text) return data.translated_text;
-      }
-    } catch (error) {
-      console.warn('Translation failed:', error);
-    }
-    return text;
+    const cacheKey = translationCacheKey(lang, text);
+    if (translationCache.has(cacheKey)) return translationCache.get(cacheKey);
+
+    // Single strings go through the same endpoint so they share the cache and
+    // the failure handling with batched translations.
+    const [translated] = await translateBatchForLanguage([text], lang);
+    return translated || text;
+  }
+
+  // Strip leading emoji/pictographs so "🌊 Ocean Health" still matches the
+  // English string "Ocean Health".
+  function labelWithoutLeadingSymbols(text) {
+    return String(text || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  }
+
+  function isTranslatableStaticLabel(text) {
+    const bare = labelWithoutLeadingSymbols(text);
+    return Boolean(bare) && TRANSLATABLE_STATIC_TEXT.some(
+      candidate => bare === candidate || bare.startsWith(candidate)
+    );
+  }
+
+  // Refresh dashboard labels that only exist in English in the markup.
+  async function applyTranslatedStaticText(lang) {
+    if (lang === 'en') return;
+    const wanted = new Map();
+    document.querySelectorAll(STATIC_TEXT_TARGETS).forEach(element => {
+      const text = (element.textContent || '').trim();
+      if (!text || wanted.has(text) || text.length > 70) return;
+      if (!isTranslatableStaticLabel(text)) return;
+      wanted.set(text, element);
+    });
+    if (!wanted.size) return;
+
+    const translated = await translateBatchForLanguage(Array.from(wanted.keys()), lang);
+    if (lang !== currentLang) return;
+    Array.from(wanted.values()).forEach((element, index) => {
+      const value = translated[index];
+      if (!value) return;
+      // Never overwrite a badge that holds a computed count (e.g. "2 NEW").
+      if (element.classList.contains('nav-badge') && /^\d/.test(value)) return;
+      if (value !== element.textContent.trim()) element.textContent = value;
+    });
+  }
+
+  // Keep the interface in step with the stored language when the pilot moves
+  // between pages (the dashboard and the Alerts view share one preference).
+  function initLanguageSync() {
+    window.addEventListener('storage', (event) => {
+      if (event.key !== 'orca_marine_lang' || !event.newValue) return;
+      if (event.newValue !== currentLang) setLanguage(event.newValue);
+    });
+    window.addEventListener('focus', () => {
+      const stored = localStorage.getItem('orca_marine_lang');
+      if (stored && stored !== currentLang) setLanguage(stored);
+    });
   }
 
   // Master Initialization
   function initDashboard() {
     initHeroParticles();
     initVoiceRecognition();
+    initLanguageSync();
     setLanguage(currentLang);
-    updateDynamicMarineZones(vesselLocation.latitude, vesselLocation.longitude, 'Goa Coastal Sector');
+    // Initial live feed load. Risk cells are returned by the backend rather
+    // than fabricated around the default location.
     fetchLiveTelemetry(vesselLocation.latitude, vesselLocation.longitude);
     fetchLiveBulletins(vesselLocation.latitude, vesselLocation.longitude);
+    if (isHeatmapActive) fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
     updateGpsButton();
     telemetryTimer = window.setInterval(() => {
-      if (!document.hidden && vesselLocation) fetchLiveTelemetry();
-    }, 30000);
+      if (document.hidden || !vesselLocation) return;
+      const { latitude, longitude } = vesselLocation;
+      fetchLiveTelemetry(latitude, longitude);
+      fetchLiveBulletins(latitude, longitude);
+      if (isHeatmapActive) fetchRiskHeatmap(latitude, longitude);
+    }, 120000);
     renderSpeciesCatalog();
     loadRegressionData('wave_height');
 
@@ -1604,7 +1945,7 @@
           if (locationInput) locationInput.value = '';
           return;
         }
-        
+
         // Show a more helpful message
         const availablePorts = Object.keys(MARITIME_PORTS_CATALOG).map(k => MARITIME_PORTS_CATALOG[k].name).join(', ');
         window.alert(`Location not found. Try:\n\n• Port names: ${availablePorts}\n• Coordinates: 15.24, 73.80\n• Click Quick Ports chips below`);
@@ -1658,17 +1999,18 @@
       });
     }
 
-    // Language Buttons
+    // Language Selector
+    renderLanguageOptions();
     const btnHi = document.getElementById('btnLangHI');
     const btnEn = document.getElementById('btnLangEN');
     const btnTa = document.getElementById('btnLangTA');
     const btnLangMore = document.getElementById('btnLangMore');
     const expandedLangDropdown = document.getElementById('expandedLangDropdown');
-    
+
     if (btnHi) btnHi.addEventListener('click', () => setLanguage('hi'));
     if (btnEn) btnEn.addEventListener('click', () => setLanguage('en'));
     if (btnTa) btnTa.addEventListener('click', () => setLanguage('ta'));
-    
+
     // Toggle expanded language dropdown
     if (btnLangMore && expandedLangDropdown) {
       btnLangMore.addEventListener('click', (e) => {
@@ -1677,14 +2019,14 @@
         const isHidden = expandedLangDropdown.style.display === 'none' || expandedLangDropdown.style.display === '';
         expandedLangDropdown.style.display = isHidden ? 'block' : 'none';
       });
-      
+
       // Close dropdown when clicking outside
       document.addEventListener('click', (e) => {
         if (!expandedLangDropdown.contains(e.target) && e.target !== btnLangMore && !btnLangMore.contains(e.target)) {
           expandedLangDropdown.style.display = 'none';
         }
       });
-      
+
       // Handle language grid button clicks
       const langGridBtns = expandedLangDropdown.querySelectorAll('.lang-grid-btn');
       langGridBtns.forEach(btn => {
@@ -1735,41 +2077,80 @@
     }, 1000);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDashboard);
-  } else {
-    initDashboard();
-  }
-
   // Text-to-Speech Functionality
   let speechSynthesis = window.speechSynthesis;
   let currentUtterance = null;
 
   function speakText(text, lang = 'en-US') {
     if (!text || !speechSynthesis) return;
-    
+
     // Cancel any ongoing speech
     speechSynthesis.cancel();
-    
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     utterance.rate = 0.9;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
-    
-    // Try to find a voice that matches the language
+
+    // Prefer a voice for the selected language. The utterance language is
+    // retained even when a platform only exposes a regional/alias voice.
     const voices = speechSynthesis.getVoices();
-    const matchingVoice = voices.find(voice => voice.lang.startsWith(lang.split('-')[0]));
+    const candidates = speechLanguageCandidates(lang).map(value => value.toLowerCase());
+    const matchingVoice = voices.find(voice => {
+      const voiceLang = String(voice.lang || '').toLowerCase();
+      return candidates.some(candidate => voiceLang === candidate || voiceLang.startsWith(`${candidate}-`));
+    }) || voices.find(voice => {
+      const voiceLang = String(voice.lang || '').toLowerCase();
+      const languageCode = String(lang).toLowerCase().split('-')[0];
+      return voiceLang.startsWith(`${languageCode}-`) || voiceLang === languageCode;
+    });
     if (matchingVoice) {
       utterance.voice = matchingVoice;
     }
-    
+
     currentUtterance = utterance;
     speechSynthesis.speak(utterance);
   }
 
+  // Use BCP-47 tags that browser speech engines commonly expose. Some of the
+  // official language codes do not have a matching regional voice on every
+  // platform, so the aliases below let us select the closest script voice
+  // without changing the language of the text being spoken.
+  const SPEECH_LANGUAGE_ALIASES = {
+    en: ['en-US', 'en-GB'],
+    as: ['as-IN'],
+    bn: ['bn-IN', 'bn-BD'],
+    brx: ['brx-IN', 'hi-IN'],
+    doi: ['doi-IN', 'hi-IN'],
+    gu: ['gu-IN'],
+    hi: ['hi-IN'],
+    kn: ['kn-IN'],
+    ks: ['ks-IN', 'hi-IN'],
+    kok: ['kok-IN'],
+    mai: ['mai-IN', 'hi-IN'],
+    ml: ['ml-IN'],
+    mni: ['mni-IN'],
+    mr: ['mr-IN'],
+    ne: ['ne-IN', 'ne-NP'],
+    or: ['or-IN'],
+    pa: ['pa-IN'],
+    sa: ['sa-IN', 'hi-IN'],
+    sat: ['sat-IN'],
+    sd: ['sd-IN'],
+    ta: ['ta-IN'],
+    te: ['te-IN'],
+    ur: ['ur-IN', 'ur-PK']
+  };
+
   function speechLanguage(lang) {
-    return lang === 'en' ? 'en-US' : `${lang}-IN`;
+    const code = String(lang || 'en').toLowerCase().split('-')[0];
+    return (SPEECH_LANGUAGE_ALIASES[code] || [`${code}-IN`])[0];
+  }
+
+  function speechLanguageCandidates(lang) {
+    const code = String(lang || 'en').toLowerCase().split('-')[0];
+    return SPEECH_LANGUAGE_ALIASES[code] || [`${code}-IN`];
   }
 
   function stopSpeech() {
@@ -1783,6 +2164,14 @@
     speechSynthesis.onvoiceschanged = () => {
       speechSynthesis.getVoices();
     };
+  }
+
+  // Initialize only after the speech-language aliases are defined. Voice
+  // recognition uses speechLanguage() during startup.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  } else {
+    initDashboard();
   }
 
   window.ORCA = {

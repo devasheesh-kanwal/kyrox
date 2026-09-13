@@ -134,6 +134,107 @@ def fit_linear_regression(x_values: List[float], y_values: List[float]) -> Dict[
     }
 
 
+def _safety_class(value: float, config: Dict[str, Any]) -> str:
+    '''Convert a continuous measurement into a safety class for validation.'''
+    if value >= config["danger_min"]:
+        return "danger"
+    if value >= config["caution_max"]:
+        return "caution"
+    return "safe"
+
+
+def _regression_metrics(actual: List[float], predicted: List[float]) -> Dict[str, float]:
+    '''Return regression metrics without requiring an optional ML dependency.'''
+    if not actual or len(actual) != len(predicted):
+        return {"mae": 0.0, "rmse": 0.0, "r_squared": 0.0}
+    mean_actual = sum(actual) / len(actual)
+    errors = [a - p for a, p in zip(actual, predicted)]
+    ss_res = sum(error * error for error in errors)
+    ss_tot = sum((value - mean_actual) ** 2 for value in actual)
+    return {
+        "mae": round(sum(abs(error) for error in errors) / len(errors), 4),
+        "rmse": round(math.sqrt(ss_res / len(errors)), 4),
+        "r_squared": round(1.0 - ss_res / ss_tot, 4) if ss_tot > 1e-9 else 1.0,
+    }
+
+
+def _confusion_matrix(actual: List[float], predicted: List[float], config: Dict[str, Any]) -> Dict[str, Any]:
+    '''Classify continuous values into safety bands and count their confusion.'''
+    labels = ["safe", "caution", "danger"]
+    matrix = {actual_label: {predicted_label: 0 for predicted_label in labels} for actual_label in labels}
+    for actual_value, predicted_value in zip(actual, predicted):
+        actual_label = _safety_class(actual_value, config)
+        predicted_label = _safety_class(predicted_value, config)
+        matrix[actual_label][predicted_label] += 1
+    return {"labels": labels, "matrix": matrix, "total": sum(sum(row.values()) for row in matrix.values())}
+
+
+def evaluate_regression_models(
+    x_values: List[float], y_values: List[float], config: Dict[str, Any], folds: int = 5
+) -> Dict[str, Any]:
+    '''Compare OLS, a chronological train/test split, and K-fold OLS.
+
+    K-fold and split validation are evaluation strategies rather than different
+    estimators; each candidate is scored on held-out observations. A confusion
+    matrix is included by converting values to the existing safety bands.
+    '''
+    n = len(y_values)
+    if n < 4:
+        return {"best_model": "ols", "models": {}, "confusion_matrix": _confusion_matrix(y_values, y_values, config)}
+
+    def predict(train_x: List[float], train_y: List[float], test_x: List[float]) -> List[float]:
+        fit = fit_linear_regression(train_x, train_y)
+        return [fit["slope"] * x + fit["intercept"] for x in test_x]
+
+    candidates: Dict[str, Dict[str, Any]] = {}
+    # Chronological holdout avoids leaking future values into the test set.
+    split_at = max(2, min(n - 1, int(round(n * 0.8))))
+    test_x, test_y = x_values[split_at:], y_values[split_at:]
+    split_pred = predict(x_values[:split_at], y_values[:split_at], test_x)
+    candidates["train_test_split"] = {
+        **_regression_metrics(test_y, split_pred),
+        "validation_size": len(test_y),
+        "confusion_matrix": _confusion_matrix(test_y, split_pred, config),
+    }
+
+    # Deterministic contiguous folds preserve time ordering within each fold.
+    fold_count = max(2, min(int(folds), n))
+    kfold_actual: List[float] = []
+    kfold_predicted: List[float] = []
+    for fold in range(fold_count):
+        test_indices = [index for index in range(n) if index % fold_count == fold]
+        train_indices = [index for index in range(n) if index not in test_indices]
+        if len(train_indices) < 2 or not test_indices:
+            continue
+        train_x = [x_values[index] for index in train_indices]
+        train_y = [y_values[index] for index in train_indices]
+        fold_x = [x_values[index] for index in test_indices]
+        kfold_actual.extend(y_values[index] for index in test_indices)
+        kfold_predicted.extend(predict(train_x, train_y, fold_x))
+    candidates["k_fold"] = {
+        **_regression_metrics(kfold_actual, kfold_predicted),
+        "folds": fold_count,
+        "validation_size": len(kfold_actual),
+        "confusion_matrix": _confusion_matrix(kfold_actual, kfold_predicted, config),
+    }
+
+    # OLS is trained on all observations and is the production forecast model.
+    ols_fit = fit_linear_regression(x_values, y_values)
+    ols_pred = [ols_fit["slope"] * x + ols_fit["intercept"] for x in x_values]
+    candidates["linear_regression"] = {
+        **_regression_metrics(y_values, ols_pred),
+        "validation_size": n,
+        "confusion_matrix": _confusion_matrix(y_values, ols_pred, config),
+    }
+    best_model = min(candidates, key=lambda name: (candidates[name]["rmse"], -candidates[name]["r_squared"]))
+    return {
+        "best_model": best_model,
+        "selection_metric": "lowest_validation_rmse",
+        "models": candidates,
+        "confusion_matrix": candidates[best_model]["confusion_matrix"],
+    }
+
+
 def generate_baseline_telemetry(
     variable: str,
     current_val: Optional[float] = None,
@@ -410,6 +511,7 @@ def compute_24h_prediction(
     y_hist = [pt["value"] for pt in hist_data]
 
     metrics = fit_linear_regression(x_hist, y_hist)
+    model_evaluation = evaluate_regression_models(x_hist, y_hist, cfg)
     slope = metrics["slope"]
     intercept = metrics["intercept"]
     se = metrics["standard_error"]
@@ -510,6 +612,7 @@ def compute_24h_prediction(
         "horizon_hours": horizon_hours,
         "past_hours": past_hours,
         "metrics": metrics,
+        "model_evaluation": model_evaluation,
         "summary": {
             "trend": trend,
             "trend_label": trend_label,

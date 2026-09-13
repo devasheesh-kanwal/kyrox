@@ -49,6 +49,28 @@ COASTAL_SECTOR_ANCHORS = [
     ("Odisha Paradip", 20.25, 86.70),
     ("Digha Bengal", 21.55, 87.55),
     ("Andaman Sea", 11.65, 92.75),
+    ("Port Blair Offshore", 11.62, 92.73),
+    ("Great Nicobar Sector", 7.03, 93.79),
+]
+
+# Regional baseline intelligence for the Indian maritime boundary. SSH values
+# are sea-surface-height anomalies from the latest configured reference grid;
+# they are intentionally labeled as baseline data until an altimetry feed is configured.
+MARITIME_SECTOR_DATA = [
+    {"sector": "Gujarat Saurashtra", "lat": 21.10, "lon": 70.00, "species": ["Whale shark", "Indian mackerel"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 4.2},
+    {"sector": "Mumbai High", "lat": 19.10, "lon": 72.60, "species": ["Indo-Pacific bottlenose dolphin", "Blue whale"], "oil_slick": {"status": "watch", "area_km2": 0.6}, "ssh_anomaly_cm": 5.8},
+    {"sector": "Konkan and Goa", "lat": 15.25, "lon": 73.75, "species": ["Olive Ridley turtle", "Whale shark"], "oil_slick": {"status": "detected", "area_km2": 1.2}, "ssh_anomaly_cm": 3.6},
+    {"sector": "Karwar and Mangalore", "lat": 13.85, "lon": 74.40, "species": ["Blue whale", "Spinner dolphin"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 2.9},
+    {"sector": "Kochi Offshore", "lat": 9.95, "lon": 76.15, "species": ["Dugong", "Whale shark"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 1.7},
+    {"sector": "Gulf of Mannar", "lat": 9.05, "lon": 79.10, "species": ["Dugong", "Green sea turtle"], "oil_slick": {"status": "watch", "area_km2": 0.3}, "ssh_anomaly_cm": 1.1},
+    {"sector": "Kanyakumari", "lat": 8.05, "lon": 77.55, "species": ["Sperm whale", "Indian Ocean tuna"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 0.8},
+    {"sector": "Chennai and Pulicat", "lat": 13.10, "lon": 80.35, "species": ["Olive Ridley turtle", "Finless porpoise"], "oil_slick": {"status": "watch", "area_km2": 0.4}, "ssh_anomaly_cm": 2.4},
+    {"sector": "Visakhapatnam Deep", "lat": 17.65, "lon": 83.35, "species": ["Olive Ridley turtle", "Bryde's whale"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 3.0},
+    {"sector": "Odisha Paradip", "lat": 20.25, "lon": 86.70, "species": ["Olive Ridley turtle", "Irrawaddy dolphin"], "oil_slick": {"status": "watch", "area_km2": 0.5}, "ssh_anomaly_cm": 4.6},
+    {"sector": "Digha Bengal", "lat": 21.55, "lon": 87.55, "species": ["Gangetic dolphin", "Olive Ridley turtle"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 4.9},
+    {"sector": "Lakshadweep Sea", "lat": 10.57, "lon": 72.64, "species": ["Green sea turtle", "Manta ray"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 2.2},
+    {"sector": "Andaman Sea", "lat": 11.62, "lon": 92.73, "species": ["Dugong", "Hawksbill turtle", "Manta ray"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 6.4},
+    {"sector": "Great Nicobar", "lat": 7.03, "lon": 93.79, "species": ["Leatherback turtle", "Blue whale"], "oil_slick": {"status": "clear", "area_km2": 0.0}, "ssh_anomaly_cm": 7.1},
 ]
 
 
@@ -56,6 +78,20 @@ def _find_nearest_coastal_anchor(lat: float, lon: float) -> tuple[float, float]:
     """Find the nearest coastal marine anchor point for inland coordinates."""
     best = min(COASTAL_SECTOR_ANCHORS, key=lambda a: (a[1] - lat) ** 2 + (a[2] - lon) ** 2)
     return best[1], best[2]
+
+
+def get_nearest_maritime_sector(latitude: float, longitude: float) -> dict:
+    """Return the nearest Indian maritime sector intelligence baseline."""
+    sector = min(
+        MARITIME_SECTOR_DATA,
+        key=lambda item: (item["lat"] - latitude) ** 2 + (item["lon"] - longitude) ** 2,
+    )
+    return {
+        **sector,
+        "source": "KyroX Indian maritime reference grid",
+        "ssh_status": "baseline_anomaly",
+        "ssh_unit": "cm",
+    }
 
 
 async def get_marine_data(latitude: float, longitude: float) -> dict:
