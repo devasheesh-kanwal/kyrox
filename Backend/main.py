@@ -38,6 +38,7 @@ from Agents.conversational_agent import conversational_agent as run_conversation
 from Agents.gps_agent import gps_agent
 from Agents.risk_agent import generate_risk_heatmap
 from Services.prediction_service import compute_24h_prediction, compute_24h_prediction_async
+from Services.translation_service import translate_text, translate_to_all_indian_languages
 from Agents.orchestrator import (
     calculate_risk,
     orchestrate,
@@ -335,9 +336,29 @@ async def process_query(request: UserRequest):
 
     # Provide one complete natural-language answer for chat clients. Structured
     # telemetry remains available separately for the bridge/map panels.
-    recommendation["response_text"] = _build_natural_language_response(
+    response_text = _build_natural_language_response(
         recommendation, risk_assessment, conv_data
     )
+    recommendation["response_text"] = response_text
+    
+    # Add translations for multi-language support
+    try:
+        translations = translate_to_all_indian_languages(response_text, "en")
+        recommendation["translations"] = translations["translations"]
+    except Exception as exc:
+        logger.warning("Translation failed: %s", exc)
+        recommendation["translations"] = {}
+
+    # Localize the user-facing answer requested by the chat client. Keep the
+    # structured recommendation in English for existing dashboard consumers.
+    response_language = (request.language or "en").lower()
+    localized_response = response_text
+    translation_success = response_language == "en"
+    if response_language != "en":
+        language_result = translate_text(response_text, response_language, "en")
+        if language_result.get("success"):
+            localized_response = language_result["translated_text"]
+            translation_success = True
 
     # Resolve effective navigational zone for UI highlighting
     if target_zone:
@@ -415,9 +436,9 @@ async def process_query(request: UserRequest):
         "chat": {
             "user_message": query_text,
             "intent": conv_data.get("intent", "GENERAL_QUERY"),
-            "response": _build_natural_language_response(
-                recommendation, risk_assessment, conv_data
-            ),
+            "response": localized_response,
+            "language": response_language,
+            "translation_success": translation_success,
         },
         "weather": weather_data,
         "marine": marine_data,
@@ -455,13 +476,15 @@ async def process_query_get(
     lat: Optional[float] = Query(None, ge=-90, le=90),
     lon: Optional[float] = Query(None, ge=-180, le=180),
     zone_id: Optional[str] = Query(None),
+    language: str = Query("en"),
 ):
     """GET query endpoint for fast browser inspection and developer testing."""
     req = UserRequest(
         message=message or "What is the current safety status?",
         latitude=lat,
         longitude=lon,
-        zone_id=zone_id
+        zone_id=zone_id,
+        language=language,
     )
     return await process_query(req)
 
@@ -629,6 +652,18 @@ async def get_risk_heatmap(
 
     try:
         heatmap_data = await generate_risk_heatmap(target_lat, target_lon, step=target_step)
+        
+        # If no real data is available, return empty risk_points with a message
+        if not heatmap_data.get("risk_points") or len(heatmap_data["risk_points"]) == 0:
+            logger.info("No real data available for heatmap at (%.4f, %.4f)", target_lat, target_lon)
+            return {
+                "user_location": {"latitude": target_lat, "longitude": target_lon},
+                "risk_points": [],
+                "message": "No real data available for this location",
+                "has_data": False
+            }
+        
+        heatmap_data["has_data"] = True
         return heatmap_data
     except Exception as exc:
         logger.error("Heatmap generation failed: %s", type(exc).__name__)
@@ -636,7 +671,102 @@ async def get_risk_heatmap(
             "user_location": {"latitude": target_lat, "longitude": target_lon},
             "risk_points": [],
             "error": "Unable to compute risk heatmap right now",
+            "has_data": False
         }
+
+
+# --------------------------------------------------
+# TRANSLATION ENDPOINTS
+# --------------------------------------------------
+class TranslationRequest(BaseModel):
+    text: str = Field(..., description="Text to translate")
+    target_lang: str = Field("hi", description="Target language code (e.g., 'hi' for Hindi)")
+    source_lang: str = Field("en", description="Source language code (default: 'en')")
+
+
+@app.post("/translate")
+@app.get("/translate")
+async def translate_endpoint(
+    body: Optional[TranslationRequest] = Body(None),
+    text: Optional[str] = Query(None),
+    target_lang: Optional[str] = Query("hi"),
+    source_lang: Optional[str] = Query("en")
+):
+    """
+    Translate text to a specific language (supports all 22 official Indian languages)
+    
+    Returns:
+        {
+            "translated_text": "...",
+            "source_language": "...",
+            "target_language": "...",
+            "success": true/false
+        }
+    """
+    target_text = body.text if body else text
+    if not target_text:
+        raise HTTPException(status_code=400, detail="text is required")
+    
+    target = body.target_lang if body else target_lang
+    source = body.source_lang if body else source_lang
+    
+    result = translate_text(target_text, target, source)
+    return result
+
+
+class MultiLanguageTranslationRequest(BaseModel):
+    text: str = Field(..., description="Text to translate")
+    source_lang: str = Field("en", description="Source language code (default: 'en')")
+
+
+@app.post("/translate/all")
+@app.get("/translate/all")
+async def translate_all_endpoint(
+    body: Optional[MultiLanguageTranslationRequest] = Body(None),
+    text: Optional[str] = Query(None),
+    source_lang: Optional[str] = Query("en")
+):
+    """
+    Translate text to all 22 official Indian languages
+    
+    Returns:
+        {
+            "source_text": "...",
+            "source_language": "...",
+            "translations": {
+                "hindi": {"text": "...", "code": "hi", "success": true},
+                "bengali": {"text": "...", "code": "bn", "success": true},
+                ...
+            },
+            "total_languages": 22
+        }
+    """
+    target_text = body.text if body else text
+    if not target_text:
+        raise HTTPException(status_code=400, detail="text is required")
+    
+    source = body.source_lang if body else source_lang
+    
+    result = translate_to_all_indian_languages(target_text, source)
+    return result
+
+
+@app.get("/translate/languages")
+async def get_supported_languages():
+    """
+    Get list of all supported Indian languages with their codes
+    
+    Returns:
+        {
+            "languages": {
+                "hindi": "hi",
+                "bengali": "bn",
+                ...
+            }
+        }
+    """
+    from Services.translation_service import INDIAN_LANGUAGES
+    return {"languages": INDIAN_LANGUAGES}
 
 
 # --------------------------------------------------

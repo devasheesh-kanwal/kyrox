@@ -337,13 +337,13 @@
           <!-- Split Cockpit: Map Center + Intel Side -->
           <div class="dashboard-cockpit-split">
             <!-- Central Map Station -->
-            <div class="dashboard-map-station">
+            <div class="dashboard-map-station" style="display:none;"
               
               <!-- Location Search & Port Chips -->
               <div class="tactical-location-search-bar" id="locSearchBar">
                 <div class="loc-search-input-wrapper">
                   <span class="loc-search-icon">🔍</span>
-                  <input type="text" id="inputCustomLocation" placeholder="Search coastal port or coordinates (e.g. Goa, Mumbai, 15.24, 73.80)..." autocomplete="off" spellcheck="false">
+                  <input type="text" id="inputCustomLocation" placeholder="Search coastal port or coordinates (e.g. Nellore, Chennai, 15.24, 73.80)..." autocomplete="off" spellcheck="false">
                   <button type="button" id="btnClearLocSearch" class="loc-search-clear">×</button>
                 </div>
                 <button type="button" id="btnSubmitLocation" class="loc-search-submit">
@@ -356,11 +356,11 @@
                   <span class="loc-quick-lbl" id="txtQuickPortsLbl">Quick Ports:</span>
                   <button type="button" class="loc-chip" data-loc="goa">Goa Coastal</button>
                   <button type="button" class="loc-chip" data-loc="mumbai">Mumbai</button>
-                  <button type="button" class="loc-chip" data-loc="kochi">Kochi</button>
                   <button type="button" class="loc-chip" data-loc="chennai">Chennai</button>
+                  <button type="button" class="loc-chip" data-loc="nellore">Nellore</button>
                   <button type="button" class="loc-chip" data-loc="visakhapatnam">Visakhapatnam</button>
+                  <button type="button" class="loc-chip" data-loc="kochi">Kochi</button>
                   <button type="button" class="loc-chip" data-loc="mangalore">Mangalore</button>
-                  <button type="button" class="loc-chip" data-loc="porbandar">Porbandar</button>
                 </div>
               </div>
 
@@ -545,7 +545,7 @@
               </div>
 
               <div class="graph-top-actions">
-                <button class="graph-btn-action" id="btnRecalcRegression" type="button" onclick="ORCA.loadRegressionData('wave_height')">
+                <button class="graph-btn-action" id="btnRecalcRegression" type="button" onclick="ORCA.loadRegressionData()">
                   <span>🔄 Recalculate</span>
                 </button>
               </div>

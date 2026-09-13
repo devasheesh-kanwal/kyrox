@@ -69,6 +69,7 @@ async def evaluate_risk_point(latitude: float, longitude: float) -> Dict[str, An
     """
     Concurrently query real Weather, Marine, and Geospatial APIs for a coordinate,
     and compute deterministic risk via calculate_risk.
+    Returns None if no real data is available.
     """
     ckey = _cache_key(latitude, longitude)
     now = time.time()
@@ -90,7 +91,7 @@ async def evaluate_risk_point(latitude: float, longitude: float) -> Dict[str, An
         )
     except Exception as exc:
         logger.warning("Agent gather error for point (%.4f, %.4f): %s", latitude, longitude, exc)
-        marine_res, weather_res, geo_res = {}, {}, {}
+        return None
 
     if isinstance(marine_res, Exception):
         logger.warning("Marine agent failed for (%.4f, %.4f): %s", latitude, longitude, marine_res)
@@ -121,6 +122,11 @@ async def evaluate_risk_point(latitude: float, longitude: float) -> Dict[str, An
         g_data = geo_res
     else:
         g_data = {}
+
+    # Check if we have any real data - if all agents failed, return None
+    if not m_data and not w_data and not g_data:
+        logger.warning("No real data available for point (%.4f, %.4f)", latitude, longitude)
+        return None
 
     # Cross-fill wave height from marine if weather has 0
     if not w_data.get("wave_height") and m_data.get("wave_height"):
@@ -160,13 +166,14 @@ async def generate_risk_heatmap(
 ) -> Dict[str, Any]:
     """
     Generate the complete 3x3 risk heatmap centered on user's verified GPS position.
+    Only includes points where real data is available.
 
     Returns:
         {
             "user_location": {"latitude": ..., "longitude": ...},
             "risk_points": [
                 {"latitude": ..., "longitude": ..., "risk": ..., "risk_level": ...},
-                ... (9 points)
+                ... (points with real data only)
             ]
         }
     """
@@ -181,10 +188,12 @@ async def generate_risk_heatmap(
     evaluations = await asyncio.gather(
         *[evaluate_risk_point(pt_lat, pt_lon) for pt_lat, pt_lon in grid_coords]
     )
-    risk_points = list(evaluations)
+    
+    # Filter out None values (points where no real data was available)
+    risk_points = [eval for eval in evaluations if eval is not None]
 
     logger.info(
-        "Generated 3x3 risk heatmap for user at (%.4f, %.4f) with %d points",
+        "Generated 3x3 risk heatmap for user at (%.4f, %.4f) with %d valid points (out of 9)",
         center_lat,
         center_lon,
         len(risk_points)

@@ -144,7 +144,37 @@
             <button id="btnLangHI" class="lang-opt-btn" type="button">HI</button>
             <button id="btnLangEN" class="lang-opt-btn selected" type="button">EN</button>
             <button id="btnLangTA" class="lang-opt-btn" type="button">TA</button>
+            <button id="btnLangMore" class="lang-opt-btn" type="button" title="More Languages">▼</button>
           </div>
+
+          <!-- Expanded Language Dropdown -->
+          <div id="expandedLangDropdown" class="expanded-lang-dropdown" style="display: none;">
+            <div class="lang-grid">
+              <button class="lang-grid-btn" data-lang="as">Assamese</button>
+              <button class="lang-grid-btn" data-lang="bn">Bengali</button>
+              <button class="lang-grid-btn" data-lang="brx">Bodo</button>
+              <button class="lang-grid-btn" data-lang="doi">Dogri</button>
+              <button class="lang-grid-btn" data-lang="gu">Gujarati</button>
+              <button class="lang-grid-btn" data-lang="hi">Hindi</button>
+              <button class="lang-grid-btn" data-lang="kn">Kannada</button>
+              <button class="lang-grid-btn" data-lang="ks">Kashmiri</button>
+              <button class="lang-grid-btn" data-lang="kok">Konkani</button>
+              <button class="lang-grid-btn" data-lang="mai">Maithili</button>
+              <button class="lang-grid-btn" data-lang="ml">Malayalam</button>
+              <button class="lang-grid-btn" data-lang="mni">Manipuri</button>
+              <button class="lang-grid-btn" data-lang="mr">Marathi</button>
+              <button class="lang-grid-btn" data-lang="ne">Nepali</button>
+              <button class="lang-grid-btn" data-lang="or">Odia</button>
+              <button class="lang-grid-btn" data-lang="pa">Punjabi</button>
+              <button class="lang-grid-btn" data-lang="sa">Sanskrit</button>
+              <button class="lang-grid-btn" data-lang="sat">Santali</button>
+              <button class="lang-grid-btn" data-lang="sd">Sindhi</button>
+              <button class="lang-grid-btn" data-lang="ta">Tamil</button>
+              <button class="lang-grid-btn" data-lang="te">Telugu</button>
+              <button class="lang-grid-btn" data-lang="ur">Urdu</button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -337,13 +367,13 @@
           <!-- Split Cockpit: Map Center + Intel Side -->
           <div class="dashboard-cockpit-split">
             <!-- Central Map Station -->
-            <div class="dashboard-map-station">
+            <div class="dashboard-map-station" style="display:none;"
               
               <!-- Location Search & Port Chips -->
               <div class="tactical-location-search-bar" id="locSearchBar">
                 <div class="loc-search-input-wrapper">
                   <span class="loc-search-icon">🔍</span>
-                  <input type="text" id="inputCustomLocation" placeholder="Search coastal port or coordinates (e.g. Goa, Mumbai, 15.24, 73.80)..." autocomplete="off" spellcheck="false">
+                  <input type="text" id="inputCustomLocation" placeholder="Search coastal port or coordinates (e.g. Nellore, Chennai, 15.24, 73.80)..." autocomplete="off" spellcheck="false">
                   <button type="button" id="btnClearLocSearch" class="loc-search-clear">×</button>
                 </div>
                 <button type="button" id="btnSubmitLocation" class="loc-search-submit">
@@ -356,11 +386,11 @@
                   <span class="loc-quick-lbl" id="txtQuickPortsLbl">Quick Ports:</span>
                   <button type="button" class="loc-chip" data-loc="goa">Goa Coastal</button>
                   <button type="button" class="loc-chip" data-loc="mumbai">Mumbai</button>
-                  <button type="button" class="loc-chip" data-loc="kochi">Kochi</button>
                   <button type="button" class="loc-chip" data-loc="chennai">Chennai</button>
+                  <button type="button" class="loc-chip" data-loc="nellore">Nellore</button>
                   <button type="button" class="loc-chip" data-loc="visakhapatnam">Visakhapatnam</button>
+                  <button type="button" class="loc-chip" data-loc="kochi">Kochi</button>
                   <button type="button" class="loc-chip" data-loc="mangalore">Mangalore</button>
-                  <button type="button" class="loc-chip" data-loc="porbandar">Porbandar</button>
                 </div>
               </div>
 
@@ -545,7 +575,7 @@
               </div>
 
               <div class="graph-top-actions">
-                <button class="graph-btn-action" id="btnRecalcRegression" type="button" onclick="ORCA.loadRegressionData('wave_height')">
+                <button class="graph-btn-action" id="btnRecalcRegression" type="button" onclick="ORCA.loadRegressionData()">
                   <span>🔄 Recalculate</span>
                 </button>
               </div>

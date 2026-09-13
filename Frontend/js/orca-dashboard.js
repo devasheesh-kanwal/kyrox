@@ -27,8 +27,11 @@
   let MAP_MARKERS = [];
   let BULLETINS = [];
   let vesselLocation = { latitude: 15.246, longitude: 73.803, name: 'Goa Coastal Sector' };
-  let isGpsTrackingEnabled = true;
-  let customLocationName = null;
+  let locationSource = 'manual';
+  let isGpsTrackingEnabled = false;
+  let gpsWatchId = null;
+  let telemetryTimer = null;
+  let customLocationName = 'Goa Coastal Sector';
   let isBackendConnected = false;
 
   // Layer Visibility States
@@ -234,15 +237,18 @@
     "mangalore": { name: "New Mangalore Port Waters", lat: 12.870, lon: 74.840 },
     "porbandar": { name: "Porbandar Marine Sanctuary Coast", lat: 21.642, lon: 69.609 },
     "kanyakumari": { name: "Kanyakumari Convergence Waters", lat: 8.078, lon: 77.555 },
-    "kolkata": { name: "Kolkata Approaches & Sundarbans", lat: 22.550, lon: 88.310 }
+    "kolkata": { name: "Kolkata Approaches & Sundarbans", lat: 22.550, lon: 88.310 },
+    "nellore": { name: "Nellore Coastal Waters", lat: 14.442, lon: 79.986 },
+    "puducherry": { name: "Puducherry Coast", lat: 11.941, lon: 79.808 },
+    "vizag": { name: "Visakhapatnam Deepwater Harbour", lat: 17.686, lon: 83.218 }
   };
 
   const BACKEND_API_BASE = (() => {
     const configured = (window.__KYROX_API_BASE__ || (window.__ENV__ && window.__ENV__.KYROX_API_BASE) || '').trim().replace(/\/$/, '');
     if (configured) return configured;
-    if (window.location.port === '8000') return '';
-    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') return `${window.location.protocol}//${window.location.hostname}:8000`;
-    return 'http://localhost:8000';
+    if (window.location.port === '8001') return '';
+    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') return `${window.location.protocol}//${window.location.hostname}:8001`;
+    return 'http://localhost:8001';
   })();
 
   // 1. HERO PARTICLE SIMULATION
@@ -316,9 +322,12 @@
         fullMapContainer.appendChild(locSearchBar);
         fullMapContainer.appendChild(chartViewport);
       }
+      // The map is initialized only after it has a visible container. This
+      // prevents Leaflet's zero-size calculation when the dashboard is loaded.
+      if (!leafletMap) initLeafletMap();
       setTimeout(() => {
         if (leafletMap) leafletMap.invalidateSize();
-      }, 100);
+      }, 150);
     } else if (viewName === 'dashboard') {
       if (mapStation && chartViewport && locSearchBar) {
         mapStation.appendChild(locSearchBar);
@@ -356,26 +365,18 @@
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+    updateUserLocationMarker();
 
-    // Carto Dark Matter Basemap Tiles
-    const cartoDarkUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    const cartoAttr = '&copy; <a href="https://carto.com/" target="_blank">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
-
-    tileLayer = L.tileLayer(cartoDarkUrl, {
-      attribution: cartoAttr,
-      subdomains: 'abcd',
-      maxZoom: 19
+    // Use the shared configuration. OpenStreetMap is the free default, so a
+    // CARTO key is never required for the map to load.
+    const mapConfig = window.CartoMapConfig || {};
+    const tileUrl = mapConfig.BASEMAP_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    tileLayer = L.tileLayer(tileUrl, {
+      attribution: mapConfig.attribution || '&copy; OpenStreetMap contributors',
+      subdomains: mapConfig.subdomains || 'abc',
+      maxZoom: mapConfig.maxZoom || 19,
+      crossOrigin: true
     }).addTo(leafletMap);
-
-    tileLayer.on('tileerror', () => {
-      if (tileLayer._osmFallback) return;
-      tileLayer._osmFallback = true;
-      leafletMap.removeLayer(tileLayer);
-      tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 19
-      }).addTo(leafletMap);
-    });
 
     // Layer Groups
     riskHeatmapLayer = L.layerGroup().addTo(leafletMap);
@@ -628,9 +629,31 @@
   function renderDynamicRiskHeatmap(riskPoints, userLocation) {
     if (!riskHeatmapLayer) return;
     riskHeatmapLayer.clearLayers();
-    if (!isHeatmapActive || !Array.isArray(riskPoints) || riskPoints.length === 0) return;
+    
+    // Validate that we have real data before rendering
+    if (!isHeatmapActive || !Array.isArray(riskPoints) || riskPoints.length === 0) {
+      return;
+    }
+    
+    // Check if the data contains valid risk information
+    const hasValidData = riskPoints.some(pt => 
+      pt.risk !== undefined && pt.risk !== null && 
+      pt.risk_level !== undefined && 
+      pt.latitude !== undefined && pt.longitude !== undefined
+    );
+    
+    if (!hasValidData) {
+      console.warn('Invalid heatmap data - skipping render');
+      return;
+    }
 
     riskPoints.forEach((pt, idx) => {
+      // Skip invalid points
+      if (pt.risk === undefined || pt.risk === null || 
+          pt.latitude === undefined || pt.longitude === undefined) {
+        return;
+      }
+      
       const risk = Number(pt.risk) || 0;
       const isCenter = (idx === 4);
       let fillColor = '#00F5D4';
@@ -671,6 +694,12 @@
 
       riskHeatmapLayer.addLayer(circle);
     });
+    
+    // Update button text to show data is available
+    const heatmapText = document.getElementById('txtHeatmapToggle');
+    if (heatmapText) {
+      heatmapText.textContent = 'HEATMAP: ON';
+    }
   }
 
   async function fetchRiskHeatmap(lat, lon) {
@@ -682,37 +711,50 @@
       });
       if (res.ok) {
         const data = await res.json();
-        if (data && Array.isArray(data.risk_points)) {
+        // Check if backend has real data using the has_data flag
+        if (data && data.has_data === true && Array.isArray(data.risk_points) && data.risk_points.length > 0) {
           renderDynamicRiskHeatmap(data.risk_points, data.user_location);
+          isBackendConnected = true;
           return;
         }
       }
-    } catch (e) {}
-
-    // Offline / Local Dynamic 3x3 Heatmap Fallback
-    const points = [];
-    const step = 0.035;
-    let idx = 1;
-    for (let r = 1; r >= -1; r--) {
-      for (let c = -1; c <= 1; c++) {
-        const pLat = lat + r * step;
-        const pLon = lon + c * step;
-        const risk = idx === 5 ? 24 : (idx === 3 || idx === 7 ? 68 : (idx === 9 ? 82 : 35));
-        const level = risk >= 75 ? 'CRITICAL' : (risk >= 50 ? 'HIGH' : (risk >= 30 ? 'MEDIUM' : 'LOW'));
-        points.push({ latitude: pLat, longitude: pLon, risk: risk, risk_level: level, wave_height: '1.2m', wind_speed: '14 kts' });
-        idx++;
-      }
+    } catch (e) {
+      isBackendConnected = false;
+      console.warn('Heatmap fetch failed:', e);
     }
-    renderDynamicRiskHeatmap(points, { latitude: lat, longitude: lon });
+
+    // If no real data is available, clear the heatmap layer
+    if (riskHeatmapLayer) {
+      riskHeatmapLayer.clearLayers();
+    }
+    
+    // Show a message that heatmap data is unavailable
+    const heatmapBtn = document.getElementById('btnToggleHeatmap');
+    const heatmapText = document.getElementById('txtHeatmapToggle');
+    if (heatmapBtn && heatmapText) {
+      heatmapBtn.classList.remove('active');
+      heatmapText.textContent = 'HEATMAP: NO DATA';
+    }
+    
+    console.log('No real heatmap data available - heatmap disabled');
   }
 
   function updateHeatmapVisuals() {
     const btn = document.getElementById('btnToggleHeatmap');
     const scale = document.getElementById('heatmapLegendScale');
     const txt = document.getElementById('txtHeatmapToggle');
+    
     if (btn) btn.classList.toggle('active', isHeatmapActive);
     if (scale) scale.style.display = isHeatmapActive ? 'flex' : 'none';
-    if (txt) txt.textContent = isHeatmapActive ? 'HEATMAP: ON' : 'HEATMAP: OFF';
+    
+    if (txt) {
+      if (!isHeatmapActive) {
+        txt.textContent = 'HEATMAP: OFF';
+      } else {
+        txt.textContent = 'HEATMAP: ON';
+      }
+    }
+    
     if (riskHeatmapLayer) {
       if (isHeatmapActive) {
         if (vesselLocation) fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
@@ -737,7 +779,9 @@
           return;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      isBackendConnected = false;
+    }
 
     // Default rich marine conservation bulletins
     BULLETINS = [
@@ -903,45 +947,138 @@
 
   // 7. TELEMETRY & GPS FIX
   async function fetchLiveTelemetry(lat, lon) {
-    const targetLat = lat !== undefined ? lat : (vesselLocation ? vesselLocation.latitude : 15.246);
-    const targetLon = lon !== undefined ? lon : (vesselLocation ? vesselLocation.longitude : 73.803);
+    const targetLat = lat !== undefined ? lat : vesselLocation.latitude;
+    const targetLon = lon !== undefined ? lon : vesselLocation.longitude;
 
     try {
-      const res = await fetch(`${BACKEND_API_BASE}/telemetry?lat=${targetLat}&lon=${targetLon}`);
-      if (res.ok) {
-        const data = await res.json();
-        updateBridgeTelemetryUI(data);
-        return;
-      }
-    } catch (e) {}
+      const res = await fetch(`${BACKEND_API_BASE}/telemetry?lat=${targetLat}&lon=${targetLon}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Telemetry request failed (${res.status})`);
+      const data = await res.json();
+      isBackendConnected = true;
+      updateBridgeTelemetryUI(data);
+      return data;
+    } catch (e) {
+      isBackendConnected = false;
+      updateBridgeTelemetryUI({ status: 'offline' });
+      return null;
+    }
+  }
 
-    // Local realistic telemetry fallback
-    updateBridgeTelemetryUI({
-      sst: '28.4°C',
-      wave: '1.2m',
-      wind: '12.8 kts',
-      current: '0.8 m/s',
-      depth: '34m',
-      baro: '1008.6 hPa'
-    });
+  function formatGpsFix(location) {
+    if (!location || typeof location.latitude !== 'number') return 'GPS FIX: UNAVAILABLE';
+    const latDir = location.latitude >= 0 ? 'N' : 'S';
+    const lonDir = location.longitude >= 0 ? 'E' : 'W';
+    return `${location.latitude.toFixed(4)}°${latDir}, ${location.longitude.toFixed(4)}°${lonDir}`;
   }
 
   function updateBridgeTelemetryUI(data) {
-    window.lastBridgeTelemetry = data || {};
-    const sst = data.sst || '28.4°C';
-    const wave = data.wave || '1.2m';
-    const wind = data.wind || '12.8 kts';
-    const depth = data.depth || '34m';
-    const baro = data.baro || '1008.4 hPa';
+    data = data || {};
+    window.lastBridgeTelemetry = data;
+    const unavailable = data.status === 'offline';
+    const value = key => unavailable ? 'UNAVAILABLE' : (data[key] || 'UNAVAILABLE');
 
     const kpiTemp = document.getElementById('kpiValTemp');
-    if (kpiTemp) kpiTemp.textContent = sst;
+    if (kpiTemp) kpiTemp.textContent = value('sst');
+    const fix = document.getElementById('txtTelemetryFix');
+    if (fix) fix.textContent = unavailable ? 'LIVE FEED: OFFLINE' : formatGpsFix(data.location || vesselLocation);
+    const sog = document.getElementById('txtTelemSog');
+    if (sog) sog.innerHTML = `SOG: <strong>${value('sog')}</strong>`;
+    const cog = document.getElementById('txtTelemCog');
+    if (cog) cog.innerHTML = `COG: <strong>${value('cog')}</strong>`;
+    const depth = document.getElementById('txtTelemDepth');
+    if (depth) depth.innerHTML = `DEPTH: <strong>${value('depth')}</strong>`;
+    const baro = document.getElementById('txtTelemBaro');
+    if (baro) baro.innerHTML = `BARO: <strong>${value('baro')}</strong>`;
+  }
 
-    const telemDepth = document.getElementById('txtTelemDepth');
-    if (telemDepth) telemDepth.innerHTML = `DEPTH: <strong>${depth}</strong>`;
+  function updateUserLocationMarker() {
+    if (!leafletMap || !vesselLocation) return;
+    const point = [vesselLocation.latitude, vesselLocation.longitude];
+    if (!userLocationMarker) {
+      userLocationMarker = L.circleMarker(point, {
+        radius: 8, color: '#ffffff', weight: 2, fillColor: '#00f0ff', fillOpacity: 0.95
+      }).bindTooltip('Device location', { direction: 'top' }).addTo(leafletMap);
+    } else {
+      userLocationMarker.setLatLng(point);
+    }
+  }
 
-    const telemBaro = document.getElementById('txtTelemBaro');
-    if (telemBaro) telemBaro.innerHTML = `BARO: <strong>${baro}</strong>`;
+  function updateLocation(lat, lon, name, source) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    vesselLocation = { latitude: lat, longitude: lon, name: name || 'Current Coastal Sector' };
+    customLocationName = vesselLocation.name;
+    locationSource = source || 'manual';
+    updateUserLocationMarker();
+    if (leafletMap) leafletMap.flyTo([lat, lon], 11, { duration: 0.8 });
+    updateDynamicMarineZones(lat, lon, vesselLocation.name);
+    fetchLiveTelemetry(lat, lon);
+    fetchLiveBulletins(lat, lon);
+    if (isHeatmapActive) fetchRiskHeatmap(lat, lon);
+    updateGpsButton();
+  }
+
+  function updateGpsButton() {
+    const btn = document.getElementById('btnGpsToggle');
+    const text = document.getElementById('txtGpsToggle');
+    if (btn) btn.classList.toggle('gps-active', isGpsTrackingEnabled);
+    if (text) text.textContent = isGpsTrackingEnabled ? '📡 GPS: ON' : '📡 GPS: OFF';
+  }
+
+  function stopGpsTracking() {
+    if (gpsWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+    isGpsTrackingEnabled = false;
+    updateGpsButton();
+  }
+
+  function startGpsTracking() {
+    if (!navigator.geolocation) {
+      window.alert('GPS is not available in this browser. Use a coastal port or coordinates instead.');
+      return;
+    }
+    isGpsTrackingEnabled = true;
+    updateGpsButton();
+    const onPosition = position => updateLocation(position.coords.latitude, position.coords.longitude, 'Device GPS', 'gps');
+    const onError = error => {
+      stopGpsTracking();
+      const message = error.code === 1 ? 'Location permission was denied.' : 'Unable to read the device location.';
+      window.alert(`${message} Select a port or enter coordinates to continue.`);
+    };
+    navigator.geolocation.getCurrentPosition(onPosition, onError, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+    gpsWatchId = navigator.geolocation.watchPosition(onPosition, onError, { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 });
+  }
+
+  function resolveLocationInput(raw) {
+    const input = String(raw || '').trim();
+    if (!input) return null;
+    
+    // Try coordinate parsing first (support multiple formats)
+    const coords = input.split(/[,\s]+/).map(Number);
+    if (coords.length === 2 && coords.every(Number.isFinite) && Math.abs(coords[0]) <= 90 && Math.abs(coords[1]) <= 180) {
+      return { lat: coords[0], lon: coords[1], name: 'Manual Coordinates' };
+    }
+    
+    // Try port name matching (case-insensitive, partial match)
+    const key = input.toLowerCase();
+    
+    // Direct key match
+    if (MARITIME_PORTS_CATALOG[key]) {
+      const port = MARITIME_PORTS_CATALOG[key];
+      return { lat: port.lat, lon: port.lon, name: port.name };
+    }
+    
+    // Partial match - check if input contains port key or port key contains input
+    const match = Object.keys(MARITIME_PORTS_CATALOG).find(k => 
+      key.includes(k) || k.includes(key) || 
+      MARITIME_PORTS_CATALOG[k].name.toLowerCase().includes(key)
+    );
+    
+    if (match) {
+      const port = MARITIME_PORTS_CATALOG[match];
+      return { lat: port.lat, lon: port.lon, name: port.name };
+    }
+    
+    return null;
   }
 
   // 8. "ASK ORCA" AI ASSISTANT CHAT ENGINE
@@ -971,6 +1108,7 @@
     try {
       const payload = {
         message: text,
+        language: currentLang,
         latitude: vesselLocation ? vesselLocation.latitude : 15.246,
         longitude: vesselLocation ? vesselLocation.longitude : 73.803,
         zone_id: activeZoneId
@@ -984,27 +1122,37 @@
 
       if (res.ok) {
         const data = await res.json();
-        const reply = data.reply || data.response || data.message || 'Analysis complete.';
+        let reply = (data.chat && data.chat.response) || (data.recommendation && (data.recommendation.response_text || data.recommendation.message)) || data.reply || data.response || data.message || 'Analysis complete.';
+        if (currentLang !== 'en' && (!data.chat || !data.chat.translation_success)) {
+          reply = await translateForLanguage(reply, currentLang);
+        }
+        
         loadingBubble.innerHTML = `
           <div class="chat-bubble-header"><span>ORCA NEURAL DISPATCH</span><span>LIVE</span></div>
           <div>${formatMarkdown(reply)}</div>
+          ${speakerButtonMarkup(reply)}
         `;
         thread.scrollTop = thread.scrollHeight;
+        
         return;
       }
     } catch (e) {}
 
     // Fallback AI Response
-    setTimeout(() => {
+    setTimeout(async () => {
       let smartReply = `Based on live telemetry at **${vesselLocation.latitude.toFixed(2)}°N, ${vesselLocation.longitude.toFixed(2)}°E**, sea state is **calm to moderate** with SST at **28.4°C**. Multi-agent analysis confirms active species tracks (Blue Whale, Olive Ridley Turtle) along the continental shelf edge. Wave heights remain within safe operating limits (<1.5m).`;
       if (text.toLowerCase().includes('pollution') || text.toLowerCase().includes('hotspot')) {
         smartReply = `**Pollution Hotspot Analysis:** SAR telemetry detected a localized micro-film 14 NM offshore. Dispersion vector is trending 215° SW at 0.8 kts. Coastal protection containment units have been notified. Avoid commercial trawling in sector **P9**.`;
       } else if (text.toLowerCase().includes('species') || text.toLowerCase().includes('whale') || text.toLowerCase().includes('turtle')) {
         smartReply = `**Species Intelligence:** 142 total acoustic tracks registered in the last 24h. A mother and calf Blue Whale pair is currently logged at **15.18°N, 73.45°E** (depth 185m). Morjim beach biosphere reports active Olive Ridley turtle arrivals.`;
       }
+
+      smartReply = await translateForLanguage(smartReply, currentLang);
+      
       loadingBubble.innerHTML = `
         <div class="chat-bubble-header"><span>ORCA NEURAL DISPATCH</span><span>NOMINAL</span></div>
         <div>${formatMarkdown(smartReply)}</div>
+        ${speakerButtonMarkup(smartReply)}
       `;
       thread.scrollTop = thread.scrollHeight;
     }, 600);
@@ -1153,6 +1301,7 @@
   }
 
   async function loadRegressionData(varKey) {
+    varKey = varKey || activeRegVar;
     activeRegVar = varKey;
     regressionDataCache = computeLocal24hPrediction(varKey);
     drawRegressionCanvas();
@@ -1285,19 +1434,65 @@
   // 10. LANGUAGE & UTILITIES
   function setLanguage(lang) {
     currentLang = lang;
+    document.documentElement.lang = lang;
     localStorage.setItem('orca_marine_lang', lang);
 
-    ['btnLangHI', 'btnLangEN', 'btnLangTA'].forEach(id => {
+    // Update main language buttons
+    ['btnLangHI', 'btnLangEN', 'btnLangTA', 'btnLangMore'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.remove('selected');
     });
 
-    const activeBtn = document.getElementById(lang === 'hi' ? 'btnLangHI' : (lang === 'ta' ? 'btnLangTA' : 'btnLangEN'));
-    if (activeBtn) activeBtn.classList.add('selected');
+    // Set active state for main buttons
+    if (lang === 'hi') {
+      const btnHi = document.getElementById('btnLangHI');
+      if (btnHi) btnHi.classList.add('selected');
+    } else if (lang === 'ta') {
+      const btnTa = document.getElementById('btnLangTA');
+      if (btnTa) btnTa.classList.add('selected');
+    } else {
+      const activeButton = lang === 'en' ? document.getElementById('btnLangEN') : document.getElementById('btnLangMore');
+      if (activeButton) activeButton.classList.add('selected');
+    }
+    const moreButton = document.getElementById('btnLangMore');
+    if (moreButton) moreButton.textContent = lang === 'en' || lang === 'hi' || lang === 'ta' ? '▼' : lang.toUpperCase();
 
+    // Update expanded language dropdown buttons
+    const langGridBtns = document.querySelectorAll('.lang-grid-btn');
+    langGridBtns.forEach(btn => {
+      btn.classList.remove('selected');
+      if (btn.getAttribute('data-lang') === lang) {
+        btn.classList.add('selected');
+      }
+    });
+
+    // Use available translations or fallback to English
     const dict = I18N[lang] || I18N.en;
-    const elSub = document.getElementById('txtBridgeSubtitle');
-    if (elSub) elSub.textContent = dict.bridgeSubtitle;
+    const translatedElements = {
+      txtHeroTagline: 'heroTagline', btnHeroExplore: 'heroExploreCta', btnHeroMap: 'heroMapCta',
+      txtBridgeSubtitle: 'bridgeSubtitle', txtSunlightLabel: 'sunlight', txtViewPC: 'viewPC', txtViewPhone: 'viewPhone',
+      txtTelemetryFix: 'telemetryFix', txtLegendTitle: 'legendTitle', txtRegistryTitle: 'registryTitle',
+      txtDrawerAsk: 'drawerAsk', txtDrawerDismiss: 'drawerDismiss', txtBriefBody: 'briefBody',
+      txtMobChart: 'mobChart', txtMobAlerts: 'mobAlerts', txtMobSpecies: 'mobSpecies',
+      txtMobGraph: 'mobGraph', txtMobChat: 'mobChat'
+    };
+    Object.entries(translatedElements).forEach(([id, key]) => {
+      const element = document.getElementById(id);
+      if (element && dict[key]) element.textContent = dict[key];
+    });
+    const input = document.getElementById('tacticalQueryInput');
+    if (input && dict.inputPlaceholder) input.placeholder = dict.inputPlaceholder;
+    const submit = document.querySelector('#btnSubmitQuery span');
+    if (submit && dict.submitBtn) submit.textContent = dict.submitBtn;
+    [['btnFiltAll', 'filtAll'], ['btnFiltDanger', 'filtDanger'], ['btnFiltCaution', 'filtCaution'], ['btnFiltResolved', 'filtResolved']].forEach(([id, key]) => {
+      const element = document.getElementById(id);
+      if (element && dict[key]) element.textContent = dict[key];
+    });
+    document.querySelectorAll('.sidebar-nav-btn').forEach((button) => {
+      const key = `nav${button.dataset.view.charAt(0).toUpperCase()}${button.dataset.view.slice(1)}`;
+      const label = button.querySelector(':scope > span:not(.nav-icon):not(.nav-badge)');
+      if (label && dict[key]) label.textContent = dict[key];
+    });
 
     renderQuickQueries();
     renderSpeciesCatalog();
@@ -1331,15 +1526,36 @@
     return escapeHtml(str).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   }
 
+  function speakerButtonMarkup(text) {
+    return `<button type="button" class="chat-speak-btn" data-speak-text="${escapeHtml(String(text).replace(/[*_`#]/g, ''))}" data-speak-lang="${speechLanguage(currentLang)}" title="Speak this response" aria-label="Speak this response">🔊</button>`;
+  }
+
+  async function translateForLanguage(text, lang) {
+    if (!text || lang === 'en') return text;
+    try {
+      const response = await fetch(`${BACKEND_API_BASE}/translate?text=${encodeURIComponent(String(text).replace(/[*_`#]/g, ''))}&target_lang=${encodeURIComponent(lang)}&source_lang=en`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.translated_text) return data.translated_text;
+      }
+    } catch (error) {
+      console.warn('Translation failed:', error);
+    }
+    return text;
+  }
+
   // Master Initialization
   function initDashboard() {
     initHeroParticles();
-    initLeafletMap();
     initVoiceRecognition();
     setLanguage(currentLang);
     updateDynamicMarineZones(vesselLocation.latitude, vesselLocation.longitude, 'Goa Coastal Sector');
     fetchLiveTelemetry(vesselLocation.latitude, vesselLocation.longitude);
     fetchLiveBulletins(vesselLocation.latitude, vesselLocation.longitude);
+    updateGpsButton();
+    telemetryTimer = window.setInterval(() => {
+      if (!document.hidden && vesselLocation) fetchLiveTelemetry();
+    }, 30000);
     renderSpeciesCatalog();
     loadRegressionData('wave_height');
 
@@ -1365,15 +1581,44 @@
         const locKey = chip.getAttribute('data-loc').toLowerCase();
         const port = MARITIME_PORTS_CATALOG[locKey];
         if (port && leafletMap) {
-          vesselLocation = { latitude: port.lat, longitude: port.lon, name: port.name };
-          leafletMap.flyTo([port.lat, port.lon], 11, { duration: 1.2 });
-          updateDynamicMarineZones(port.lat, port.lon, port.name);
-          fetchLiveTelemetry(port.lat, port.lon);
-          fetchLiveBulletins(port.lat, port.lon);
-          fetchRiskHeatmap(port.lat, port.lon);
+          stopGpsTracking();
+          updateLocation(port.lat, port.lon, port.name, 'manual');
         }
       });
     });
+
+    // GPS and location controls
+    const gpsToggle = document.getElementById('btnGpsToggle');
+    if (gpsToggle) gpsToggle.addEventListener('click', () => isGpsTrackingEnabled ? stopGpsTracking() : startGpsTracking());
+    const gpsLocate = document.getElementById('btnCurrentGpsLocation');
+    if (gpsLocate) gpsLocate.addEventListener('click', startGpsTracking);
+    const locationInput = document.getElementById('inputCustomLocation');
+    const submitLocation = () => {
+      const resolved = resolveLocationInput(locationInput && locationInput.value);
+      if (!resolved) {
+        // Try to use the input as coordinates if it looks like coordinates
+        const coords = locationInput.value.split(/[,\s]+/).map(Number);
+        if (coords.length === 2 && coords.every(Number.isFinite) && Math.abs(coords[0]) <= 90 && Math.abs(coords[1]) <= 180) {
+          stopGpsTracking();
+          updateLocation(coords[0], coords[1], `Coordinates: ${coords[0].toFixed(2)}°, ${coords[1].toFixed(2)}°`, 'manual');
+          if (locationInput) locationInput.value = '';
+          return;
+        }
+        
+        // Show a more helpful message
+        const availablePorts = Object.keys(MARITIME_PORTS_CATALOG).map(k => MARITIME_PORTS_CATALOG[k].name).join(', ');
+        window.alert(`Location not found. Try:\n\n• Port names: ${availablePorts}\n• Coordinates: 15.24, 73.80\n• Click Quick Ports chips below`);
+        return;
+      }
+      stopGpsTracking();
+      updateLocation(resolved.lat, resolved.lon, resolved.name, 'manual');
+      if (locationInput) locationInput.value = '';
+    };
+    const submitLocationButton = document.getElementById('btnSubmitLocation');
+    if (submitLocationButton) submitLocationButton.addEventListener('click', submitLocation);
+    if (locationInput) locationInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); submitLocation(); } });
+    const clearLocation = document.getElementById('btnClearLocSearch');
+    if (clearLocation) clearLocation.addEventListener('click', () => { if (locationInput) locationInput.value = ''; });
 
     // Query Form
     const queryForm = document.getElementById('tacticalQueryForm');
@@ -1417,9 +1662,48 @@
     const btnHi = document.getElementById('btnLangHI');
     const btnEn = document.getElementById('btnLangEN');
     const btnTa = document.getElementById('btnLangTA');
+    const btnLangMore = document.getElementById('btnLangMore');
+    const expandedLangDropdown = document.getElementById('expandedLangDropdown');
+    
     if (btnHi) btnHi.addEventListener('click', () => setLanguage('hi'));
     if (btnEn) btnEn.addEventListener('click', () => setLanguage('en'));
     if (btnTa) btnTa.addEventListener('click', () => setLanguage('ta'));
+    
+    // Toggle expanded language dropdown
+    if (btnLangMore && expandedLangDropdown) {
+      btnLangMore.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const isHidden = expandedLangDropdown.style.display === 'none' || expandedLangDropdown.style.display === '';
+        expandedLangDropdown.style.display = isHidden ? 'block' : 'none';
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!expandedLangDropdown.contains(e.target) && e.target !== btnLangMore && !btnLangMore.contains(e.target)) {
+          expandedLangDropdown.style.display = 'none';
+        }
+      });
+      
+      // Handle language grid button clicks
+      const langGridBtns = expandedLangDropdown.querySelectorAll('.lang-grid-btn');
+      langGridBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const langCode = btn.getAttribute('data-lang');
+          setLanguage(langCode);
+          expandedLangDropdown.style.display = 'none';
+        });
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('.chat-speak-btn');
+      if (!button) return;
+      speakText(button.dataset.speakText || '', button.dataset.speakLang || speechLanguage(currentLang));
+      document.querySelectorAll('.chat-speak-btn.speaking').forEach((item) => item.classList.remove('speaking'));
+      button.classList.add('speaking');
+    });
 
     // Sunlight deck toggle
     const btnSunlight = document.getElementById('btnSunlightToggle');
@@ -1438,6 +1722,8 @@
     if (btnExplore) btnExplore.addEventListener('click', () => switchActiveView('dashboard'));
     const btnHeroMap = document.getElementById('btnHeroMap');
     if (btnHeroMap) btnHeroMap.addEventListener('click', () => switchActiveView('map'));
+    const recalc = document.getElementById('btnRecalcRegression');
+    if (recalc) recalc.addEventListener('click', () => loadRegressionData(activeRegVar));
 
     // Master Clock
     setInterval(() => {
@@ -1455,10 +1741,59 @@
     initDashboard();
   }
 
+  // Text-to-Speech Functionality
+  let speechSynthesis = window.speechSynthesis;
+  let currentUtterance = null;
+
+  function speakText(text, lang = 'en-US') {
+    if (!text || !speechSynthesis) return;
+    
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    
+    // Try to find a voice that matches the language
+    const voices = speechSynthesis.getVoices();
+    const matchingVoice = voices.find(voice => voice.lang.startsWith(lang.split('-')[0]));
+    if (matchingVoice) {
+      utterance.voice = matchingVoice;
+    }
+    
+    currentUtterance = utterance;
+    speechSynthesis.speak(utterance);
+  }
+
+  function speechLanguage(lang) {
+    return lang === 'en' ? 'en-US' : `${lang}-IN`;
+  }
+
+  function stopSpeech() {
+    if (speechSynthesis) {
+      speechSynthesis.cancel();
+    }
+  }
+
+  // Load voices when they become available
+  if (speechSynthesis) {
+    speechSynthesis.onvoiceschanged = () => {
+      speechSynthesis.getVoices();
+    };
+  }
+
   window.ORCA = {
     switchActiveView,
     setLanguage,
     triggerTacticalQuery,
-    loadRegressionData
+    loadRegressionData,
+    startGpsTracking,
+    stopGpsTracking,
+    updateLocation,
+    speakText,
+    stopSpeech
   };
 })();
