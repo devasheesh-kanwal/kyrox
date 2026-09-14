@@ -23,6 +23,7 @@
   let tacticalZonesLayer = null;
   let waypointsLayer = null;
   let riskHeatmapLayer = null;
+  let heatLayer = null;
   let speciesLayer = null;
   let incidentsLayer = null;
   let userLocationMarker = null;
@@ -494,9 +495,9 @@
     renderSpeciesMarkers();
     renderIncidentMarkers();
 
-    leafletMap.on('click', (event) => {
+    leafletMap.on('dblclick', (event) => {
       closeTacticalDrawer();
-      // A plain map click becomes the new active analysis location. Marker and
+      // Double-clicking the map becomes the new analysis location. Marker and
       // polygon handlers stop propagation, so selecting an existing feature
       // keeps its current behavior.
       const lat = Number(event.latlng.lat.toFixed(6));
@@ -506,106 +507,6 @@
     });
 
     updateHeatmapVisuals();
-  }
-
-  function updateDynamicMarineZones(lat, lon, locName, liveData) {
-    if (typeof lat !== 'number' || typeof lon !== 'number') return;
-    const isEastCoast = lon >= 78.0;
-    const lonOffset = isEastCoast ? 0.18 : -0.18;
-    const pfzLat = Number((lat - 0.04).toFixed(4));
-    const pfzLon = Number((lon + lonOffset).toFixed(4));
-    const cautionLat = Number((lat + 0.10).toFixed(4));
-    const cautionLon = Number((lon + (isEastCoast ? 0.06 : -0.06)).toFixed(4));
-    const dangerLat = Number((lat - 0.15).toFixed(4));
-    const dangerLon = Number((lon + (isEastCoast ? 0.22 : -0.22)).toFixed(4));
-
-    const displayName = locName || customLocationName || (vesselLocation && vesselLocation.name) || 'Active Coastal Sector';
-    const telem = liveData || window.lastBridgeTelemetry || {};
-    const sst = telem.sst || '28.4°C';
-    const wave = telem.wave || '1.2m';
-
-    MAP_ZONES = [
-      {
-        id: "zone-pfz-sw",
-        type: "pfz",
-        center: [pfzLat, pfzLon],
-        latLngs: [
-          [Number((pfzLat + 0.06).toFixed(4)), Number((pfzLon - 0.06).toFixed(4))],
-          [Number((pfzLat + 0.05).toFixed(4)), Number((pfzLon + 0.06).toFixed(4))],
-          [Number((pfzLat - 0.06).toFixed(4)), Number((pfzLon + 0.07).toFixed(4))],
-          [Number((pfzLat - 0.08).toFixed(4)), Number((pfzLon - 0.05).toFixed(4))]
-        ],
-        label_en: `INCOIS PFZ Fishing Zone (${displayName})`,
-        label_hi: `INCOIS PFZ मत्स्य क्षेत्र (${displayName})`,
-        label_ta: `INCOIS PFZ மீன்பிடி பகுதி (${displayName})`,
-        sub_en: `SST ${sst} • Optimal Chlorophyll Front`,
-        reason_en: `Pelagic convergence zone for ${displayName}. Mackerel, Kingfish and Tuna feeding schools active. Calm sea state (${wave}).`,
-        reason_hi: `${displayName} के लिए उच्च क्लोरोफिल व तापीय प्रवणता। बांगड़ा, सुरमई और टूना मछली के झुंड सक्रिय। शांत समुद्र (${wave})।`,
-        coords: `${pfzLat.toFixed(2)}°N, ${pfzLon.toFixed(2)}°E (${isEastCoast ? 'Bearing 095° E' : 'Bearing 215° SW'}, 12 NM)`
-      },
-      {
-        id: "zone-wind-ne",
-        type: "caution",
-        center: [cautionLat, cautionLon],
-        latLngs: [
-          [Number((cautionLat + 0.05).toFixed(4)), Number((cautionLon - 0.05).toFixed(4))],
-          [Number((cautionLat + 0.06).toFixed(4)), Number((cautionLon + 0.06).toFixed(4))],
-          [Number((cautionLat - 0.05).toFixed(4)), Number((cautionLon + 0.07).toFixed(4))],
-          [Number((cautionLat - 0.06).toFixed(4)), Number((cautionLon - 0.05).toFixed(4))]
-        ],
-        label_en: `Caution Swell Zone (${displayName})`,
-        label_hi: `सावधानी क्षेत्र (${displayName})`,
-        label_ta: `எச்சரிக்கை பகுதி (${displayName})`,
-        sub_en: `Swell 2.4m • Moderate Drift`,
-        reason_en: `Moderate swell reaching 2.4m with gusty winds in inshore approaches. Small craft exercise vigilance.`,
-        reason_hi: `तटीय जलक्षेत्र में 2.4m ऊंची लहरें और हवाएं। छोटी नौकाएं सतर्कता बरतें।`,
-        coords: `${cautionLat.toFixed(2)}°N, ${cautionLon.toFixed(2)}°E (8 NM Inshore)`
-      },
-      {
-        id: "zone-danger-se",
-        type: "danger",
-        center: [dangerLat, dangerLon],
-        latLngs: [
-          [Number((dangerLat + 0.07).toFixed(4)), Number((dangerLon - 0.06).toFixed(4))],
-          [Number((dangerLat + 0.06).toFixed(4)), Number((dangerLon + 0.08).toFixed(4))],
-          [Number((dangerLat - 0.07).toFixed(4)), Number((dangerLon + 0.06).toFixed(4))],
-          [Number((dangerLat - 0.06).toFixed(4)), Number((dangerLon - 0.07).toFixed(4))]
-        ],
-        label_en: `Restricted Hazard Zone (Squall Alert)`,
-        label_hi: `प्रतिबंधित खतरा क्षेत्र (Squall Alert)`,
-        label_ta: `தடைசெய்யப்பட்ட ஆபத்து பகுதி`,
-        sub_en: `Squall 40+ kt • Lightning Radar`,
-        reason_en: `Radar tracked squall line with 40+ knot cyclonic gusts and lightning strikes. Entry prohibited.`,
-        reason_hi: `तटीय रडार द्वारा ट्रैक किया गया स्क्वॉल क्षेत्र। 40+ नॉट की झंझावाती हवाएं और आकाशीय बिजली का खतरा।`,
-        coords: `${dangerLat.toFixed(2)}°N, ${dangerLon.toFixed(2)}°E (16 NM Offshore)`
-      }
-    ];
-
-    MAP_MARKERS = [
-      {
-        id: "mkr-pfz-target",
-        kind: "pfz",
-        latLng: [pfzLat, pfzLon],
-        zone_id: "zone-pfz-sw",
-        label_en: `PFZ Target Waypoint (${displayName})`,
-        label_hi: `PFZ लक्ष्य बिंदु (${displayName})`,
-        coords: `${pfzLat.toFixed(2)}°N, ${pfzLon.toFixed(2)}°E`,
-        reason_en: `Optimal pelagic aggregation (12 NM offshore ${displayName}). Mackerel & Tuna schools active. Depth: 38-45m.`
-      },
-      {
-        id: "mkr-squall-center",
-        kind: "danger",
-        latLng: [dangerLat, dangerLon],
-        zone_id: "zone-danger-se",
-        label_en: `Squall Core (${displayName})`,
-        label_hi: `तूफान केंद्र (${displayName})`,
-        coords: `${dangerLat.toFixed(2)}°N, ${dangerLon.toFixed(2)}°E`,
-        reason_en: `Active offshore squall cell moving northeast. Severe gale force gusts.`
-      }
-    ];
-
-    renderLeafletTacticalZones();
-    renderLeafletWaypoints();
   }
 
   function renderLeafletTacticalZones() {
@@ -736,10 +637,14 @@
     if (drawer) drawer.style.display = 'none';
   }
 
-  // 4. DYNAMIC 3x3 RISK HEATMAP
+  // 4. DYNAMIC RISK HEATMAP (smooth continuous gradient)
   function renderDynamicRiskHeatmap(riskPoints, userLocation) {
     if (!riskHeatmapLayer) return;
     riskHeatmapLayer.clearLayers();
+    if (heatLayer) {
+      leafletMap.removeLayer(heatLayer);
+      heatLayer = null;
+    }
 
     // Validate that we have real data before rendering
     if (!isHeatmapActive || !Array.isArray(riskPoints) || riskPoints.length === 0) {
@@ -758,59 +663,129 @@
       return;
     }
 
+    // Normalise each risk point into [lat, lng, intensity] for the heat layer.
+    // Intensity is the risk percentage (0-100) scaled to 0-1 with a boosted
+    // floor so low-risk cells still contribute a faint cool-blue halo.
+    const heatData = [];
+
     riskPoints.forEach((pt, idx) => {
-      // Skip invalid points
       if (pt.risk === undefined || pt.risk === null ||
           pt.latitude === undefined || pt.longitude === undefined) {
         return;
       }
 
       const risk = Number(pt.risk) || 0;
-      const isCenter = (idx === 4);
-      let fillColor = '#00F5D4';
-      let strokeColor = '#00F5D4';
-      let fillOpacity = 0.28;
+      const isCenter = userLocation &&
+        Math.abs(Number(pt.latitude) - Number(userLocation.latitude)) < 0.0001 &&
+        Math.abs(Number(pt.longitude) - Number(userLocation.longitude)) < 0.0001;
 
-      if (pt.risk_level === 'CRITICAL' || risk >= 75) {
-        fillColor = '#FF3366';
-        strokeColor = '#FF3366';
-        fillOpacity = 0.55;
-      } else if (pt.risk_level === 'HIGH' || risk >= 50) {
-        fillColor = '#FF7A00';
-        strokeColor = '#FF7A00';
-        fillOpacity = 0.45;
-      } else if (pt.risk_level === 'MEDIUM' || risk >= 30) {
-        fillColor = '#FFB703';
-        strokeColor = '#FFB703';
-        fillOpacity = 0.38;
-      }
+      // Map risk % to a 0-1 intensity; the centre point gets extra weight so a
+      // strong hotspot blooms outward into the surrounding cells.
+      let intensity = Math.min(1, Math.max(0.08, risk / 100));
+      if (isCenter) intensity = Math.min(1, intensity + 0.12);
+      heatData.push([Number(pt.latitude), Number(pt.longitude), intensity]);
 
-      const circle = L.circle([pt.latitude, pt.longitude], {
-        radius: isCenter ? 3400 : 2900,
-        color: strokeColor,
-        weight: isCenter ? 2 : 1,
-        fillColor: fillColor,
-        fillOpacity: fillOpacity
+      // Invisible interactive footprint preserves tooltip + click behaviour
+      // (tactical drawer) now that the visible layer is a single gradient.
+      const cellRadius = 0.019;
+      const cellPoints = Array.from({ length: 6 }, (_, pointIndex) => {
+        const angle = (Math.PI / 3) * pointIndex + Math.PI / 6;
+        return [
+          Number(pt.latitude) + Math.sin(angle) * cellRadius,
+          Number(pt.longitude) + Math.cos(angle) * cellRadius
+        ];
+      });
+      const hitArea = L.polygon(cellPoints, {
+        color: 'transparent',
+        weight: 0,
+        fillColor: '#000',
+        fillOpacity: 0.001,
+        interactive: true
       });
 
       const cellLabel = isCenter ? `📍 User GPS Sector (${risk}% ${pt.risk_level})` : `P${idx + 1}: ${risk}% Risk (${pt.risk_level})`;
-      circle.bindTooltip(cellLabel, { permanent: false, direction: 'top', className: 'tactical-map-tooltip' });
-
-      circle.on('click', (e) => {
+      hitArea.bindTooltip(cellLabel, { permanent: false, direction: 'top', className: 'tactical-map-tooltip' });
+      hitArea.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         const title = `${cellLabel} • [${pt.latitude.toFixed(4)}°, ${pt.longitude.toFixed(4)}°]`;
-        const reason = `Live neural risk assessment: ${risk}% composite risk. Swell: ${pt.wave_height || '1.1m'}, Wind: ${pt.wind_speed || '12 kts'}. Status: ${pt.risk_level}.`;
+        const reason = `Live neural risk assessment: ${risk}% composite risk. Wave: ${pt.wave_height !== null && pt.wave_height !== undefined ? `${pt.wave_height}m` : 'unavailable'}, Wind: ${pt.wind_speed !== null && pt.wind_speed !== undefined ? `${pt.wind_speed} kt` : 'unavailable'}. Status: ${pt.risk_level}.`;
         showTacticalDrawer(title, reason, `${pt.latitude.toFixed(4)}°N, ${pt.longitude.toFixed(4)}°E`, 'caution', `risk_pt_${idx+1}`);
       });
-
-      riskHeatmapLayer.addLayer(circle);
+      riskHeatmapLayer.addLayer(hitArea);
     });
+
+    // Smooth continuous heat gradient (blue -> cyan -> yellow -> orange -> red)
+    if (typeof L.heatLayer === 'function' && heatData.length > 0) {
+      heatLayer = L.heatLayer(heatData, {
+        radius: 55,
+        blur: 45,
+        maxZoom: 12,
+        minOpacity: 0.35,
+        max: 1.0,
+        gradient: {
+          0.0: 'rgba(63,94,251,0.0)',
+          0.2: '#3f5efb',
+          0.4: '#2ec4b6',
+          0.6: '#ffe066',
+          0.8: '#ff7a00',
+          1.0: '#ff1f4b'
+        }
+      });
+      heatLayer.addTo(leafletMap);
+      // Keep the gradient beneath markers/zones so labels stay readable.
+      if (heatLayer.bringToBack) heatLayer.bringToBack();
+    }
 
     // Update button text to show data is available
     const heatmapText = document.getElementById('txtHeatmapToggle');
     if (heatmapText) {
       heatmapText.textContent = 'HEATMAP: ON';
     }
+  }
+
+  function renderLiveAnalysisZones(riskPoints) {
+    MAP_ZONES = [];
+    MAP_MARKERS = [];
+    if (!Array.isArray(riskPoints)) {
+      renderLeafletTacticalZones();
+      renderLeafletWaypoints();
+      return;
+    }
+
+    riskPoints.forEach((point, index) => {
+      if (!point.zone_type || !Number.isFinite(Number(point.latitude)) || !Number.isFinite(Number(point.longitude))) return;
+      const zoneType = point.zone_type;
+      const color = zoneType === 'pfz' ? '#00F5D4' : (zoneType === 'caution' ? '#FFB703' : '#FF3366');
+      const lat = Number(point.latitude);
+      const lon = Number(point.longitude);
+      const radius = 0.018;
+      const latLngs = Array.from({ length: 6 }, (_, vertexIndex) => {
+        const angle = (Math.PI / 3) * vertexIndex + Math.PI / 6;
+        return [lat + Math.sin(angle) * radius, lon + Math.cos(angle) * radius];
+      });
+      const swell = point.swell_height !== null && point.swell_height !== undefined
+        ? `${Number(point.swell_height).toFixed(1)}m` : 'unavailable';
+      const wave = point.wave_height !== null && point.wave_height !== undefined
+        ? `${Number(point.wave_height).toFixed(1)}m` : 'unavailable';
+      const wind = point.wind_speed !== null && point.wind_speed !== undefined
+        ? `${Number(point.wind_speed).toFixed(1)} kt` : 'unavailable';
+
+      MAP_ZONES.push({
+        id: `zone-live-${index}`,
+        type: zoneType,
+        center: [lat, lon],
+        latLngs,
+        label_en: `${point.zone_label || zoneType} • Live analysis`,
+        label_hi: `${point.zone_label || zoneType} • लाइव विश्लेषण`,
+        label_ta: `${point.zone_label || zoneType} • நேரலை பகுப்பாய்வு`,
+        sub_en: `Risk ${point.risk}% • Wave ${wave} • Swell ${swell}`,
+        reason_en: `Current-coordinate agent analysis: risk ${point.risk}% (${point.risk_level}), wave ${wave}, swell ${swell}, wind ${wind}.${point.restricted ? ' Protected or restricted area.' : ''}`,
+        coords: `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`
+      });
+    });
+
+    renderLeafletTacticalZones();
+    renderLeafletWaypoints();
   }
 
   async function fetchRiskHeatmap(lat, lon) {
@@ -825,6 +800,10 @@
         // Check if backend has real data using the has_data flag
         if (data && data.has_data === true && Array.isArray(data.risk_points) && data.risk_points.length > 0) {
           renderDynamicRiskHeatmap(data.risk_points, data.user_location);
+          // When the smooth heat gradient is active it already conveys the risk
+          // field; the solid hexagon zones are only the non-heatmap fallback,
+          // so suppress them to keep the overlay clean.
+          renderLiveAnalysisZones(isHeatmapActive ? [] : data.risk_points);
           isBackendConnected = true;
           return;
         }
@@ -838,6 +817,11 @@
     if (riskHeatmapLayer) {
       riskHeatmapLayer.clearLayers();
     }
+    if (heatLayer) {
+      leafletMap.removeLayer(heatLayer);
+      heatLayer = null;
+    }
+    renderLiveAnalysisZones([]);
 
     // Show a message that heatmap data is unavailable
     const heatmapBtn = document.getElementById('btnToggleHeatmap');
@@ -871,6 +855,10 @@
         if (vesselLocation) fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
       } else {
         riskHeatmapLayer.clearLayers();
+        if (heatLayer) {
+          leafletMap.removeLayer(heatLayer);
+          heatLayer = null;
+        }
       }
     }
   }
@@ -894,39 +882,8 @@
       isBackendConnected = false;
     }
 
-    // Default rich marine conservation bulletins
-    BULLETINS = [
-      {
-        id: "ALRT-01",
-        type: "danger",
-        title_en: "Critical Squall Alert & Cyclonic Shear",
-        title_hi: "गंभीर स्क्वॉल व झंझावाती हवा अलर्ट",
-        desc_en: "Severe wind gusts exceeding 42 kts detected 16 NM offshore. Craft <20m advised to hold in port.",
-        action_en: "Return to nearest protected harbour or reduce sail immediately.",
-        zone_id: "zone-danger-se",
-        coords: "15.09°N, 73.58°E"
-      },
-      {
-        id: "ALRT-02",
-        type: "caution",
-        title_en: "Moderate Swell Surge & Current Anomaly",
-        title_hi: "मध्यम समुद्री लहर व धारा चेतावनी",
-        desc_en: "2.4m swell reaching inshore approaches. Trawlers exercise caution near shallow sandbars.",
-        action_en: "Maintain continuous VHF Ch 16 watch and log GPS fixes hourly.",
-        zone_id: "zone-wind-ne",
-        coords: "15.34°N, 73.86°E"
-      },
-      {
-        id: "ALRT-03",
-        type: "resolved",
-        title_en: "Optimal Pelagic Fishing Zone Active",
-        title_hi: "सक्रिय मत्स्य क्षेत्र (INCOIS PFZ)",
-        desc_en: "Satellite SST and Chlorophyll telemetry confirms prime feeding grounds 12 NM offshore.",
-        action_en: "Ideal conditions for sustainable artisanal line fishing.",
-        zone_id: "zone-pfz-sw",
-        coords: "15.20°N, 73.62°E"
-      }
-    ];
+    // Never display invented advisories when the live bulletin feed is down.
+    BULLETINS = [];
     renderBulletinsList();
   }
 
@@ -1071,6 +1028,11 @@
     } catch (e) {
       isBackendConnected = false;
       updateBridgeTelemetryUI({ status: 'offline' });
+      MAP_ZONES = [];
+      MAP_MARKERS = [];
+      renderLiveAnalysisZones([]);
+      renderLeafletTacticalZones();
+      renderLeafletWaypoints();
       return null;
     }
   }
@@ -1102,6 +1064,8 @@
     if (baro) baro.innerHTML = `BARO: <strong>${value('baro')}</strong>`;
     const ssh = document.getElementById('txtTelemSsh');
     if (ssh) ssh.innerHTML = `SSH: <strong>${value('sea_surface_height_anomaly')} ${value('sea_surface_height_unit')}</strong>`;
+    const swell = document.getElementById('txtTelemSwell');
+    if (swell) swell.innerHTML = `SWELL: <strong>${value('swell')}${data.swell_period ? ` / ${data.swell_period}s` : ''}</strong>`;
   }
 
   function updateUserLocationMarker() {
@@ -1896,7 +1860,7 @@
       fetchLiveTelemetry(latitude, longitude);
       fetchLiveBulletins(latitude, longitude);
       if (isHeatmapActive) fetchRiskHeatmap(latitude, longitude);
-    }, 120000);
+    }, 5000);
     renderSpeciesCatalog();
     loadRegressionData('wave_height');
 

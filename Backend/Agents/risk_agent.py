@@ -143,15 +143,46 @@ async def evaluate_risk_point(latitude: float, longitude: float) -> Dict[str, An
 
     risk_score = float(risk_assessment.get("risk_score", 0))
     risk_level = risk_assessment.get("risk_level", "LOW")
+    wave_height = m_data.get("wave_height")
+    swell_height = m_data.get("swell_wave_height")
+    wind_speed = w_data.get("wind_speed")
+    sst = m_data.get("sea_surface_temperature")
+    restricted = bool(g_data.get("restricted_zone") or g_data.get("inside_protected_area"))
+
+    # A zone is only emitted when the live agent values support it. This is a
+    # suitability model, not a substitute for an official INCOIS advisory.
+    hazard = (
+        risk_level in {"HIGH", "CRITICAL"}
+        or (wave_height is not None and wave_height >= 2.0)
+        or (swell_height is not None and swell_height >= 2.0)
+        or (wind_speed is not None and wind_speed >= 25.0)
+    )
+    caution = (
+        not hazard and (
+            risk_level == "MEDIUM"
+            or (wave_height is not None and wave_height >= 1.2)
+            or (swell_height is not None and swell_height >= 1.2)
+            or (wind_speed is not None and wind_speed >= 18.0)
+        )
+    )
+    suitable = (
+        not restricted and not hazard and not caution
+        and sst is not None and wave_height is not None
+    )
 
     result = {
         "latitude": latitude,
         "longitude": longitude,
         "risk": round(risk_score, 1),
         "risk_level": risk_level,
-        "wave_height": m_data.get("wave_height"),
-        "wind_speed": w_data.get("wind_speed"),
-        "sst": m_data.get("sea_surface_temperature"),
+        "wave_height": wave_height,
+        "swell_height": swell_height,
+        "swell_period": m_data.get("swell_wave_period"),
+        "wind_speed": wind_speed,
+        "sst": sst,
+        "restricted": restricted,
+        "zone_type": "hazard" if hazard else ("caution" if caution else ("pfz" if suitable else None)),
+        "zone_label": "Hazard" if hazard else ("Caution" if caution else ("Suitable fishing area" if suitable else None)),
         "reasons": risk_assessment.get("reasons", []),
     }
 

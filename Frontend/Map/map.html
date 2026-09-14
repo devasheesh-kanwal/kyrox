@@ -11,9 +11,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Leaflet Geographic Mapping Engine -->
+   <!-- Leaflet Geographic Mapping Engine -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+   <!-- Leaflet.heat: smooth continuous heat-gradient rendering -->
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
   <!-- Environment & Map Configuration -->
   <script src="../env.js" onerror=""></script>
@@ -199,6 +201,9 @@
           </span>
           <span class="telemetry-node">
             <span id="txtTelemSsh">SSH: <strong>-- cm</strong></span>
+          </span>
+          <span class="telemetry-node">
+            <span id="txtTelemSwell">SWELL: <strong>UNAVAILABLE</strong></span>
           </span>
           <span class="telemetry-node">
             <span id="txtTelemVhf" style="color: var(--cyan-primary); font-weight: 700;">VHF CH 16 GUARD</span>

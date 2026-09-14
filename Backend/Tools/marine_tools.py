@@ -28,6 +28,8 @@ CURRENT_MARINE_FIELDS = ",".join([
     "wave_direction",
     "wave_period",
     "swell_wave_height",
+    "swell_wave_period",
+    "swell_wave_direction",
     "ocean_current_velocity",
     "ocean_current_direction",
     "sea_surface_temperature",
