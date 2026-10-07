@@ -28,7 +28,7 @@ Then open <http://localhost:5500/index.html>.
 The app uses Open-Meteo's keyless weather and marine APIs by default. Optional provider settings can be placed in `Backend\.env`:
 
 ```text
-HF_TOKEN=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
+HF_TOKEN=
 WEATHER_KEY=
 WEATHER_URL=https://api.openweathermap.org/data/2.5/weather
 ```
