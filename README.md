@@ -29,7 +29,7 @@ The app uses Open-Meteo's keyless weather and marine APIs by default. Optional p
 
 ```text
 HF_TOKEN=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
-WEATHER_KEY=119c66d0e662490174396d0265f76bec
+WEATHER_KEY=
 WEATHER_URL=https://api.openweathermap.org/data/2.5/weather
 ```
 
