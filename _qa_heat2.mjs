@@ -1,6 +1,6 @@
 export default async function run(page, ui) {
   // Wait for tiles (proof Leaflet booted), then probe the plugin directly.
-  await page.waitForSelector('.leaflet-tile', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('.leaflet-tile', { timeout: 15000 }).catch(() => { });
 
   const probe = async () => page.evaluate(() => ({
     leaflet: typeof window.L,

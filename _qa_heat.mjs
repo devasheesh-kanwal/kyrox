@@ -3,7 +3,7 @@ export default async function run(page, ui) {
   await page.waitForFunction(
     () => typeof window.L === 'object' && typeof window.L.heatLayer === 'function',
     { timeout: 15000 }
-  ).catch(() => {});
+  ).catch(() => { });
 
   const result = await page.evaluate(() => {
     const scripts = Array.from(document.querySelectorAll('script[src]')).map(s => s.src);

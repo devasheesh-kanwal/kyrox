@@ -27,7 +27,7 @@ export default async function run(page, ui) {
     });
   });
 
-  await page.waitForSelector('.leaflet-tile', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('.leaflet-tile', { timeout: 15000 }).catch(() => { });
 
   const before = await page.evaluate(() => ({
     leaflet: typeof window.L,

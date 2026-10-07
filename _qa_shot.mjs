@@ -3,7 +3,7 @@ export default async function run(page, ui) {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
 
-  await page.waitForSelector('.leaflet-tile', { timeout: 20000 }).catch(() => {});
+  await page.waitForSelector('.leaflet-tile', { timeout: 20000 }).catch(() => { });
   // Let the app fetch /heatmap and paint the gradient.
   await page.waitForTimeout(4000);
 
@@ -17,7 +17,7 @@ export default async function run(page, ui) {
   });
 
   // Center the map activity: switch to the map view.
-  try { await page.evaluate(() => window.ORCA && window.ORCA.switchActiveView && window.ORCA.switchActiveView('map')); } catch {}
+  try { await page.evaluate(() => window.ORCA && window.ORCA.switchActiveView && window.ORCA.switchActiveView('map')); } catch { }
   await page.waitForTimeout(1500);
   await page.screenshot({ path: 'C:\\Users\\devas\\OneDrive\\Documents\\GitHub\\kyrox\\_qa_heat.png' });
 
