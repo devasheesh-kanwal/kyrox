@@ -1,9 +1,25 @@
+# Backend/Tools/geospatial.py
+"""
+Protected / restricted marine area lookup (OpenStreetMap via Overpass, global).
+
+The public Overpass service is often slow (5-10 s) or overloaded, so:
+  * one light query per ~5 km tile, cached for 24 h (boundaries rarely change);
+  * failures are cached briefly and reported as `data_available: False`,
+    never as "no restrictions";
+  * a small offline list of known Indian marine sanctuaries is always
+    checked, so a few critical areas work even when Overpass is down.
+
+"Inside" is computed against each area's bounding box, which is
+conservative (may flag a point near an irregular boundary as inside).
+"""
 import asyncio
+import logging
 import math
 import os
 import time
-import logging
 from pathlib import Path
+from typing import Optional
+
 import httpx
 from dotenv import load_dotenv
 
@@ -13,297 +29,154 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-_raw_geo_url = os.getenv("GEOSPATIAL_URL", "").strip()
-if not _raw_geo_url or "geoapify" in _raw_geo_url.lower():
+GEOSPATIAL_URL = os.getenv("GEOSPATIAL_URL", "").strip()
+if not GEOSPATIAL_URL or "geoapify" in GEOSPATIAL_URL.lower():
     GEOSPATIAL_URL = "https://overpass-api.de/api/interpreter"
-else:
-    GEOSPATIAL_URL = _raw_geo_url
-GEOSPATIAL_KEY = os.getenv("GEOSPATIAL_KEY")
 
-REQUEST_TIMEOUT = httpx.Timeout(3.0, connect=1.5)
+REQUEST_TIMEOUT = httpx.Timeout(15.0, connect=5.0)
+SEARCH_RADIUS_M = 10_000
+NEAR_BOUNDARY_M = 2_000
+TILE_DEG = 0.05            # ~5 km cache tiles
+CACHE_TTL = 24 * 3600.0
+FAILURE_TTL = 300.0
 
-PROTECTED_SEARCH_M = 10_000
-SHORE_SEARCH_M = 50_000
+_tile_cache: dict[tuple, tuple[float, Optional[list]]] = {}
+_tile_inflight: dict[tuple, asyncio.Task] = {}
 
-# In-memory spatial cache to prevent Overpass rate-limiting during multi-point heatmap scans
-_SPATIAL_CACHE: list[dict] = []
-_SPATIAL_CACHE_TTL = 300.0  # 5 minutes
+# Offline list (lat_min, lat_max, lon_min, lon_max, label). Verified bounding
+# boxes of notified Indian marine protected areas used by the original app.
+KNOWN_AREAS = [
+    (16.02, 16.10, 73.42, 73.52, "Malvan Marine Sanctuary: bottom trawling prohibited"),
+    (13.98, 14.06, 74.28, 74.37, "Netrani Island coral reef: protected marine area"),
+]
 
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    radius = 6_371_000
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    d_phi = math.radians(lat2 - lat1)
-    d_lambda = math.radians(lon2 - lon1)
-    a = (
-        math.sin(d_phi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
-    )
-    return 2 * radius * math.asin(math.sqrt(a))
+    r = 6_371_000
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
 
 
-def _element_coords(element: dict) -> tuple[float, float] | None:
-    if "lat" in element and "lon" in element:
-        return float(element["lat"]), float(element["lon"])
-    center = element.get("center")
-    if isinstance(center, dict) and "lat" in center and "lon" in center:
-        return float(center["lat"]), float(center["lon"])
-    bounds = element.get("bounds")
-    if isinstance(bounds, dict):
-        try:
-            lat = (float(bounds["minlat"]) + float(bounds["maxlat"])) / 2
-            lon = (float(bounds["minlon"]) + float(bounds["maxlon"])) / 2
-            return lat, lon
-        except (KeyError, TypeError, ValueError):
-            return None
-    return None
-
-
-def _restriction_label(tags: dict) -> str | None:
+def _restriction_label(tags: dict) -> Optional[str]:
     if not isinstance(tags, dict):
         return None
-    name = tags.get("name") or tags.get("protection_title") or tags.get("official_name")
-    kind = (
-        tags.get("protect_class")
-        or tags.get("protection_object")
-        or tags.get("boundary")
-        or tags.get("leisure")
-        or tags.get("military")
-        or tags.get("fishing")
-    )
-    if name and kind:
-        return f"{name} ({kind})"
-    return name or (f"Restricted zone ({kind})" if kind else None)
+    name = tags.get("name:en") or tags.get("name") or tags.get("protection_title")
+    if tags.get("military"):
+        kind = "military area"
+    elif tags.get("protect_class") or tags.get("boundary") == "protected_area":
+        kind = "protected area"
+    elif tags.get("leisure") == "nature_reserve":
+        kind = "nature reserve"
+    else:
+        kind = "restricted area"
+    return f"{name} ({kind})" if name else kind.capitalize()
 
 
-async def _overpass_query(client: httpx.AsyncClient, query: str) -> dict:
-    headers = {
-        "User-Agent": "KyroX-Marine-AI/1.0",
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
-    is_overpass = "overpass" in GEOSPATIAL_URL.lower()
-    if GEOSPATIAL_KEY and not is_overpass:
-        headers["X-API-Key"] = GEOSPATIAL_KEY
+def _bbox_distance_m(lat: float, lon: float, b: dict) -> float:
+    """0 when inside the box, else distance to the nearest box edge point."""
+    clat = min(max(lat, b["minlat"]), b["maxlat"])
+    clon = min(max(lon, b["minlon"]), b["maxlon"])
+    return 0.0 if (clat == lat and clon == lon) else _haversine_m(lat, lon, clat, clon)
 
-    params = {}
-    if GEOSPATIAL_KEY and not is_overpass:
-        params["key"] = GEOSPATIAL_KEY
 
+async def _fetch_tile(tile: tuple) -> Optional[list]:
+    lat = (tile[0] + 0.5) * TILE_DEG
+    lon = (tile[1] + 0.5) * TILE_DEG
+    radius = SEARCH_RADIUS_M + 4000  # cover the whole tile
+    query = f"""
+[out:json][timeout:12];
+(
+  nwr["boundary"="protected_area"](around:{radius},{lat},{lon});
+  nwr["leisure"="nature_reserve"](around:{radius},{lat},{lon});
+  nwr["military"](around:{radius},{lat},{lon});
+  nwr["fishing"="no"](around:{radius},{lat},{lon});
+);
+out tags bb;
+"""
+    headers = {"User-Agent": "KyroX-ORCA-Marine-AI/3.0 (marine safety)", "Accept": "application/json"}
     try:
-        response = await client.post(
-            GEOSPATIAL_URL,
-            data={"data": query},
-            params=params,
-            headers=headers,
-        )
-        response.raise_for_status()
-        return response.json()
-    except httpx.RequestError as exc:
-        logger.error("Geospatial API request failed: %s", exc)
-        raise Exception("Failed to reach geospatial API") from exc
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            "Geospatial API error %s: %s",
-            exc.response.status_code,
-            exc.response.text[:200],
-        )
-        raise Exception(
-            f"Geospatial API request failed with status {exc.response.status_code}"
-        ) from exc
-def _local_sanctuary_fallback(lat: float, lon: float) -> dict:
-    restrictions = []
-    inside_protected_area = False
-    restricted_zone = False
-    near_boundary = False
-    dist_boundary = 10000.0
-
-    # Malvan Marine Sanctuary (Lat 16.02 - 16.10, Lon 73.42 - 73.52)
-    if 16.02 <= lat <= 16.10 and 73.42 <= lon <= 73.52:
-        inside_protected_area = True
-        restricted_zone = True
-        dist_boundary = 0.0
-        restrictions.append("Malvan Marine Sanctuary: Bottom trawling strictly prohibited")
-    # Netrani Island Reserve (Lat 13.98 - 14.06, Lon 74.28 - 74.37)
-    elif 13.98 <= lat <= 14.06 and 74.28 <= lon <= 74.37:
-        inside_protected_area = True
-        restricted_zone = True
-        dist_boundary = 0.0
-        restrictions.append("Netrani Island Coral Reserve: Protected marine area")
-    # Mormugao Port Fairway (Lat 15.39 - 15.45, Lon 73.74 - 73.83)
-    elif 15.39 <= lat <= 15.45 and 73.74 <= lon <= 73.83:
-        restrictions.append("Commercial Shipping Channel: Keep continuous VHF CH 16 watch")
-
-    return {
-        "inside_protected_area": inside_protected_area,
-        "restricted_zone": restricted_zone,
-        "restrictions": restrictions,
-        "distance_to_boundary_meters": dist_boundary,
-        "near_boundary": near_boundary,
-        "distance_to_shore_meters": None,
-    }
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, headers=headers) as client:
+            resp = await client.post(GEOSPATIAL_URL, data={"data": query})
+            resp.raise_for_status()
+            elements = resp.json().get("elements") or []
+    except Exception as exc:
+        logger.info("Overpass unavailable for tile %s: %s", tile, type(exc).__name__)
+        _tile_cache[tile] = (time.time(), None)
+        return None
+    areas = []
+    for el in elements:
+        b = el.get("bounds")
+        if not b:
+            continue
+        areas.append({"label": _restriction_label(el.get("tags") or {}), "bounds": b,
+                      "military": bool((el.get("tags") or {}).get("military"))})
+    _tile_cache[tile] = (time.time(), areas)
+    return areas
 
 
-async def get_geospatial(latitude: float, longitude: float) -> dict:
-    """
-    Query nearby protected / restricted marine areas and approximate shore distance.
-    Uses Overpass (OSM) via GEOSPATIAL_URL, with optional GEOSPATIAL_KEY from .env.
-    """
+async def _areas_for(lat: float, lon: float, wait_s: float) -> Optional[list]:
+    tile = (math.floor(lat / TILE_DEG), math.floor(lon / TILE_DEG))
+    cached = _tile_cache.get(tile)
+    if cached:
+        age = time.time() - cached[0]
+        if cached[1] is not None and age < CACHE_TTL:
+            return cached[1]
+        if cached[1] is None and age < FAILURE_TTL:
+            return None
+    task = _tile_inflight.get(tile)
+    if task is None or task.done():
+        task = asyncio.create_task(_fetch_tile(tile))
+        _tile_inflight[tile] = task
+    try:
+        # shield: if we stop waiting, the fetch keeps going and fills the cache.
+        return await asyncio.wait_for(asyncio.shield(task), timeout=wait_s)
+    except asyncio.TimeoutError:
+        return None
+
+
+async def get_geospatial(latitude: float, longitude: float, wait_s: float = 4.0) -> dict:
+    """Protected / restricted areas within 10 km of the position."""
     if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
         raise ValueError("Latitude and longitude must be numeric")
-    if not (-90 <= latitude <= 90):
-        raise ValueError("Latitude out of range (-90 to 90)")
-    if not (-180 <= longitude <= 180):
-        raise ValueError("Longitude out of range (-180 to 180)")
-
-    # 1. Check local spatial cache within 5km radius
-    now = time.time()
-    for entry in _SPATIAL_CACHE:
-        if now - entry["time"] < _SPATIAL_CACHE_TTL:
-            if _haversine_m(latitude, longitude, entry["lat"], entry["lon"]) < 5000.0:
-                return dict(entry["result"])
-
-    inside_query = f"""
-[out:json][timeout:25];
-is_in({latitude},{longitude})->.a;
-(
-  area.a["boundary"="protected_area"];
-  area.a["leisure"="nature_reserve"];
-  area.a["protect_class"];
-  area.a["military"];
-  area.a["fishing"="no"];
-  area.a["access"="no"];
-);
-out tags;
-"""
-
-    nearby_query = f"""
-[out:json][timeout:25];
-(
-  nwr["boundary"="protected_area"](around:{PROTECTED_SEARCH_M},{latitude},{longitude});
-  nwr["leisure"="nature_reserve"](around:{PROTECTED_SEARCH_M},{latitude},{longitude});
-  nwr["protect_class"](around:{PROTECTED_SEARCH_M},{latitude},{longitude});
-  nwr["military"](around:{PROTECTED_SEARCH_M},{latitude},{longitude});
-  nwr["fishing"="no"](around:{PROTECTED_SEARCH_M},{latitude},{longitude});
-);
-out center tags;
-"""
-
-    shore_query = f"""
-[out:json][timeout:25];
-(
-  way["natural"="coastline"](around:{SHORE_SEARCH_M},{latitude},{longitude});
-  nwr["natural"="beach"](around:{SHORE_SEARCH_M},{latitude},{longitude});
-  nwr["place"="island"](around:{min(SHORE_SEARCH_M, 20_000)},{latitude},{longitude});
-);
-out center;
-"""
-
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            inside_data, nearby_data, shore_data = await _gather_queries(
-                client, inside_query, nearby_query, shore_query
-            )
-        inside_elements = inside_data.get("elements") or []
-        nearby_elements = nearby_data.get("elements") or []
-        shore_elements = shore_data.get("elements") or []
-    except Exception as exc:
-        logger.info(
-            "Overpass query unavailable for (%.4f, %.4f): %s; using coastal sanctuary rules",
-            latitude, longitude, exc
-        )
-        res = _local_sanctuary_fallback(latitude, longitude)
-        _SPATIAL_CACHE.append({
-            "lat": latitude,
-            "lon": longitude,
-            "time": now,
-            "result": res
-        })
-        if len(_SPATIAL_CACHE) > 50:
-            _SPATIAL_CACHE.pop(0)
-        return res
+    if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+        raise ValueError("Coordinates out of range")
 
     restrictions: list[str] = []
-    seen: set[str] = set()
-    for element in list(inside_elements) + list(nearby_elements):
-        label = _restriction_label(element.get("tags") or {})
-        if label and label not in seen:
-            seen.add(label)
-            restrictions.append(label)
+    inside = restricted = False
+    nearest = None
 
-    inside_protected_area = any(
-        (el.get("tags") or {}).get("boundary") == "protected_area"
-        or (el.get("tags") or {}).get("leisure") == "nature_reserve"
-        or "protect_class" in (el.get("tags") or {})
-        for el in inside_elements
-        if isinstance(el, dict)
-    )
+    for lat_min, lat_max, lon_min, lon_max, label in KNOWN_AREAS:
+        b = {"minlat": lat_min, "maxlat": lat_max, "minlon": lon_min, "maxlon": lon_max}
+        d = _bbox_distance_m(latitude, longitude, b)
+        if d <= SEARCH_RADIUS_M:
+            nearest = d if nearest is None else min(nearest, d)
+            if d == 0:
+                inside = restricted = True
+                restrictions.append(label)
 
-    restricted_zone = inside_protected_area or any(
-        (el.get("tags") or {}).get("military")
-        or (el.get("tags") or {}).get("fishing") == "no"
-        or (el.get("tags") or {}).get("access") == "no"
-        for el in inside_elements
-        if isinstance(el, dict)
-    )
-
-    min_boundary_m = None
-    for element in nearby_elements:
-        coords = _element_coords(element)
-        if not coords:
+    areas = await _areas_for(latitude, longitude, wait_s)
+    for area in areas or []:
+        d = _bbox_distance_m(latitude, longitude, area["bounds"])
+        if d > SEARCH_RADIUS_M:
             continue
-        dist = _haversine_m(latitude, longitude, coords[0], coords[1])
-        if min_boundary_m is None or dist < min_boundary_m:
-            min_boundary_m = dist
+        nearest = d if nearest is None else min(nearest, d)
+        if d == 0:
+            inside = True
+            restricted = True
+            if area["label"] and area["label"] not in restrictions:
+                restrictions.append(area["label"])
+        elif d <= NEAR_BOUNDARY_M and area["label"] and f"Near {area['label']}" not in restrictions:
+            restrictions.append(f"Near {area['label']} ({d / 1000:.1f} km)")
 
-    if restricted_zone or inside_protected_area:
-        distance_to_boundary_meters = 0.0
-    elif min_boundary_m is not None:
-        distance_to_boundary_meters = round(min_boundary_m, 1)
-    else:
-        distance_to_boundary_meters = float(PROTECTED_SEARCH_M)
-
-    shore_m = None
-    for element in shore_elements:
-        coords = _element_coords(element)
-        if not coords:
-            continue
-        dist = _haversine_m(latitude, longitude, coords[0], coords[1])
-        if shore_m is None or dist < shore_m:
-            shore_m = dist
-
-    res = {
-        "inside_protected_area": bool(inside_protected_area or restricted_zone),
-        "restricted_zone": bool(restricted_zone or inside_protected_area),
+    return {
+        "inside_protected_area": inside,
+        "restricted_zone": restricted,
         "restrictions": restrictions,
-        "distance_to_boundary_meters": distance_to_boundary_meters,
-        "near_boundary": distance_to_boundary_meters <= 2_000,
-        "distance_to_shore_meters": round(shore_m, 1) if shore_m is not None else None,
+        "distance_to_boundary_meters": round(nearest, 1) if nearest is not None else float(SEARCH_RADIUS_M),
+        "near_boundary": nearest is not None and 0 < nearest <= NEAR_BOUNDARY_M,
+        "distance_to_shore_meters": None,
+        "data_available": areas is not None,
+        "source": "OpenStreetMap (Overpass)" if areas is not None else "offline sanctuary list only (OpenStreetMap unavailable)",
     }
-    _SPATIAL_CACHE.append({
-        "lat": latitude,
-        "lon": longitude,
-        "time": now,
-        "result": res
-    })
-    if len(_SPATIAL_CACHE) > 50:
-        _SPATIAL_CACHE.pop(0)
-
-    return res
-
-
-async def _gather_queries(client, inside_query, nearby_query, shore_query):
-    return await asyncio.gather(
-        _overpass_query(client, inside_query),
-        _overpass_query(client, nearby_query),
-        _overpass_query(client, shore_query),
-    )
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    async def test():
-        result = await get_geospatial(latitude=11.685, longitude=92.720)
-        print(result)
-
-    asyncio.run(test())

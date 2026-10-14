@@ -24,99 +24,98 @@
   let waypointsLayer = null;
   let riskHeatmapLayer = null;
   let heatLayer = null;
-  let speciesLayer = null;
-  let incidentsLayer = null;
+  let routeLayer = null;
   let userLocationMarker = null;
 
   let MAP_ZONES = [];
   let MAP_MARKERS = [];
   let BULLETINS = [];
-  let vesselLocation = { latitude: 15.246, longitude: 73.803, name: 'Goa Coastal Sector' };
+  // Demo default until the user enables GPS or picks a location.
+  let vesselLocation = { latitude: 15.246, longitude: 73.803, name: 'Goa (default - set your location)' };
   let locationSource = 'manual';
   let isGpsTrackingEnabled = false;
   let gpsWatchId = null;
   let telemetryTimer = null;
-  let customLocationName = 'Goa Coastal Sector';
+  let customLocationName = vesselLocation.name;
+  let lastEcosystem = null;
   let isBackendConnected = false;
 
   // Layer Visibility States
   let isHeatmapActive = localStorage.getItem('orca_marine_heatmap') !== 'false';
-  let isSpeciesLayerActive = true;
-  let isIncidentsLayerActive = true;
   let isZonesLayerActive = true;
 
   // Trilingual Maritime Translations
   const I18N = {
     en: {
-      heroTagline: "Intelligence for a Healthier Ocean",
+      heroTagline: "Collaborative AI agents for safer seas",
       heroExploreCta: "Explore Ocean Data",
       heroMapCta: "View Live Map",
-      bridgeSubtitle: "OCEAN CONSERVATION & MARINE INTELLIGENCE COMMAND",
-      navDashboard: "Dashboard",
-      navMap: "Live Ocean Map",
-      navAlerts: "Alerts & Bulletins",
-      navSpecies: "Species Tracker",
-      navAnalytics: "Analytics Studio",
-      navChat: "Ask ORCA AI",
-      kpiHealth: "Ocean Health",
-      kpiSpecies: "Species Detected",
-      kpiAlerts: "Active Bulletins",
-      kpiPollution: "Pollution Risk",
+      bridgeSubtitle: "Marine safety & ecosystem intelligence",
+      navDashboard: "Overview",
+      navMap: "Live map",
+      navAlerts: "Warnings",
+      navSpecies: "Protected species",
+      navAnalytics: "Forecast",
+      navChat: "Ask ORCA",
+      kpiHealth: "Safety Risk",
+      kpiSpecies: "Threatened Species",
+      kpiAlerts: "Official Warnings",
+      kpiPollution: "Wind",
       kpiTemp: "Water Temperature",
-      kpiZones: "Monitored Zones",
-      sunlight: "SUNLIGHT",
-      sunlightActive: "HIGH CONTRAST",
-      telemetryFix: "DGPS FIX: 15°24.6'N, 73°48.2'E",
-      legendTitle: "Cartographic Legend",
-      legPfz: "Potential Fishing Zone (PFZ)",
-      legCaution: "Environmental Caution Area",
-      legDanger: "Hazard / Squall Warning",
-      legVessel: "Vessel Position (GPS)",
+      kpiZones: "Waves",
+      sunlight: "Sunlight",
+      sunlightActive: "Sunlight",
+      legendTitle: "Legend",
+      legPfz: "Calm sea (safety only, not a PFZ forecast)",
+      legCaution: "Caution",
+      legDanger: "Hazard",
+      legVessel: "Your position",
       legHeatmap: "Ocean Risk & SST Heatmap",
-      heatScaleLow: "Low Risk (Nominal)",
-      heatScaleHigh: "Critical Alert Zone",
-      heatmapBtnOn: "HEATMAP: ON",
-      heatmapBtnOff: "HEATMAP: OFF",
-      registryTitle: "Marine Safety & Conservation Advisories",
-      registrySector: "SECTOR: ARABIAN SEA / GOA COAST",
+      heatScaleLow: "Low risk",
+      heatScaleHigh: "Critical",
+      heatmapBtnOn: "Risk layer: on",
+      heatmapBtnOff: "Risk layer: off",
+      registryTitle: "Warnings & live assessment",
+      registrySector: "",
       statusSummary: (d, c) => `Active Advisories: ${d} Critical, ${c} Precautionary`,
-      filtAll: "All Advisories",
-      filtDanger: "Critical",
-      filtCaution: "Precaution",
-      filtResolved: "Nominal",
-      plotOnChart: "🗺️ Plot on Map",
-      askInRadio: "💬 Query ORCA",
-      briefTitle: "ORCA Autonomous Intelligence Assistant",
-      briefBody: "Multi-agent neural link active. Access real-time satellite SST, species acoustic tags, pollution dispersion vectors, and bathymetric telemetry.",
-      inputPlaceholder: "Ask ORCA (e.g. Show pollution hotspots or whale tracking)...",
-      submitBtn: "Query",
-      drawerAsk: "Ask ORCA in Chat 💬",
-      drawerDismiss: "Dismiss",
-      mobChart: "Live Map",
-      mobAlerts: "Alerts",
-      mobChat: "Ask ORCA",
-      mobGraph: "Analytics",
+      filtAll: "All",
+      filtDanger: "Danger",
+      filtCaution: "Caution",
+      filtResolved: "Normal",
+      plotOnChart: "Show on map",
+      askInRadio: "Ask ORCA",
+      briefTitle: "ORCA Multi-Agent Assistant",
+      briefBody: "Weather, sea state, official warnings, protected areas and species agents answer together. A consensus agent cross-checks them, and every answer shows its reasoning.",
+      inputPlaceholder: "Ask ORCA (e.g. Is it safe to fish near Kochi today?)",
+      submitBtn: "Send",
+      drawerAsk: "Ask ORCA",
+      drawerDismiss: "Close",
+      mobChart: "Overview",
+      mobMap: "Map",
+      mobAlerts: "Warnings",
+      mobChat: "Ask",
+      mobGraph: "Forecast",
       mobSpecies: "Species",
       viewPC: "PC",
       viewPhone: "PHONE",
-      chatPilotQuery: "PILOT QUERY",
-      chatProcessing: "PROCESSING...",
-      chatAnalyzing: "Analyzing satellite telemetry & environmental risk matrix...",
-      chatLive: "LIVE",
-      chatNominal: "NOMINAL",
-      chatDispatch: "ORCA NEURAL DISPATCH",
+      chatPilotQuery: "You",
+      chatProcessing: "Working",
+      chatAnalyzing: "Agents are gathering forecasts, official warnings and protected-area data...",
+      chatLive: "Live",
+      chatNominal: "Normal",
+      chatDispatch: "ORCA",
       chatSpeak: "Speak this response",
-      bulletinBadgeDanger: "DANGER",
-      bulletinBadgeCaution: "CAUTION",
-      bulletinBadgeResolved: "NOMINAL",
+      bulletinBadgeDanger: "Danger",
+      bulletinBadgeCaution: "Caution",
+      bulletinBadgeResolved: "Normal",
       bulletinActionLabel: "Action:",
       queries: [
-        { label: "🐋 Recent Species Detections", query: "What marine species were detected recently?", zone_id: null },
-        { label: "🧪 Show Pollution Hotspots", query: "Show pollution hotspots and risk areas", zone_id: null },
-        { label: "🌊 Sea Swell & Wave Hazards", query: "Is there high wave swell or squall risk today?", zone_id: null },
-        { label: "📍 Explain Risk Heatmap", query: "Explain the current 3x3 ocean risk heatmap", zone_id: null },
-        { label: "📈 Marine Trend Forecast", query: "What is the 24-hour linear regression projection?", zone_id: null },
-        { label: "🆘 Coast Guard / Emergency", query: "Emergency marine distress contacts VHF Ch 16", zone_id: null }
+        { label: "Safe to fish here today?", hint: "Verdict with reasons", icon: "boat", query: "Is it safe to go fishing here today?", zone_id: null },
+        { label: "Next 12 hours", hint: "Will wind or waves get worse", icon: "clock-countdown", query: "Will the wind or waves get worse in the next 12 hours?", zone_id: null },
+        { label: "Official warnings", hint: "INCOIS and cyclone alerts", icon: "siren", query: "Are there any official INCOIS or cyclone warnings near me?", zone_id: null },
+        { label: "Protected species here", hint: "Avoid bycatch", icon: "fish", query: "Which threatened species are recorded here and how do I avoid bycatch?", zone_id: null },
+        { label: "Explain the risk map", hint: "What the colours mean", icon: "map-trifold", query: "Explain the risk heatmap around my location", zone_id: null },
+        { label: "Emergency / VHF 16", hint: "Who to call in distress", icon: "lifebuoy", query: "Emergency distress contacts VHF Ch 16", zone_id: null }
       ]
     },
     hi: {
@@ -124,12 +123,12 @@
       heroExploreCta: "समुद्री डेटा देखें",
       heroMapCta: "लाइव मैप खोलें",
       bridgeSubtitle: "व्यावसायिक महासागरीय बुद्धिमत्ता एवं संरक्षण केंद्र",
-      navDashboard: "डैशबोर्ड",
-      navMap: "लाइव महासागर मैप",
-      navAlerts: "सुरक्षा अलर्ट",
-      navSpecies: "प्रजाति ट्रैकर",
-      navAnalytics: "विश्लेषण स्टूडियो",
-      navChat: "ORCA AI सहायक",
+      navDashboard: "अवलोकन",
+      navMap: "लाइव मानचित्र",
+      navAlerts: "चेतावनियाँ",
+      navSpecies: "संरक्षित प्रजातियाँ",
+      navAnalytics: "पूर्वानुमान",
+      navChat: "ORCA से पूछें",
       kpiHealth: "महासागर स्वास्थ्य",
       kpiSpecies: "पहचानी गई प्रजातियां",
       kpiAlerts: "सक्रिय अलर्ट",
@@ -138,9 +137,7 @@
       kpiZones: "निगरानी क्षेत्र",
       sunlight: "सनलाइट",
       sunlightActive: "हाई कंट्रास्ट",
-      telemetryFix: "DGPS स्थिति: 15°24.6'N, 73°48.2'E",
       legendTitle: "नॉटिकल संकेत (Legend)",
-      legPfz: "मत्स्य क्षेत्र (INCOIS PFZ)",
       legCaution: "सावधानी क्षेत्र (हवा/लहर)",
       legDanger: "प्रतिबंधित खतरा (रेड अलर्ट)",
       legVessel: "नाव की स्थिति (GPS)",
@@ -150,58 +147,48 @@
       heatmapBtnOn: "हीटमैप: चालू",
       heatmapBtnOff: "हीटमैप: बंद",
       registryTitle: "तटीय सुरक्षा एवं संरक्षण सूचनाएं",
-      registrySector: "सेक्टर: गोवा–कारवार तट",
       statusSummary: (d, c) => `सक्रिय बुलेटिन: ${d} अति गंभीर (RED), ${c} चेतावनी (CAUTION)`,
       filtAll: "सभी सूचनाएं",
       filtDanger: "खतरा",
       filtCaution: "सावधानी",
       filtResolved: "सामान्य",
-      plotOnChart: "🗺️ मैप पर देखें",
-      askInRadio: "💬 ORCA से पूछें",
+      plotOnChart: "मैप पर देखें",
+      askInRadio: "ORCA से पूछें",
       briefTitle: "ORCA सामरिक महासागरीय सहायता",
-      briefBody: "उपग्रह व महासागरीय सेंसर सक्रिय हैं। डॉल्फ़िन, व्हेल, कछुआ ट्रैकिंग या प्रदूषण हॉटस्पॉट की जानकारी के लिए पूछें।",
-      inputPlaceholder: "सामरिक प्रश्न दर्ज करें (उदा: क्या आज हवा सुरक्षित है?)...",
       submitBtn: "पूछें",
-      drawerAsk: "ORCA चैट में पूछें 💬",
+      drawerAsk: "ORCA चैट में पूछें",
       drawerDismiss: "बंद करें",
-      mobChart: "नॉटिकल मैप",
-      mobAlerts: "सुरक्षा अलर्ट",
-      mobChat: "ORCA रेडियो",
-      mobGraph: "ग्राफ",
-      mobSpecies: "प्रजातियां",
+      mobChart: "अवलोकन",
+      mobMap: "मानचित्र",
+      mobAlerts: "चेतावनियाँ",
+      mobChat: "पूछें",
+      mobGraph: "पूर्वानुमान",
+      mobSpecies: "प्रजातियाँ",
       viewPC: "PC",
       viewPhone: "फोन",
       chatPilotQuery: "पायलट प्रश्न",
       chatProcessing: "प्रक्रिया जारी...",
-      chatAnalyzing: "उपग्रह टेलीमेट्री एवं पर्यावरणीय जोखिम मैट्रिक्स का विश्लेषण...",
+      
       chatLive: "लाइव",
       chatNominal: "सामान्य",
-      chatDispatch: "ORCA न्यूरल प्रेषण",
+      chatDispatch: "ORCA एजेंट",
       chatSpeak: "यह उत्तर सुनें",
       bulletinBadgeDanger: "खतरा",
       bulletinBadgeCaution: "सावधानी",
       bulletinBadgeResolved: "सामान्य",
       bulletinActionLabel: "कार्रवाई:",
-      queries: [
-        { label: "🐋 हालिया प्रजाति खोज", query: "हाल ही में कौन सी समुद्री प्रजातियां देखी गईं?", zone_id: null },
-        { label: "🧪 प्रदूषण हॉटस्पॉट दिखाएं", query: "प्रदूषण हॉटस्पॉट और जोखिम क्षेत्र दिखाएं", zone_id: null },
-        { label: "🌊 हवा व 3m लहरें", query: "क्या 35 km/h की तेज हवा और ऊंची लहरों का खतरा है?", zone_id: null },
-        { label: "🐟 उत्तम मत्स्य क्षेत्र (PFZ)", query: "आज मछली पकड़ने के लिए सबसे अच्छी जगह कहां है?", zone_id: null },
-        { label: "📈 24-घंटे का रुझान", query: "अगले 24 घंटे में लहरों का क्या अनुमान है?", zone_id: null },
-        { label: "🆘 तटरक्षक आपातकाल", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: null }
-      ]
     },
     ta: {
       heroTagline: "ஆரோக்கியமான கடலுக்கான கடல்சார் நுண்ணறிவு",
       heroExploreCta: "கடல் தகவல்களை காண்க",
       heroMapCta: "நேரலை வரைபடம்",
       bridgeSubtitle: "கடல்சார் நுண்ணறிவு மற்றும் பாதுகாப்பு மையம்",
-      navDashboard: "முகப்பு",
+      navDashboard: "மேலோட்டம்",
       navMap: "நேரலை வரைபடம்",
       navAlerts: "எச்சரிக்கைகள்",
-      navSpecies: "உயிரினங்கள்",
-      navAnalytics: "பகுப்பாய்வு",
-      navChat: "ORCA AI உதவி",
+      navSpecies: "பாதுகாக்கப்பட்ட உயிரினங்கள்",
+      navAnalytics: "முன்னறிவிப்பு",
+      navChat: "ORCA-விடம் கேளுங்கள்",
       kpiHealth: "கடல் நலம்",
       kpiSpecies: "கண்டறியப்பட்ட உயிரினம்",
       kpiAlerts: "எச்சரிக்கைகள்",
@@ -210,9 +197,7 @@
       kpiZones: "கண்காணிப்பு பகுதி",
       sunlight: "SUNLIGHT",
       sunlightActive: "HIGH CONTRAST",
-      telemetryFix: "DGPS நிலை: 15°24.6'N, 73°48.2'E",
       legendTitle: "வரைபடக் குறியீடுகள்",
-      legPfz: "மீன்பிடி பகுதி (INCOIS PFZ)",
       legCaution: "எச்சரிக்கை பகுதி (அலை/காற்று)",
       legDanger: "தடைசெய்யப்பட்ட ஆபத்து (ரெட் அலர்ட்)",
       legVessel: "படகு அமைவிடம் (GPS)",
@@ -222,30 +207,28 @@
       heatmapBtnOn: "வெப்ப வரைபடம்: ஆன்",
       heatmapBtnOff: "வெப்ப வரைபடம்: ஆஃப்",
       registryTitle: "கடற்கரை பாதுகாப்பு அறிவிப்புகள்",
-      registrySector: "துறை: கோவா–கார்வார்",
       statusSummary: (d, c) => `செயலில் உள்ளவை: ${d} ஆபத்து, ${c} எச்சரிக்கை`,
       filtAll: "அனைத்தும்",
       filtDanger: "ஆபத்து",
       filtCaution: "எச்சரிக்கை",
       filtResolved: "இயல்பு",
-      plotOnChart: "🗺️ வரைபடத்தில் காட்டு",
-      askInRadio: "💬 ORCA-விடம் கேள்",
+      plotOnChart: "வரைபடத்தில் காட்டு",
+      askInRadio: "ORCA-விடம் கேள்",
       briefTitle: "ORCA ஆலோசனை மையம்",
-      briefBody: "INCOIS மற்றும் செயற்கைக்கோள் இணைப்பு செயலில் உள்ளது. திமிங்கிலம், ஆமை கண்காணிப்பு மற்றும் வானிலை தகவல்களை அறியலாம்.",
-      inputPlaceholder: "கேள்வியை தட்டச்சு செய்யவும்...",
       submitBtn: "கேள்",
-      drawerAsk: "ORCA உரையாடலில் கேள் 💬",
+      drawerAsk: "ORCA உரையாடலில் கேள்",
       drawerDismiss: "மூடு",
-      mobChart: "வரைபடம்",
+      mobChart: "மேலோட்டம்",
+      mobMap: "வரைபடம்",
       mobAlerts: "எச்சரிக்கைகள்",
-      mobChat: "உரையாடல்",
-      mobGraph: "பகுப்பாய்வு",
+      mobChat: "கேளுங்கள்",
+      mobGraph: "முன்னறிவிப்பு",
       mobSpecies: "உயிரினங்கள்",
       viewPC: "PC",
       viewPhone: "போன்",
       chatPilotQuery: "விமானி கேள்வி",
       chatProcessing: "செயலாக்கம்...",
-      chatAnalyzing: "செயற்கைக்கோள் தரவு மற்றும் சுற்றுச்சூழல் அபாய பரிசோதனை...",
+      
       chatLive: "நேரலை",
       chatNominal: "இயல்பு",
       chatDispatch: "ORCA அனுப்புதல்",
@@ -254,14 +237,6 @@
       bulletinBadgeCaution: "எச்சரிக்கை",
       bulletinBadgeResolved: "இயல்பு",
       bulletinActionLabel: "நடவடிக்கை:",
-      queries: [
-        { label: "🐋 அண்மைக்கால உயிரினங்கள்", query: "அண்மையில் கண்டறியப்பட்ட கடல் உயிரினங்கள் எவை?", zone_id: null },
-        { label: "🧪 மாசு பகுதிகளைக் காட்டு", query: "கடல் மாசு பகுதிகளைக் காட்டு", zone_id: null },
-        { label: "🌊 பலத்த காற்று & அலைகள்", query: "இன்று கடுமையான அலைகள் மற்றும் பலத்த காற்று ஆபத்து உள்ளதா?", zone_id: null },
-        { label: "🐟 சிறந்த மீன்பிடி பகுதி", query: "இன்று சிறந்த மீன்பிடி பகுதி எங்குள்ளது?", zone_id: null },
-        { label: "📈 24 மணி நேர கணிப்பு", query: "அடுத்த 24 மணி நேர வானிலை கணிப்பு என்ன?", zone_id: null },
-        { label: "🆘 அவசர உதவி (VHF 16)", query: "Emergency distress assistance VHF Ch 16 contact", zone_id: null }
-      ]
     }
   };
 
@@ -299,19 +274,20 @@
   // refreshed through the backend translator whenever a non-English language
   // is selected.
   const TRANSLATABLE_STATIC_TEXT = [
-    'Dashboard', 'Live Ocean Map', 'Alerts & Bulletins', 'Species Tracker',
-    'Analytics Studio', 'Ask ORCA AI', 'Ocean Health', 'Species Detected',
-    'Active Alerts', 'Pollution Risk', 'Sea Surface Temp', 'Monitored Zones',
+    'Dashboard', 'Live Ocean Map', 'Alerts & Bulletins', 'Protected Species',
+    'Analytics Studio', 'Ask ORCA AI', 'Safety Risk', 'Waves', 'Wind',
+    'Official Warnings', 'Sea Surface Temp', 'Threatened Species', 'Safe Route',
+    'Consensus agent', 'OBIS records', 'Open-Meteo Marine', 'nearby', 'recorded',
     'Heatmap', 'Legend', 'Advisories', 'All Advisories', 'Critical',
     'Precaution', 'Nominal', 'Map', 'Ask AI', 'SUNLIGHT', 'HIGH CONTRAST',
-    'GPS: ON', 'GPS: OFF', 'Vessel Position (GPS)', 'Potential Fishing Zone',
+    'GPS: ON', 'GPS: OFF', 'Vessel Position (GPS)', 'Calm sea',
     'Environmental Caution Area', 'Hazard / Squall Warning',
     'Ocean Risk & SST Heatmap', 'Low Risk (Nominal)', 'Critical Alert Zone',
     'Live Map', 'Alerts', 'Ask ORCA', 'Analytics', 'Species',
     'Search coastal port or coordinates', 'Locate', 'My GPS', 'Quick Ports',
     'ORCA Ocean Neural Assistant', 'Multi-Agent Link Online',
-    'Marine Met', 'Satellite SAR', 'Species Acoustic', 'Risk Matrix',
-    'Ocean LLM', 'Voice Command',
+    'Weather', 'Marine', 'Official alerts', 'Protected areas', 'Ecosystem', 'Consensus',
+    'Voice Command',
     'Atmospheric Pressure', 'Relative Humidity', 'Wind Speed', 'Wind Direction',
     'Visibility', 'Cloud Cover', 'Rainfall', 'Air Temperature',
     'Significant Wave Height', 'Swell Height', 'Swell Period', 'Tide State',
@@ -337,6 +313,13 @@
     "nicobar": { name: "Great Nicobar Maritime Sector", lat: 7.030, lon: 93.790 }
   };
 
+  // Theme colours come from CSS custom properties so charts and map layers
+  // follow the active theme (night / sunlight).
+  function themeColor(name, fallback) {
+    const value = getComputedStyle(document.body).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
   const BACKEND_API_BASE = (() => {
     const configured = (window.__KYROX_API_BASE__ || (window.__ENV__ && window.__ENV__.KYROX_API_BASE) || '').trim().replace(/\/$/, '');
     if (configured) return configured;
@@ -345,51 +328,41 @@
     return 'http://localhost:8000';
   })();
 
-  // 1. HERO PARTICLE SIMULATION
-  function initHeroParticles() {
-    const canvas = document.getElementById('heroParticleCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let width = canvas.width = canvas.offsetWidth;
-    let height = canvas.height = canvas.offsetHeight;
-
-    window.addEventListener('resize', () => {
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
-    });
-
-    const particles = [];
-    const count = 35;
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        radius: Math.random() * 2 + 1,
-        speedY: Math.random() * 0.4 + 0.15,
-        speedX: (Math.random() - 0.5) * 0.2,
-        opacity: Math.random() * 0.6 + 0.2
-      });
-    }
-
-    function animate() {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = '#00F0FF';
-      particles.forEach(p => {
-        p.y -= p.speedY;
-        p.x += p.speedX;
-        if (p.y < -5) { p.y = height + 5; p.x = Math.random() * width; }
-        ctx.globalAlpha = p.opacity;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      requestAnimationFrame(animate);
-    }
-    animate();
-  }
 
   // 2. VIEW NAVIGATION SYSTEM
-  function switchActiveView(viewName) {
+  // Animated where the View Transitions API exists (the new view slides in the
+  // direction you move through the sidebar); instant elsewhere, under reduced
+  // motion, while the page is still loading, or when a caller needs the switch
+  // to happen synchronously ({ instant: true }). Returns a promise that resolves
+  // once the new view is in the DOM.
+  const VIEW_ORDER = ['dashboard', 'map', 'alerts', 'species', 'analytics', 'chat'];
+  const prefersReducedMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+  function switchActiveView(viewName, options = {}) {
+    const root = document.documentElement;
+    const animate = currentActiveView !== viewName
+      && !options.instant
+      && typeof document.startViewTransition === 'function'
+      && !prefersReducedMotion.matches
+      && document.readyState === 'complete'
+      && !document.hidden
+      && document.body.classList.contains('mode-app')
+      && !root.dataset.vt; // a page-level transition is already running
+    if (!animate) {
+      applyActiveView(viewName);
+      return Promise.resolve();
+    }
+    root.dataset.navDir = VIEW_ORDER.indexOf(viewName) < VIEW_ORDER.indexOf(currentActiveView) ? 'back' : 'forward';
+    root.dataset.vt = 'view';
+    const transition = document.startViewTransition(() => applyActiveView(viewName));
+    transition.finished.finally(() => {
+      if (root.dataset.vt === 'view') delete root.dataset.vt;
+      delete root.dataset.navDir;
+    });
+    return transition.updateCallbackDone.catch(() => {});
+  }
+
+  function applyActiveView(viewName) {
     const viewChanged = currentActiveView !== viewName;
     currentActiveView = viewName;
     const navButtons = document.querySelectorAll('.sidebar-nav-btn');
@@ -435,6 +408,7 @@
         mapStation.appendChild(locSearchBar);
         mapStation.appendChild(chartViewport);
       }
+      if (!leafletMap) initLeafletMap();
       setTimeout(() => {
         if (leafletMap) leafletMap.invalidateSize();
       }, 100);
@@ -443,9 +417,13 @@
     } else if (viewName === 'alerts') {
       renderBulletinsList();
     } else if (viewName === 'analytics') {
-      setTimeout(() => {
-        if (typeof drawRegressionCanvas === 'function') drawRegressionCanvas();
-      }, 100);
+      // Plotly measured the panel while it was hidden (default 700 px wide),
+      // so redraw now that it has its real size, then fit it to the container.
+      requestAnimationFrame(() => {
+        drawRegressionPlotly();
+        const plot = document.getElementById('regressionPlotly');
+        if (plot && plot._fullLayout && window.Plotly) window.Plotly.Plots.resize(plot);
+      });
     }
   }
 
@@ -455,8 +433,8 @@
     const mapContainer = document.getElementById('marineMapLeaflet');
     if (!mapContainer) return;
 
-    const initLat = vesselLocation ? vesselLocation.latitude : 15.246;
-    const initLon = vesselLocation ? vesselLocation.longitude : 73.803;
+    const initLat = vesselLocation.latitude;
+    const initLon = vesselLocation.longitude;
 
     leafletMap = L.map('marineMapLeaflet', {
       center: [initLat, initLon],
@@ -484,16 +462,11 @@
     riskHeatmapLayer = L.layerGroup().addTo(leafletMap);
     tacticalZonesLayer = L.layerGroup().addTo(leafletMap);
     waypointsLayer = L.layerGroup().addTo(leafletMap);
-    speciesLayer = L.layerGroup().addTo(leafletMap);
-    incidentsLayer = L.layerGroup().addTo(leafletMap);
+    routeLayer = L.layerGroup().addTo(leafletMap);
 
-    // Do not draw the old generated PFZ/squall scheme on startup. The map is
-    // populated from the live heatmap endpoint below; species and incident
-    // feeds remain separate layers.
+    // The map is populated only from live backend layers (heatmap, route).
     if (tacticalZonesLayer) tacticalZonesLayer.clearLayers();
     if (waypointsLayer) waypointsLayer.clearLayers();
-    renderSpeciesMarkers();
-    renderIncidentMarkers();
 
     leafletMap.on('dblclick', (event) => {
       closeTacticalDrawer();
@@ -503,7 +476,7 @@
       const lat = Number(event.latlng.lat.toFixed(6));
       const lon = Number(event.latlng.lng.toFixed(6));
       stopGpsTracking();
-      updateLocation(lat, lon, `Map selection: ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`, 'map');
+      updateLocation(lat, lon, `Map selection: ${formatCoord(lat, lon, 2)}`, 'map');
     });
 
     updateHeatmapVisuals();
@@ -516,7 +489,7 @@
 
     MAP_ZONES.forEach(z => {
       if (!z.latLngs) return;
-      const color = z.type === 'pfz' ? '#00F5D4' : (z.type === 'caution' ? '#FFB703' : '#FF3366');
+      const color = (z.type === 'calm' || z.type === 'pfz') ? themeColor('--ok', '#6DB894') : (z.type === 'caution' ? themeColor('--warn', '#E2944F') : themeColor('--bad', '#E0625A'));
       const polygon = L.polygon(z.latLngs, {
         color: color,
         weight: 1.5,
@@ -543,8 +516,9 @@
     MAP_MARKERS.forEach(m => {
       if (!m.latLng) return;
       const isPfz = m.kind === 'pfz';
-      const iconHtml = `<div style="width:26px;height:26px;border-radius:50%;background:${isPfz ? 'rgba(0,245,212,0.2)' : 'rgba(255,51,102,0.2)'};border:2px solid ${isPfz ? '#00F5D4' : '#FF3366'};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 0 10px ${isPfz ? '#00F5D4' : '#FF3366'};">${isPfz ? '🐟' : '⚡'}</div>`;
-      const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [26, 26], iconAnchor: [13, 13] });
+      const markColor = isPfz ? themeColor('--ok', '#6DB894') : themeColor('--bad', '#E0625A');
+      const iconHtml = `<div style="width:14px;height:14px;border-radius:50%;background:${markColor};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>`;
+      const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
       const marker = L.marker(m.latLng, { icon: customIcon });
 
       const label = languageValue(m, 'label', currentLang);
@@ -554,63 +528,6 @@
         selectMapZone(m.zone_id);
       });
       waypointsLayer.addLayer(marker);
-    });
-  }
-
-  function renderSpeciesMarkers() {
-    if (!speciesLayer) return;
-    speciesLayer.clearLayers();
-    if (!isSpeciesLayerActive || !window.ORCA_SPECIES_CATALOG) return;
-
-    window.ORCA_SPECIES_CATALOG.forEach(sp => {
-      if (!sp.last_coords) return;
-      const iconHtml = `<div style="width:30px;height:30px;border-radius:50%;background:rgba(0,240,255,0.2);border:2px solid #00F0FF;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 12px rgba(0,240,255,0.4);cursor:pointer;" title="${sp.name_en}">${sp.icon}</div>`;
-      const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [30, 30], iconAnchor: [15, 15] });
-      const marker = L.marker(sp.last_coords, { icon: customIcon });
-
-      marker.bindTooltip(`<strong>${sp.icon} ${sp.name_en}</strong><br><span style="font-size:11px;color:#00F0FF;">${sp.iucn_label_en} • ${sp.detections_24h} hits</span>`, {
-        permanent: false,
-        direction: 'top',
-        className: 'tactical-map-tooltip'
-      });
-
-      marker.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        const title = `${sp.icon} ${sp.name_en} (${sp.scientific})`;
-        const reason = `${sp.bio_note_en} Acoustic: ${sp.acoustic_freq} | Swim Speed: ${sp.swim_speed} | Depth: ${sp.dive_depth}. Status: ${sp.protection_status_en}.`;
-        const coordsStr = `${sp.last_coords[0]}°N, ${sp.last_coords[1]}°E (${sp.last_location_en})`;
-        showTacticalDrawer(title, reason, coordsStr, 'species', sp.id);
-      });
-
-      speciesLayer.addLayer(marker);
-    });
-  }
-
-  function renderIncidentMarkers() {
-    if (!incidentsLayer) return;
-    incidentsLayer.clearLayers();
-    if (!isIncidentsLayerActive || !window.ORCA_MARINE_INCIDENTS) return;
-
-    window.ORCA_MARINE_INCIDENTS.forEach(inc => {
-      if (!inc.coords) return;
-      const isCritical = inc.severity === 'danger';
-      const color = isCritical ? '#FF3366' : '#FFB703';
-      const iconHtml = `<div style="width:28px;height:28px;border-radius:6px;background:rgba(10,20,38,0.85);border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 12px ${color};cursor:pointer;" title="${inc.title_en}">${inc.icon}</div>`;
-      const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [28, 28], iconAnchor: [14, 14] });
-      const marker = L.marker(inc.coords, { icon: customIcon });
-
-      marker.bindTooltip(`<strong>${inc.icon} ${inc.title_en}</strong>`, {
-        permanent: false,
-        direction: 'top',
-        className: 'tactical-map-tooltip'
-      });
-
-      marker.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        showTacticalDrawer(`${inc.icon} ${inc.title_en}`, inc.desc_en, `${inc.coords[0]}°N, ${inc.coords[1]}°E (${inc.location_en})`, inc.severity, inc.id);
-      });
-
-      incidentsLayer.addLayer(marker);
     });
   }
 
@@ -645,102 +562,54 @@
       leafletMap.removeLayer(heatLayer);
       heatLayer = null;
     }
+    if (!isHeatmapActive || !Array.isArray(riskPoints) || riskPoints.length === 0) return;
 
-    // Validate that we have real data before rendering
-    if (!isHeatmapActive || !Array.isArray(riskPoints) || riskPoints.length === 0) {
-      return;
-    }
-
-    // Check if the data contains valid risk information
-    const hasValidData = riskPoints.some(pt =>
-      pt.risk !== undefined && pt.risk !== null &&
-      pt.risk_level !== undefined &&
-      pt.latitude !== undefined && pt.longitude !== undefined
-    );
-
-    if (!hasValidData) {
-      console.warn('Invalid heatmap data - skipping render');
-      return;
-    }
-
-    // Normalise each risk point into [lat, lng, intensity] for the heat layer.
-    // Intensity is the risk percentage (0-100) scaled to 0-1 with a boosted
-    // floor so low-risk cells still contribute a faint cool-blue halo.
-    const heatData = [];
+    // Each forecast cell is drawn as its own tile, coloured by its own risk
+    // level. (A blurred heat layer summed overlapping cells and made low-risk
+    // water look dangerous.)
+    const lats = [...new Set(riskPoints.map(p => Number(p.latitude)))].sort((a, b) => a - b);
+    const step = lats.length > 1 ? Math.abs(lats[1] - lats[0]) : 0.035;
+    const half = step / 2;
+    const colorFor = level => ({
+      LOW: themeColor('--ok', '#6DB894'),
+      MEDIUM: themeColor('--warn', '#E2944F'),
+      HIGH: themeColor('--bad', '#E0625A'),
+      CRITICAL: themeColor('--bad', '#E0625A')
+    }[level] || themeColor('--text-3', '#6C7C8C'));
 
     riskPoints.forEach((pt, idx) => {
-      if (pt.risk === undefined || pt.risk === null ||
-          pt.latitude === undefined || pt.longitude === undefined) {
-        return;
-      }
-
+      if (pt.risk === undefined || pt.risk === null || pt.latitude === undefined || pt.longitude === undefined) return;
+      const lat = Number(pt.latitude);
+      const lon = Number(pt.longitude);
       const risk = Number(pt.risk) || 0;
       const isCenter = userLocation &&
-        Math.abs(Number(pt.latitude) - Number(userLocation.latitude)) < 0.0001 &&
-        Math.abs(Number(pt.longitude) - Number(userLocation.longitude)) < 0.0001;
-
-      // Map risk % to a 0-1 intensity; the centre point gets extra weight so a
-      // strong hotspot blooms outward into the surrounding cells.
-      let intensity = Math.min(1, Math.max(0.08, risk / 100));
-      if (isCenter) intensity = Math.min(1, intensity + 0.12);
-      heatData.push([Number(pt.latitude), Number(pt.longitude), intensity]);
-
-      // Invisible interactive footprint preserves tooltip + click behaviour
-      // (tactical drawer) now that the visible layer is a single gradient.
-      const cellRadius = 0.019;
-      const cellPoints = Array.from({ length: 6 }, (_, pointIndex) => {
-        const angle = (Math.PI / 3) * pointIndex + Math.PI / 6;
-        return [
-          Number(pt.latitude) + Math.sin(angle) * cellRadius,
-          Number(pt.longitude) + Math.cos(angle) * cellRadius
-        ];
-      });
-      const hitArea = L.polygon(cellPoints, {
-        color: 'transparent',
-        weight: 0,
-        fillColor: '#000',
-        fillOpacity: 0.001,
+        Math.abs(lat - Number(userLocation.latitude)) < 0.0001 &&
+        Math.abs(lon - Number(userLocation.longitude)) < 0.0001;
+      const color = colorFor(pt.risk_level);
+      const cell = L.rectangle([[lat - half, lon - half], [lat + half, lon + half]], {
+        color,
+        weight: isCenter ? 1.5 : 0.5,
+        opacity: isCenter ? 0.9 : 0.35,
+        dashArray: isCenter ? null : '2 4',
+        fillColor: color,
+        fillOpacity: 0.12 + Math.min(0.3, risk / 220),
         interactive: true
       });
 
-      const cellLabel = isCenter ? `📍 User GPS Sector (${risk}% ${pt.risk_level})` : `P${idx + 1}: ${risk}% Risk (${pt.risk_level})`;
-      hitArea.bindTooltip(cellLabel, { permanent: false, direction: 'top', className: 'tactical-map-tooltip' });
-      hitArea.on('click', (e) => {
+      const cellLabel = isCenter ? `Your position · risk ${risk}/100 (${pt.risk_level})` : `Cell ${idx + 1} · risk ${risk}/100 (${pt.risk_level})`;
+      cell.bindTooltip(cellLabel, { permanent: false, direction: 'top', className: 'tactical-map-tooltip' });
+      cell.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
-        const title = `${cellLabel} • [${pt.latitude.toFixed(4)}°, ${pt.longitude.toFixed(4)}°]`;
-        const reason = `Live neural risk assessment: ${risk}% composite risk. Wave: ${pt.wave_height !== null && pt.wave_height !== undefined ? `${pt.wave_height}m` : 'unavailable'}, Wind: ${pt.wind_speed !== null && pt.wind_speed !== undefined ? `${pt.wind_speed} kt` : 'unavailable'}. Status: ${pt.risk_level}.`;
-        showTacticalDrawer(title, reason, `${pt.latitude.toFixed(4)}°N, ${pt.longitude.toFixed(4)}°E`, 'caution', `risk_pt_${idx+1}`);
+        const num = (v, u, d = 1) => (v !== null && v !== undefined) ? `${Number(v).toFixed(d)} ${u}` : 'unavailable';
+        const why = (pt.reasons && pt.reasons.length) ? ` Reasons: ${pt.reasons.join('; ')}.` : '';
+        const reason = `Agent risk ${risk}/100 (${pt.risk_level}). Now: waves ${num(pt.wave_height, 'm')}, wind ${num(pt.wind_speed, 'kt', 0)}. Next 12 h max: waves ${num(pt.wave_height_max_12h, 'm')}, wind ${num(pt.wind_speed_max_12h, 'kt', 0)}.${why}`;
+        showTacticalDrawer(cellLabel, reason, formatCoord(lat, lon, 4), 'caution', `risk_pt_${idx + 1}`);
       });
-      riskHeatmapLayer.addLayer(hitArea);
+      riskHeatmapLayer.addLayer(cell);
     });
 
-    // Smooth continuous heat gradient (blue -> cyan -> yellow -> orange -> red)
-    if (typeof L.heatLayer === 'function' && heatData.length > 0) {
-      heatLayer = L.heatLayer(heatData, {
-        radius: 55,
-        blur: 45,
-        maxZoom: 12,
-        minOpacity: 0.35,
-        max: 1.0,
-        gradient: {
-          0.0: 'rgba(63,94,251,0.0)',
-          0.2: '#3f5efb',
-          0.4: '#2ec4b6',
-          0.6: '#ffe066',
-          0.8: '#ff7a00',
-          1.0: '#ff1f4b'
-        }
-      });
-      heatLayer.addTo(leafletMap);
-      // Keep the gradient beneath markers/zones so labels stay readable.
-      if (heatLayer.bringToBack) heatLayer.bringToBack();
-    }
-
-    // Update button text to show data is available
     const heatmapText = document.getElementById('txtHeatmapToggle');
-    if (heatmapText) {
-      heatmapText.textContent = 'HEATMAP: ON';
-    }
+    if (heatmapText) heatmapText.textContent = 'Risk layer: on';
   }
 
   function renderLiveAnalysisZones(riskPoints) {
@@ -755,7 +624,7 @@
     riskPoints.forEach((point, index) => {
       if (!point.zone_type || !Number.isFinite(Number(point.latitude)) || !Number.isFinite(Number(point.longitude))) return;
       const zoneType = point.zone_type;
-      const color = zoneType === 'pfz' ? '#00F5D4' : (zoneType === 'caution' ? '#FFB703' : '#FF3366');
+      const color = (zoneType === 'calm' || zoneType === 'pfz') ? themeColor('--ok', '#6DB894') : (zoneType === 'caution' ? themeColor('--warn', '#E2944F') : themeColor('--bad', '#E0625A'));
       const lat = Number(point.latitude);
       const lon = Number(point.longitude);
       const radius = 0.018;
@@ -778,9 +647,9 @@
         label_en: `${point.zone_label || zoneType} • Live analysis`,
         label_hi: `${point.zone_label || zoneType} • लाइव विश्लेषण`,
         label_ta: `${point.zone_label || zoneType} • நேரலை பகுப்பாய்வு`,
-        sub_en: `Risk ${point.risk}% • Wave ${wave} • Swell ${swell}`,
-        reason_en: `Current-coordinate agent analysis: risk ${point.risk}% (${point.risk_level}), wave ${wave}, swell ${swell}, wind ${wind}.${point.restricted ? ' Protected or restricted area.' : ''}`,
-        coords: `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`
+        sub_en: `Risk ${point.risk}/100 • Wave ${wave} • Swell ${swell}`,
+        reason_en: `Agent analysis: risk ${point.risk}/100 (${point.risk_level}), wave ${wave}, swell ${swell}, wind ${wind}.${point.restricted ? ' Protected or restricted area.' : ''}`,
+        coords: formatCoord(lat, lon, 4)
       });
     });
 
@@ -828,7 +697,7 @@
     const heatmapText = document.getElementById('txtHeatmapToggle');
     if (heatmapBtn && heatmapText) {
       heatmapBtn.classList.remove('active');
-      heatmapText.textContent = 'HEATMAP: NO DATA';
+      heatmapText.textContent = 'Risk layer: no sea data';
     }
 
     console.log('No real heatmap data available - heatmap disabled');
@@ -844,9 +713,9 @@
 
     if (txt) {
       if (!isHeatmapActive) {
-        txt.textContent = 'HEATMAP: OFF';
+        txt.textContent = 'Risk layer: off';
       } else {
-        txt.textContent = 'HEATMAP: ON';
+        txt.textContent = 'Risk layer: on';
       }
     }
 
@@ -865,8 +734,8 @@
 
   // 5. BULLETINS & ALERTS FEED
   async function fetchLiveBulletins(lat, lon) {
-    const targetLat = lat !== undefined ? lat : (vesselLocation ? vesselLocation.latitude : 15.246);
-    const targetLon = lon !== undefined ? lon : (vesselLocation ? vesselLocation.longitude : 73.803);
+    const targetLat = lat !== undefined ? lat : vesselLocation.latitude;
+    const targetLon = lon !== undefined ? lon : vesselLocation.longitude;
 
     try {
       const res = await fetch(`${BACKEND_API_BASE}/bulletins?lat=${targetLat}&lon=${targetLon}`);
@@ -887,44 +756,84 @@
     renderBulletinsList();
   }
 
+  // Feeds such as INCOIS publish titles in capitals; show them in title case
+  // but keep agency acronyms as they are.
+  const KEEP_UPPER = new Set(['INCOIS', 'GDACS', 'IMD', 'NOAA', 'ECMWF', 'OBIS', 'OSM', 'MPA', 'VHF', 'UTC', 'GFS', 'WAM', 'IFS', 'SST']);
+  function readableTitle(value) {
+    const text = String(value || '');
+    if (!/[A-Z]/.test(text) || text !== text.toUpperCase()) return text;
+    return text.toLowerCase().replace(/[\p{L}\p{N}]+/gu, word => {
+      const upper = word.toUpperCase();
+      return KEEP_UPPER.has(upper) ? upper : word.charAt(0).toUpperCase() + word.slice(1);
+    });
+  }
+
+  // "Normal" and "resolved" are the same filter (the feed sends "normal").
+  function bulletinGroup(type) {
+    return type === 'danger' || type === 'caution' ? type : 'resolved';
+  }
+
   function renderBulletinsList() {
     const container = document.getElementById('bulletinCardsList');
     if (!container) return;
 
-    let filtered = BULLETINS;
-    if (currentAlertFilter !== 'all') {
-      filtered = BULLETINS.filter(b => b.type === currentAlertFilter);
-    }
+    const filtered = currentAlertFilter === 'all'
+      ? BULLETINS
+      : BULLETINS.filter(b => bulletinGroup(b.type) === currentAlertFilter);
+
+    const counts = { all: BULLETINS.length, danger: 0, caution: 0, resolved: 0 };
+    BULLETINS.forEach(b => { counts[bulletinGroup(b.type)] += 1; });
+    [['cntFiltAll', 'all'], ['cntFiltDanger', 'danger'], ['cntFiltCaution', 'caution'], ['cntFiltResolved', 'resolved']]
+      .forEach(([id, key]) => { const el = document.getElementById(id); if (el) el.textContent = String(counts[key]); });
 
     const badgeDangerEl = document.getElementById('badgeDangerCount');
-    const dangerCount = BULLETINS.filter(b => b.type === 'danger').length;
+    const dangerCount = counts.danger;
     if (badgeDangerEl) badgeDangerEl.textContent = dangerCount;
 
     const navBadge = document.getElementById('sidebarAlertBadge');
-    if (navBadge) navBadge.textContent = dangerCount > 0 ? `${dangerCount} NEW` : '0';
+    if (navBadge) {
+      navBadge.textContent = dangerCount > 0 ? `${dangerCount} NEW` : '0';
+      navBadge.dataset.hot = dangerCount > 0 ? 'true' : 'false';
+    }
 
-    const kpiAlertVal = document.getElementById('kpiValAlerts');
-    if (kpiAlertVal) kpiAlertVal.textContent = BULLETINS.length;
-
+    const icons = { danger: 'siren', caution: 'warning', resolved: 'check-circle' };
     let html = '';
     filtered.forEach(b => {
       const type = b.type || 'normal';
-      const badgeText = t(`bulletinBadge${type.charAt(0).toUpperCase()}${type.slice(1)}`, type.toUpperCase());
+      const group = bulletinGroup(type);
+      const badgeText = t(`bulletinBadge${type.charAt(0).toUpperCase()}${type.slice(1)}`, type.charAt(0).toUpperCase() + type.slice(1));
+      const source = [
+        escapeHtml(b.source_en || ''),
+        b.issued ? `issued ${escapeHtml(b.issued)}` : '',
+        b.url ? `<a href="${escapeHtml(b.url)}" target="_blank" rel="noopener">details</a>` : ''
+      ].filter(Boolean).join(' · ');
+      // Icons sit outside the text nodes: translation replaces those nodes' text.
       html += `
-        <div class="bulletin-card ${type}">
-          <div class="bulletin-header-meta">
-            <span class="bulletin-title">${escapeHtml(b.title_en || b.title_hi || '')}</span>
-            <span class="bulletin-badge ${type}">${badgeText}</span>
+        <article class="bulletin-card ${type}" data-group="${group}">
+          <span class="bc-icon" aria-hidden="true"><i class="ph ph-${icons[group]} icon"></i></span>
+          <div class="bc-body">
+            <div class="bulletin-header-meta">
+              <h3 class="bulletin-title">${escapeHtml(readableTitle(b.title_en || b.title_hi || ''))}</h3>
+              <span class="bulletin-badge ${type}">${escapeHtml(badgeText)}</span>
+            </div>
+            <p class="bulletin-desc">${escapeHtml(b.desc_en || b.desc_hi || '')}</p>
+            <div class="bulletin-source-line">${b.official ? '<span class="official-pill">Official</span>' : ''}<span>${source}</span></div>
+            ${b.action_en ? `<div class="bc-action"><i class="ph ph-lightning icon" aria-hidden="true"></i><div class="bulletin-action-rec"><strong>${escapeHtml(t('bulletinActionLabel', 'Action:'))}</strong> ${escapeHtml(b.action_en)}</div></div>` : ''}
+            <div class="bulletin-action-bar">
+              <button type="button" class="bc-btn" onclick="window.orcaMapFocusZone('${escapeHtml(String(b.zone_id || '').replace(/'/g, ''))}')"><i class="ph ph-map-trifold icon" aria-hidden="true"></i><span class="btn-bulletin-action">Show on map</span></button>
+              <button type="button" class="bc-btn" onclick="window.orcaAskInChat('${escapeHtml((b.title_en || '').replace(/'/g, ''))}')"><i class="ph ph-chat-circle-text icon" aria-hidden="true"></i><span class="btn-bulletin-action">Ask ORCA</span></button>
+            </div>
           </div>
-          <p class="bulletin-desc">${escapeHtml(b.desc_en || b.desc_hi || '')}</p>
-          ${b.action_en ? `<div class="bulletin-action-rec">⚡ <strong>${escapeHtml(t('bulletinActionLabel', 'Action:'))}</strong> ${escapeHtml(b.action_en)}</div>` : ''}
-          <div class="bulletin-action-bar">
-            <button type="button" class="btn-bulletin-action" onclick="window.orcaMapFocusZone('${b.zone_id || ''}')">🗺️ Map</button>
-            <button type="button" class="btn-bulletin-action" onclick="window.orcaAskInChat('${escapeHtml(b.title_en || '')}')">💬 Ask AI</button>
-          </div>
-        </div>
+        </article>
       `;
     });
+
+    if (!html) {
+      const message = BULLETINS.length
+        ? 'Nothing in this category right now.'
+        : 'No warnings or assessments loaded yet. They appear here as soon as the official feeds answer.';
+      html = `<div class="bulletin-empty"><i class="ph ph-shield-check icon" aria-hidden="true"></i><p>${escapeHtml(message)}</p></div>`;
+    }
 
     container.innerHTML = html;
     const fullContainer = document.getElementById('alertsFullCardsList');
@@ -943,65 +852,341 @@
     renderBulletinsList();
   };
 
-  // 6. SPECIES CATALOG RENDERER
-  function renderSpeciesCatalog() {
-    const grid = document.getElementById('speciesGridContainer');
-    if (!grid || !window.ORCA_SPECIES_CATALOG) return;
+  // 6. SPECIES FIELD GUIDE (list + detail)
+  // Records come from OBIS via the backend. Photos, common names and the short
+  // description come from Wikipedia's public page-summary API, looked up by
+  // scientific name in the browser; if Wikipedia has nothing, the card says so.
+  let speciesFilter = 'all';
+  let speciesQuery = '';
+  let speciesSelected = null;
+  const IUCN_SCALE = ['LC', 'NT', 'VU', 'EN', 'CR'];
+  const IUCN_CLASS = { CR: 'critically-endangered', EN: 'endangered', VU: 'vulnerable', NT: 'near-threatened' };
+  const IUCN_LABEL = { CR: 'Critically endangered', EN: 'Endangered', VU: 'Vulnerable', NT: 'Near threatened' };
+  const wikiCache = new Map();   // name -> Promise of the summary (dedupes requests)
+  const wikiInfo = new Map();    // name -> resolved summary (used by search)
 
-    let html = '';
-    window.ORCA_SPECIES_CATALOG.forEach(sp => {
-      const name = languageValue(sp, 'name', currentLang);
-      const iucnClass = sp.iucn;
-      html += `
-        <div class="species-card">
-          <div class="species-card-top">
-            <div class="species-avatar-seal">${sp.icon}</div>
-            <span class="species-iucn-badge ${iucnClass}">${sp.iucn_label_en}</span>
-          </div>
-          <div class="species-name-wrap">
-            <h3>${name}</h3>
-            <div class="species-scientific">${sp.scientific}</div>
-          </div>
-          <div class="species-metrics-row">
-            <div class="species-metric-item">
-              <span class="species-metric-key">24h Hits</span>
-              <span class="species-metric-val">${sp.detections_24h}</span>
-            </div>
-            <div class="species-metric-item">
-              <span class="species-metric-key">Dive Depth</span>
-              <span class="species-metric-val">${sp.dive_depth}</span>
-            </div>
-            <div class="species-metric-item">
-              <span class="species-metric-key">Speed</span>
-              <span class="species-metric-val">${sp.swim_speed}</span>
-            </div>
-          </div>
-          <p style="font-size:0.75rem;color:var(--text-muted);line-height:1.4;">${sp.bio_note_en}</p>
-          <div class="species-action-row">
-            <button type="button" class="btn-species-track" onclick="window.orcaTrackSpecies('${sp.id}')">📍 Track on Live Map</button>
-          </div>
-        </div>
-      `;
-    });
-
-    grid.innerHTML = html;
+  function loadWiki(name) {
+    if (!name) return Promise.resolve(null);
+    if (!wikiCache.has(name)) {
+      const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.trim().replace(/\s+/g, '_'))}`;
+      wikiCache.set(name, fetch(url, { headers: { Accept: 'application/json' } })
+        .then(res => (res.ok ? res.json() : null))
+        .then(page => {
+          if (!page || page.type === 'disambiguation') return null;
+          const original = page.originalimage || {};
+          const thumb = page.thumbnail && page.thumbnail.source;
+          // Wikimedia only serves standard thumbnail widths; try 960px, then the
+          // original (if it is not huge), then the small thumbnail.
+          const images = [];
+          if (thumb && original.width >= 960) images.push(thumb.replace(/\/\d+px-/, '/960px-'));
+          if (original.source && original.width <= 2400) images.push(original.source);
+          if (thumb) images.push(thumb);
+          const common = page.title && page.title.toLowerCase() !== name.toLowerCase() ? page.title : '';
+          return {
+            common,
+            description: page.description || '',
+            extract: page.extract || '',
+            thumb: thumb || '',
+            images,
+            url: (page.content_urls && page.content_urls.desktop && page.content_urls.desktop.page) || ''
+          };
+        })
+        .then(info => { if (info) wikiInfo.set(name, info); return info; })
+        .catch(() => null));
+    }
+    return wikiCache.get(name);
   }
 
-  window.orcaTrackSpecies = function(speciesId) {
-    const sp = window.ORCA_SPECIES_CATALOG.find(s => s.id === speciesId);
-    if (!sp || !sp.last_coords) return;
-    switchActiveView('map');
-    if (leafletMap) {
-      leafletMap.flyTo(sp.last_coords, 12, { duration: 1.2 });
-      setTimeout(() => {
-        showTacticalDrawer(`${sp.icon} ${sp.name_en}`, sp.bio_note_en, `${sp.last_coords[0]}°N, ${sp.last_coords[1]}°E`, 'species', sp.id);
-      }, 1200);
+  function groupIcon(group) {
+    const g = String(group || '').toLowerCase();
+    if (g.includes('bird')) return 'bird';
+        return 'fish-simple';
+  }
+
+  function relevantTip(sp, tips) {
+    const g = String(sp.group || '').toLowerCase();
+    const keys = g.includes('shark') || g.includes('ray') ? /shark|ray|guitarfish/i
+      : g.includes('turtle') ? /turtle/i
+      : g.includes('mammal') ? /dolphin|porpoise|whale|dugong/i
+      : g.includes('bird') ? /bird/i
+      : null;
+    return keys ? (tips || []).find(tip => keys.test(tip)) || '' : '';
+  }
+
+  function sortedSpecies(list) {
+    return list.slice().sort((a, b) =>
+      (IUCN_SCALE.indexOf(b.category) - IUCN_SCALE.indexOf(a.category)) || ((Number(b.records) || 0) - (Number(a.records) || 0)));
+  }
+
+  function iucnScaleMarkup(sp) {
+    const rank = IUCN_SCALE.indexOf(sp.category);
+    const steps = IUCN_SCALE.map((code, i) => `<span class="iucn-step${i <= rank ? ' on' : ''}${i === rank ? ' current' : ''}" title="${code}"></span>`).join('');
+    return `
+      <div class="iucn-scale" role="img" aria-label="IUCN Red List: ${escapeHtml(sp.category_label || sp.category || 'unknown')}">
+        <div class="iucn-ends"><span class="iucn-label">${escapeHtml(sp.category_label || sp.category || 'Unknown')}</span><span>IUCN Red List</span></div>
+        <div class="iucn-steps">${steps}</div>
+        <div class="iucn-ticks"><span>Least concern</span><span>Critical</span></div>
+      </div>`;
+  }
+
+  function speciesRow(sp) {
+    const cls = IUCN_CLASS[sp.category] || '';
+    const selected = sp.scientific_name === speciesSelected;
+    const records = Number(sp.records);
+    return `
+      <button type="button" class="sp-row ${cls}${selected ? ' is-selected' : ''}" role="option" aria-selected="${selected}" data-name="${escapeHtml(sp.scientific_name)}">
+        <span class="sp-thumb"><i class="ph ph-${groupIcon(sp.group)} icon" aria-hidden="true"></i></span>
+        <span class="sp-row-text">
+          <span class="sp-row-common">${escapeHtml(sp.group || 'marine species')}</span>
+          <em class="sp-row-sci">${escapeHtml(sp.scientific_name)}</em>
+        </span>
+        <span class="sp-row-meta">
+          <span class="species-iucn-badge ${cls}" title="${escapeHtml(sp.category_label || '')}">${escapeHtml(sp.category || '?')}</span>
+          <span class="sp-row-rec">${Number.isFinite(records) ? records : '-'} rec.</span>
+        </span>
+      </button>`;
+  }
+
+  function renderSpeciesDetail(sp, tips) {
+    const panel = document.getElementById('speciesDetail');
+    if (!panel) return;
+    if (!sp) { panel.innerHTML = ''; panel.hidden = true; return; }
+    panel.hidden = false;
+    const cls = IUCN_CLASS[sp.category] || '';
+    const records = Number(sp.records);
+    const tip = relevantTip(sp, tips);
+    panel.className = `sp-detail ${cls}`;
+    panel.innerHTML = `
+      <div class="sp-photo is-loading"><i class="ph ph-${groupIcon(sp.group)} icon" aria-hidden="true"></i></div>
+      <div class="sp-detail-body">
+        <div class="sp-detail-top">
+          <span class="species-group">${escapeHtml(sp.group || 'marine species')}</span>
+          <span class="species-iucn-badge ${cls}">${escapeHtml(sp.category || '?')}</span>
+        </div>
+        <h2 class="sp-common" id="spDetailCommon">${escapeHtml(sp.scientific_name)}</h2>
+        <p class="sp-sci"><em>${escapeHtml(sp.scientific_name)}</em>${sp.family ? ` · ${escapeHtml(sp.family)}` : ''}</p>
+        ${iucnScaleMarkup(sp)}
+        <p class="sp-extract" id="spDetailExtract"><span class="skeleton-line"></span><span class="skeleton-line short"></span></p>
+        <dl class="sp-facts">
+          <div><dt>OBIS records nearby</dt><dd>${Number.isFinite(records) ? records : '-'}</dd></div>
+          <div><dt>Family</dt><dd>${escapeHtml(sp.family || 'Not recorded')}</dd></div>
+          <div><dt>Class</dt><dd>${escapeHtml(sp.class || 'Not recorded')}</dd></div>
+        </dl>
+        ${tip ? `<div class="sp-tip"><i class="ph ph-hand-heart icon" aria-hidden="true"></i><p><strong>If you catch one:</strong> ${escapeHtml(tip)}</p></div>` : ''}
+        <div class="sp-links">
+          ${sp.obis_url ? `<a class="bc-btn" href="${escapeHtml(sp.obis_url)}" target="_blank" rel="noopener"><i class="ph ph-database icon" aria-hidden="true"></i>OBIS records</a>` : ''}
+          <a class="bc-btn" id="spDetailWiki" href="https://en.wikipedia.org/wiki/${encodeURIComponent(sp.scientific_name.replace(/\s+/g, '_'))}" target="_blank" rel="noopener"><i class="ph ph-book-open icon" aria-hidden="true"></i>Wikipedia</a>
+        </div>
+        <p class="sp-credit" id="spDetailCredit"></p>
+      </div>`;
+
+    const name = sp.scientific_name;
+    loadWiki(name).then(info => {
+      if (speciesSelected !== name) return;
+      const photo = panel.querySelector('.sp-photo');
+      const common = document.getElementById('spDetailCommon');
+      const extract = document.getElementById('spDetailExtract');
+      const credit = document.getElementById('spDetailCredit');
+      const wiki = document.getElementById('spDetailWiki');
+      if (photo) photo.classList.remove('is-loading');
+      if (!info) {
+        if (extract) extract.textContent = 'No Wikipedia summary is available for this species.';
+        if (photo) photo.classList.add('is-empty');
+        return;
+      }
+      if (common && info.common) common.textContent = info.common;
+      if (extract) extract.textContent = info.extract || info.description || 'No summary available.';
+      if (wiki && info.url) wiki.href = info.url;
+      if (credit) credit.textContent = info.images.length ? 'Photo and summary: Wikipedia / Wikimedia Commons' : 'Summary: Wikipedia';
+      if (!photo) return;
+      if (!info.images.length) { photo.classList.add('is-empty'); return; }
+      const candidates = info.images.slice();
+      const tryNext = () => {
+        const src = candidates.shift();
+        if (!src) { photo.classList.add('is-empty'); return; }
+        const img = new Image();
+        img.alt = `${info.common || name} (${name})`;
+        img.decoding = 'async';
+        img.onload = () => {
+          if (speciesSelected !== name) return;
+          photo.innerHTML = '';
+          photo.appendChild(img);
+          photo.classList.add('has-photo');
+        };
+        img.onerror = tryNext;
+        img.src = src;
+      };
+      tryNext();
+    });
+  }
+
+  function hydrateRows(grid) {
+    grid.querySelectorAll('.sp-row').forEach(row => {
+      const name = row.dataset.name;
+      loadWiki(name).then(info => {
+        if (!info || !row.isConnected) return;
+        if (info.common) {
+          const label = row.querySelector('.sp-row-common');
+          if (label) label.textContent = info.common;
+        }
+        if (info.thumb) {
+          const thumb = row.querySelector('.sp-thumb');
+          // Not lazy: an image that is not in the document yet would never load.
+          const img = new Image();
+          img.alt = '';
+          img.onload = () => { if (thumb) { thumb.innerHTML = ''; thumb.appendChild(img); thumb.classList.add('has-photo'); } };
+          img.src = info.thumb;
+        }
+      });
+    });
+  }
+
+  function renderSpeciesStats(eco, counts) {
+    const box = document.getElementById('speciesStats');
+    if (!box) return;
+    if (!eco || !eco.available || !eco.species || !eco.species.length) { box.innerHTML = ''; return; }
+    const total = eco.species.length;
+    const segments = ['CR', 'EN', 'VU', 'NT'].filter(code => counts[code]).map(code => `
+        <button type="button" class="sp-seg ${IUCN_CLASS[code]}${speciesFilter === code ? ' active' : ''}" style="flex-grow:${counts[code]}" data-iucn="${code}" aria-label="${IUCN_LABEL[code]}: ${counts[code]}"></button>`).join('');
+    const legend = ['CR', 'EN', 'VU', 'NT'].filter(code => counts[code]).map(code => `
+        <button type="button" class="sp-legend-item ${IUCN_CLASS[code]}${speciesFilter === code ? ' active' : ''}" data-iucn="${code}"><span class="sp-legend-dot" aria-hidden="true"></span>${IUCN_LABEL[code]}<strong>${counts[code]}</strong></button>`).join('');
+    box.innerHTML = `
+      <div class="sp-total"><strong>${total}</strong><span>threatened species recorded within about 25 km</span></div>
+      <div class="sp-bar" role="group" aria-label="Species by IUCN category">${segments}</div>
+      <div class="sp-legend">${legend}</div>`;
+  }
+
+  function renderSpeciesCatalog() {
+    const grid = document.getElementById('speciesGridContainer');
+    if (!grid) return;
+    const eco = lastEcosystem;
+    const box = document.getElementById('speciesBycatchBox');
+    const toolbar = document.getElementById('speciesToolbar');
+    const guide = grid.closest('.sp-guide');
+    const showEmpty = message => {
+      grid.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`;
+      if (box) box.hidden = true;
+      if (toolbar) toolbar.hidden = true;
+      if (guide) guide.classList.add('is-empty');
+      renderSpeciesStats(null);
+      renderSpeciesDetail(null);
+    };
+    if (!eco) {
+      if (guide) guide.classList.remove('is-empty');
+      grid.innerHTML = Array.from({ length: 6 }, () => '<div class="sp-row is-skeleton" aria-hidden="true"><span class="sp-thumb"></span><span class="sp-row-text"><span class="skeleton-line short"></span><span class="skeleton-line"></span></span></div>').join('');
+      return;
     }
-  };
+    if (!eco.available) return showEmpty('The OBIS biodiversity service is unreachable right now. No species information is shown rather than guessing.');
+    if (!eco.species || !eco.species.length) return showEmpty('No IUCN-threatened marine species have OBIS records within about 25 km of this location. Absence of records is not proof of absence.');
+    if (guide) guide.classList.remove('is-empty');
+
+    const tips = eco.bycatch_tips || [];
+    if (box) {
+      box.hidden = !tips.length;
+      box.innerHTML = tips.length
+        ? `<div class="bycatch-head"><i class="ph ph-hand-heart icon" aria-hidden="true"></i><strong>Bycatch advice for this area</strong></div><ul>${tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}</ul>`
+        : '';
+    }
+
+    const counts = { all: eco.species.length, CR: 0, EN: 0, VU: 0, NT: 0 };
+    eco.species.forEach(sp => { if (counts[sp.category] !== undefined) counts[sp.category] += 1; });
+    renderSpeciesStats(eco, counts);
+    if (toolbar) {
+      toolbar.hidden = false;
+      ['all', 'CR', 'EN', 'VU', 'NT'].forEach(key => {
+        const el = document.getElementById(`spCnt${key === 'all' ? 'All' : key}`);
+        if (el) el.textContent = String(counts[key]);
+        const btn = toolbar.querySelector(`[data-iucn="${key}"]`);
+        if (btn) {
+          btn.hidden = key !== 'all' && counts[key] === 0;
+          btn.classList.toggle('active', key === speciesFilter);
+        }
+      });
+    }
+
+    const query = speciesQuery.trim().toLowerCase();
+    const visible = sortedSpecies(eco.species).filter(sp => {
+      if (speciesFilter !== 'all' && sp.category !== speciesFilter) return false;
+      if (!query) return true;
+      const wiki = wikiInfo.get(sp.scientific_name);
+      return [sp.scientific_name, sp.group, sp.family, sp.category_label, wiki && wiki.common].some(v => String(v || '').toLowerCase().includes(query));
+    });
+    if (!visible.some(sp => sp.scientific_name === speciesSelected)) speciesSelected = visible.length ? visible[0].scientific_name : null;
+
+    grid.innerHTML = visible.length
+      ? visible.map(speciesRow).join('')
+      : `<p class="empty-state">No species match${query ? ` "${escapeHtml(speciesQuery.trim())}"` : ''} in this category.</p>`;
+    hydrateRows(grid);
+    renderSpeciesDetail(visible.find(sp => sp.scientific_name === speciesSelected) || null, tips);
+  }
+
+  function selectSpecies(name, focus) {
+    if (!name || name === speciesSelected) return;
+    speciesSelected = name;
+    const grid = document.getElementById('speciesGridContainer');
+    if (grid) {
+      grid.querySelectorAll('.sp-row').forEach(row => {
+        const on = row.dataset.name === name;
+        row.classList.toggle('is-selected', on);
+        row.setAttribute('aria-selected', String(on));
+        if (on && focus) row.focus();
+      });
+    }
+    const sp = lastEcosystem && (lastEcosystem.species || []).find(item => item.scientific_name === name);
+    renderSpeciesDetail(sp || null, (lastEcosystem && lastEcosystem.bycatch_tips) || []);
+    const detail = document.getElementById('speciesDetail');
+    if (detail && window.matchMedia('(max-width: 1000px)').matches) detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function initSpeciesToolbar() {
+    const setFilter = value => { speciesFilter = value || 'all'; renderSpeciesCatalog(); };
+    const toolbar = document.getElementById('speciesToolbar');
+    if (toolbar) toolbar.querySelectorAll('[data-iucn]').forEach(btn => btn.addEventListener('click', () => setFilter(btn.dataset.iucn)));
+    const stats = document.getElementById('speciesStats');
+    if (stats) stats.addEventListener('click', event => {
+      const btn = event.target.closest('[data-iucn]');
+      if (btn) setFilter(speciesFilter === btn.dataset.iucn ? 'all' : btn.dataset.iucn);
+    });
+    const search = document.getElementById('speciesSearch');
+    if (search) search.addEventListener('input', () => { speciesQuery = search.value; renderSpeciesCatalog(); });
+    const grid = document.getElementById('speciesGridContainer');
+    if (grid) {
+      grid.addEventListener('click', event => {
+        const row = event.target.closest('.sp-row[data-name]');
+        if (row) selectSpecies(row.dataset.name);
+      });
+      grid.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        const rows = Array.from(grid.querySelectorAll('.sp-row[data-name]'));
+        const index = rows.findIndex(row => row.dataset.name === speciesSelected);
+        const next = rows[Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))];
+        if (next) { event.preventDefault(); selectSpecies(next.dataset.name, true); }
+      });
+    }
+  }
+
+  async function fetchEcosystem(lat, lon) {
+    try {
+      const res = await fetch(`${BACKEND_API_BASE}/ecosystem?lat=${lat}&lon=${lon}`);
+      lastEcosystem = res.ok ? await res.json() : { available: false };
+    } catch (e) {
+      lastEcosystem = { available: false };
+    }
+    const kpi = document.getElementById('kpiValSpecies');
+    const trend = document.getElementById('kpiTrendSpecies');
+    if (kpi) kpi.textContent = lastEcosystem.available ? String(lastEcosystem.total) : 'N/A';
+    if (trend) {
+      const c = lastEcosystem.counts || {};
+      const serious = (c.CR || 0) + (c.EN || 0);
+      trend.textContent = lastEcosystem.available ? `${serious} CR/EN` : 'source offline';
+      trend.className = `kpi-trend ${serious ? 'warning' : 'positive'}`;
+    }
+    if (currentActiveView === 'species') renderSpeciesCatalog();
+  }
 
   window.orcaMapFocusZone = function(zoneId) {
-    switchActiveView('map');
-    selectMapZone(zoneId);
+    // The map exists only once its view has been applied.
+    switchActiveView('map').then(() => selectMapZone(zoneId));
   };
 
   window.orcaAskInChat = function(queryText) {
@@ -1037,35 +1222,114 @@
     }
   }
 
+  function formatCoord(lat, lon, digits = 4) {
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lon))) return '--';
+    lat = Number(lat); lon = Number(lon);
+    return `${Math.abs(lat).toFixed(digits)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(digits)}°${lon >= 0 ? 'E' : 'W'}`;
+  }
+
   function formatGpsFix(location) {
-    if (!location || typeof location.latitude !== 'number') return 'GPS FIX: UNAVAILABLE';
-    const latDir = location.latitude >= 0 ? 'N' : 'S';
-    const lonDir = location.longitude >= 0 ? 'E' : 'W';
-    return `${location.latitude.toFixed(4)}°${latDir}, ${location.longitude.toFixed(4)}°${lonDir}`;
+    if (!location || typeof location.latitude !== 'number') return 'Location unavailable';
+    const src = locationSource === 'gps' ? 'GPS' : 'SELECTED';
+    return `${src === 'GPS' ? 'GPS' : 'Selected'} · ${formatCoord(location.latitude, location.longitude, 3)}`;
   }
 
   function updateBridgeTelemetryUI(data) {
     data = data || {};
     window.lastBridgeTelemetry = data;
-    const unavailable = data.status === 'offline';
-    const value = key => unavailable ? 'UNAVAILABLE' : (data[key] || 'UNAVAILABLE');
+    document.dispatchEvent(new CustomEvent('orca:telemetry', { detail: { data, place: vesselLocation.name } }));
+    const offline = data.status === 'offline';
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    const num = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v)) ? v.toFixed(d) : null;
 
-    const kpiTemp = document.getElementById('kpiValTemp');
-    if (kpiTemp) kpiTemp.textContent = value('sst');
-    const fix = document.getElementById('txtTelemetryFix');
-    if (fix) fix.textContent = unavailable ? 'LIVE FEED: OFFLINE' : formatGpsFix(data.location || vesselLocation);
-    const sog = document.getElementById('txtTelemSog');
-    if (sog) sog.innerHTML = `SOG: <strong>${value('sog')}</strong>`;
-    const cog = document.getElementById('txtTelemCog');
-    if (cog) cog.innerHTML = `COG: <strong>${value('cog')}</strong>`;
-    const depth = document.getElementById('txtTelemDepth');
-    if (depth) depth.innerHTML = `DEPTH: <strong>${value('depth')}</strong>`;
-    const baro = document.getElementById('txtTelemBaro');
-    if (baro) baro.innerHTML = `BARO: <strong>${value('baro')}</strong>`;
-    const ssh = document.getElementById('txtTelemSsh');
-    if (ssh) ssh.innerHTML = `SSH: <strong>${value('sea_surface_height_anomaly')} ${value('sea_surface_height_unit')}</strong>`;
-    const swell = document.getElementById('txtTelemSwell');
-    if (swell) swell.innerHTML = `SWELL: <strong>${value('swell')}${data.swell_period ? ` / ${data.swell_period}s` : ''}</strong>`;
+    const status = document.getElementById('txtBackendStatus');
+    if (status) status.textContent = offline ? 'OFFLINE' : (data.stale ? 'STALE DATA' : 'LIVE');
+    const statusPill = document.getElementById('backendStatusPill');
+    if (statusPill) statusPill.dataset.state = offline ? 'offline' : (data.stale ? 'stale' : 'live');
+
+    if (offline) {
+      renderVerdict(data);
+      setText('txtTelemetryFix', 'Live feed offline');
+      ['kpiValRisk', 'kpiValWave', 'kpiValWind', 'kpiValTemp', 'kpiValAlerts', 'heroValRisk', 'heroValWave', 'heroValWind', 'heroValAlerts']
+        .forEach(id => setText(id, '--'));
+      setText('kpiTrendRisk', 'backend offline');
+      return;
+    }
+
+    setText('txtTelemetryFix', formatGpsFix(data.location || vesselLocation));
+    const tend = data.pressure_tendency_3h;
+    const arrow = typeof tend === 'number' ? (tend <= -1 ? ' ↓' : tend >= 1 ? ' ↑' : ' →') : '';
+    const val = v => (!v || v === 'UNAVAILABLE') ? 'n/a' : v;
+    setHtml('txtTelemWind', `Wind <strong>${escapeHtml(val(data.wind))}</strong>`);
+    setHtml('txtTelemWave', `Waves <strong>${escapeHtml(val(data.wave))}</strong>`);
+    setHtml('txtTelemBaro', `Pressure <strong>${escapeHtml(val(data.baro))}${arrow}</strong>`);
+    setHtml('txtTelemSsh', `High tide <strong>${escapeHtml(val(String(data.highTide || '').replace(', model', '')))}</strong>`);
+    setHtml('txtTelemSwell', `Swell <strong>${escapeHtml(val(data.swell))}${data.swell_period ? ` · ${Number(data.swell_period).toFixed(0)} s` : ''}</strong>`);
+    renderVerdict(data);
+
+    const level = data.risk_level || '--';
+    const levelClass = { LOW: 'positive', MEDIUM: 'warning', HIGH: 'danger', CRITICAL: 'danger' }[level] || '';
+    const noSea = data.marine_available === false;
+    setText('kpiValRisk', noSea ? 'N/A' : (data.risk_score ?? '--'));
+    const riskTrend = document.getElementById('kpiTrendRisk');
+    if (riskTrend) {
+      riskTrend.textContent = noSea ? 'not at sea' : `${level} • ${data.confidence || '?'} confidence`;
+      riskTrend.className = `kpi-trend ${levelClass}`;
+    }
+    const outlook = data.outlook || {};
+    setText('kpiValWave', num(data.wave_height) ?? '--');
+    setText('kpiTrendWave', `12 h max ${num(outlook.wave_height_max_12h) ?? '--'} m`);
+    setText('kpiValWind', num(data.wind_speed, 0) ?? '--');
+    setText('kpiTrendWind', `gusts ${num(data.wind_gusts, 0) ?? '--'} kt • 12 h max ${num(outlook.wind_speed_max_12h, 0) ?? '--'}`);
+    setText('kpiValTemp', (data.sst || "--").replace("°C", "").trim());
+    setText('kpiTrendTemp', data.observed_at ? `as of ${data.observed_at.slice(11, 16)} UTC` : '--');
+
+    const official = Array.isArray(data.official_alerts) ? data.official_alerts : [];
+    const feeds = data.official_feeds || {};
+    const feedDown = Object.values(feeds).some(f => f && f.available === false);
+    setText('kpiValAlerts', String(official.length));
+    const alertTrend = document.getElementById('kpiTrendAlerts');
+    if (alertTrend) {
+      const worst = official[0];
+      alertTrend.textContent = feedDown ? 'a feed is offline' : (worst ? `${worst.level} • ${worst.source}` : 'none in range');
+      alertTrend.className = `kpi-trend ${feedDown || worst ? 'warning' : 'positive'}`;
+    }
+
+    setText('heroValRisk', noSea ? 'N/A' : `${level}`);
+    setText('heroValWave', num(data.wave_height) ? `${num(data.wave_height)} m` : '--');
+    setText('heroValWind', num(data.wind_speed, 0) ? `${num(data.wind_speed, 0)} kt` : '--');
+    setText('heroValAlerts', feedDown ? `${official.length}*` : String(official.length));
+  }
+
+  // Overview headline: a plain-language verdict with the top reasons.
+  function renderVerdict(data) {
+    const card = document.getElementById('verdictCard');
+    if (!card) return;
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    setText('verdictPlace', vesselLocation.name || formatCoord(vesselLocation.latitude, vesselLocation.longitude, 2));
+    const list = document.getElementById('verdictReasons');
+    const fill = document.getElementById('riskMeterFill');
+    const offline = data.status === 'offline';
+    const noSea = data.marine_available === false;
+    const level = offline || noSea ? '' : (data.risk_level || '');
+    card.dataset.level = level;
+    const headline = offline ? 'Live data unavailable'
+      : noSea ? 'No sea data at this point'
+      : ({ LOW: 'Suitable to go out', MEDIUM: 'Go out with caution', HIGH: 'Return to shore', CRITICAL: 'Do not go to sea' }[level] || 'Checking conditions');
+    setText('verdictHeadline', headline);
+    setText('verdictStatus', offline || noSea || !level ? '' : `${level.charAt(0)}${level.slice(1).toLowerCase()} risk`);
+    let reasons = Array.isArray(data.reasons) ? data.reasons.slice(0, 3) : [];
+    if (offline) reasons = ['ORCA could not reach its data sources. Check your official marine forecast before going out.'];
+    else if (noSea) reasons = ['This position looks like land. Search a harbour or tap the sea on the map.'];
+    else if (!reasons.length) reasons = ['No hazards now or in the next 12 hours from the forecast models and official feeds.'];
+    if (list) list.innerHTML = reasons.map(r => `<li class="${r.startsWith('OFFICIAL') ? 'official' : ''}">${escapeHtml(r.replace(/^OFFICIAL /, 'Official · '))}</li>`).join('');
+    if (fill) fill.style.left = `${Math.max(0, Math.min(100, Number(data.risk_score) || 0))}%`;
+    const meta = [];
+    if (data.observed_at) meta.push(`Updated ${data.observed_at.slice(11, 16)} UTC`);
+    if (data.stale) meta.push('using last good data');
+    if (Array.isArray(data.sources) && data.sources.length) meta.push(data.sources.join(' · '));
+    setText('verdictMeta', offline ? '' : meta.join(' · '));
   }
 
   function updateUserLocationMarker() {
@@ -1073,7 +1337,7 @@
     const point = [vesselLocation.latitude, vesselLocation.longitude];
     if (!userLocationMarker) {
       userLocationMarker = L.circleMarker(point, {
-        radius: 8, color: '#ffffff', weight: 2, fillColor: '#00f0ff', fillOpacity: 0.95
+        radius: 7, color: '#ffffff', weight: 2.5, fillColor: themeColor('--accent', '#E0559A'), fillOpacity: 1
       }).bindTooltip('Device location', { direction: 'top' }).addTo(leafletMap);
     } else {
       userLocationMarker.setLatLng(point);
@@ -1082,7 +1346,11 @@
 
   function updateLocation(lat, lon, name, source) {
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-    vesselLocation = { latitude: lat, longitude: lon, name: name || 'Current Coastal Sector' };
+    vesselLocation = { latitude: lat, longitude: lon, name: name || formatCoord(lat, lon, 2) };
+    const placeEl = document.getElementById('verdictPlace');
+    if (placeEl) placeEl.textContent = vesselLocation.name;
+    const chatPlace = document.getElementById('chatPlace');
+    if (chatPlace) chatPlace.textContent = vesselLocation.name;
     customLocationName = vesselLocation.name;
     locationSource = source || 'manual';
     updateUserLocationMarker();
@@ -1091,15 +1359,20 @@
     // regenerated here, so a map click cannot recreate the old fixed scheme.
     fetchLiveTelemetry(lat, lon);
     fetchLiveBulletins(lat, lon);
+    fetchEcosystem(lat, lon);
     if (isHeatmapActive) fetchRiskHeatmap(lat, lon);
+    if (currentActiveView === 'analytics') loadRegressionData(activeRegVar);
     updateGpsButton();
   }
 
   function updateGpsButton() {
     const btn = document.getElementById('btnGpsToggle');
     const text = document.getElementById('txtGpsToggle');
-    if (btn) btn.classList.toggle('gps-active', isGpsTrackingEnabled);
-    if (text) text.textContent = isGpsTrackingEnabled ? '📡 GPS: ON' : '📡 GPS: OFF';
+    if (btn) {
+      btn.classList.toggle('gps-active', isGpsTrackingEnabled);
+      btn.setAttribute('aria-pressed', String(isGpsTrackingEnabled));
+    }
+    if (text) text.textContent = isGpsTrackingEnabled ? 'GPS: ON' : 'GPS: OFF';
   }
 
   function stopGpsTracking() {
@@ -1130,33 +1403,43 @@
     const input = String(raw || '').trim();
     if (!input) return null;
 
-    // Try coordinate parsing first (support multiple formats)
-    const coords = input.split(/[,\s]+/).map(Number);
-    if (coords.length === 2 && coords.every(Number.isFinite) && Math.abs(coords[0]) <= 90 && Math.abs(coords[1]) <= 180) {
-      return { lat: coords[0], lon: coords[1], name: 'Manual Coordinates' };
+    // Coordinates: "15.24, 73.80", "15.24N 73.80E", "-33.9 18.4"
+    const m = input.match(/^\s*(-?\d+(?:\.\d+)?)\s*°?\s*([NSns])?[\s,]+(-?\d+(?:\.\d+)?)\s*°?\s*([EWew])?\s*$/);
+    if (m) {
+      let lat = Number(m[1]);
+      let lon = Number(m[3]);
+      if (m[2] && m[2].toUpperCase() === 'S') lat = -Math.abs(lat);
+      if (m[4] && m[4].toUpperCase() === 'W') lon = -Math.abs(lon);
+      if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) return { lat, lon, name: formatCoord(lat, lon, 2) };
     }
 
-    // Try port name matching (case-insensitive, partial match)
     const key = input.toLowerCase();
-
-    // Direct key match
     if (MARITIME_PORTS_CATALOG[key]) {
       const port = MARITIME_PORTS_CATALOG[key];
       return { lat: port.lat, lon: port.lon, name: port.name };
     }
-
-    // Partial match - check if input contains port key or port key contains input
-    const match = Object.keys(MARITIME_PORTS_CATALOG).find(k =>
-      key.includes(k) || k.includes(key) ||
-      MARITIME_PORTS_CATALOG[k].name.toLowerCase().includes(key)
-    );
-
+    const match = Object.keys(MARITIME_PORTS_CATALOG).find(k => key === k || MARITIME_PORTS_CATALOG[k].name.toLowerCase() === key);
     if (match) {
       const port = MARITIME_PORTS_CATALOG[match];
       return { lat: port.lat, lon: port.lon, name: port.name };
     }
-
     return null;
+  }
+
+  // Coordinates / known ports first, then worldwide geocoding via the backend.
+  async function resolveLocationAnywhere(raw) {
+    const local = resolveLocationInput(raw);
+    if (local) return local;
+    const q = String(raw || '').trim();
+    if (q.length < 2) return null;
+    try {
+      const res = await fetch(`${BACKEND_API_BASE}/geocode?q=${encodeURIComponent(q)}`);
+      if (!res.ok) return null;
+      const place = await res.json();
+      return { lat: place.latitude, lon: place.longitude, name: place.name };
+    } catch (e) {
+      return null;
+    }
   }
 
   // 8. "ASK ORCA" AI ASSISTANT CHAT ENGINE
@@ -1165,81 +1448,146 @@
     const thread = document.getElementById('tacticalChatThread');
     const input = document.getElementById('tacticalQueryInput');
     if (input) input.value = '';
+    const view = document.getElementById('view-chat');
+    if (view) view.classList.add('has-messages');
 
-    // Add User Bubble
-    const userBubble = document.createElement('div');
-    userBubble.className = 'chat-bubble user';
-    userBubble.innerHTML = `
-      <div class="chat-bubble-header"><span>${escapeHtml(t('chatPilotQuery', 'PILOT QUERY'))}</span><span>NOW</span></div>
-      <div>${escapeHtml(text)}</div>
-    `;
-    thread.appendChild(userBubble);
-    thread.scrollTop = thread.scrollHeight;
+    const userMsg = document.createElement('div');
+    userMsg.className = 'msg msg-user';
+    userMsg.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div>`;
+    thread.appendChild(userMsg);
 
-    // Loading Bubble
-    const loadingBubble = document.createElement('div');
-    loadingBubble.className = 'chat-bubble assistant';
-    loadingBubble.innerHTML = `<div class="chat-bubble-header"><span>ORCA NEURAL AI</span><span>${escapeHtml(t('chatProcessing', 'PROCESSING...'))}</span></div><div>${escapeHtml(t('chatAnalyzing', 'Analyzing satellite telemetry & environmental risk matrix...'))}</div>`;
-    thread.appendChild(loadingBubble);
-    thread.scrollTop = thread.scrollHeight;
+    // Working state: name each agent as it is consulted (they run together).
+    const reply = document.createElement('div');
+    reply.className = 'msg msg-orca is-working';
+    const steps = [
+      ['wind', 'Weather agent: ECMWF and NOAA wind'],
+      ['waves', 'Marine agent: waves, swell and tide'],
+      ['siren', 'Official alerts: INCOIS and GDACS'],
+      ['shield-check', 'Geospatial agent: protected areas'],
+      ['fish', 'Ecosystem agent: OBIS species records'],
+      ['scales', 'Consensus agent: cross-checking sources']
+    ];
+    reply.innerHTML = `
+      ${orcaAvatar()}
+      <div class="msg-body">
+        <div class="msg-meta"><span class="msg-name">ORCA</span><span class="msg-working-label">${escapeHtml(t('chatProcessing', 'Working'))}</span></div>
+        <ol class="agent-steps">${steps.map(([icon, label], i) => `<li style="--i:${i}"><i class="ph ph-${icon} icon" aria-hidden="true"></i><span>${escapeHtml(label)}</span></li>`).join('')}</ol>
+      </div>`;
+    thread.appendChild(reply);
+    scrollThread(thread);
+    document.dispatchEvent(new CustomEvent('orca:asking', { detail: { text } }));
+    const stepEls = reply.querySelectorAll('.agent-steps li');
+    let stepIndex = 0;
+    const ticker = window.setInterval(() => {
+      if (stepIndex < stepEls.length) {
+        if (stepIndex > 0) stepEls[stepIndex - 1].classList.replace('is-active', 'is-done');
+        stepEls[stepIndex].classList.add('is-active');
+        stepIndex += 1;
+      }
+    }, 450);
+
+    const finish = html => {
+      window.clearInterval(ticker);
+      reply.classList.remove('is-working');
+      reply.querySelector('.msg-body').innerHTML = html;
+      scrollThread(thread);
+    };
 
     try {
-      const payload = {
-        message: text,
-        language: currentLang,
-        latitude: vesselLocation ? vesselLocation.latitude : 15.246,
-        longitude: vesselLocation ? vesselLocation.longitude : 73.803,
-        zone_id: activeZoneId
-      };
-
       const res = await fetch(`${BACKEND_API_BASE}/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          message: text,
+          language: currentLang,
+          latitude: vesselLocation.latitude,
+          longitude: vesselLocation.longitude,
+          zone_id: activeZoneId
+        })
       });
 
       if (res.ok) {
         const requestEpoch = languageEpoch;
         const requestLanguage = currentLang;
         const data = await res.json();
-        let reply = (data.chat && data.chat.response) || (data.recommendation && (data.recommendation.response_text || data.recommendation.message)) || data.reply || data.response || data.message || 'Analysis complete.';
+        document.dispatchEvent(new CustomEvent('orca:answer', { detail: { data } }));
+        let answer = (data.chat && data.chat.response) || (data.recommendation && (data.recommendation.response_text || data.recommendation.message)) || data.message || 'Analysis complete.';
+        if (data.status === 'location_required') answer = data.message || answer;
         // The backend localizes responses, so only translate when that failed.
         if (requestLanguage !== 'en' && (!data.chat || !data.chat.translation_success)) {
-          reply = await translateForLanguage(reply, requestLanguage);
+          answer = await translateForLanguage(answer, requestLanguage);
         }
-        // The pilot switched language while this reply was in flight; a new
-        // bubbleset will be produced for the new language instead.
-        if (requestEpoch !== languageEpoch) return;
+        if (requestEpoch !== languageEpoch) { window.clearInterval(ticker); return; }
 
-        loadingBubble.innerHTML = `
-          <div class="chat-bubble-header"><span>${escapeHtml(t('chatDispatch', 'ORCA NEURAL DISPATCH'))}</span><span>${escapeHtml(t('chatLive', 'LIVE'))}</span></div>
-          <div>${formatMarkdown(reply)}</div>
-          ${speakerButtonMarkup(reply)}
-        `;
-        thread.scrollTop = thread.scrollHeight;
-
+        const level = (data.risk && data.risk.risk_level) || '';
+        reply.dataset.level = level;
+        const place = data.place_name || vesselLocation.name;
+        const levelLabel = level ? `${level.charAt(0)}${level.slice(1).toLowerCase()} risk` : '';
+        finish(`
+          <div class="msg-meta">
+            <span class="msg-name">ORCA</span>
+            ${levelLabel ? `<span class="verdict-status">${escapeHtml(levelLabel)}</span>` : ''}
+            <span class="msg-place"><i class="ph ph-crosshair-simple icon" aria-hidden="true"></i>${escapeHtml(place)}</span>
+          </div>
+          ${structuredAnswer(data, answer, requestLanguage)}
+          <div class="msg-actions">${speakerButtonMarkup(answer)}</div>
+          ${agentReasoningMarkup(data)}`);
         return;
       }
     } catch (e) {}
 
-    // Fallback AI Response
-    setTimeout(async () => {
-      let smartReply = `Based on live telemetry at **${vesselLocation.latitude.toFixed(2)}°N, ${vesselLocation.longitude.toFixed(2)}°E**, sea state is **calm to moderate** with SST at **28.4°C**. Multi-agent analysis confirms active species tracks (Blue Whale, Olive Ridley Turtle) along the continental shelf edge. Wave heights remain within safe operating limits (<1.5m).`;
-      if (text.toLowerCase().includes('pollution') || text.toLowerCase().includes('hotspot')) {
-        smartReply = `**Pollution Hotspot Analysis:** SAR telemetry detected a localized micro-film 14 NM offshore. Dispersion vector is trending 215° SW at 0.8 kts. Coastal protection containment units have been notified. Avoid commercial trawling in sector **P9**.`;
-      } else if (text.toLowerCase().includes('species') || text.toLowerCase().includes('whale') || text.toLowerCase().includes('turtle')) {
-        smartReply = `**Species Intelligence:** 142 total acoustic tracks registered in the last 24h. A mother and calf Blue Whale pair is currently logged at **15.18°N, 73.45°E** (depth 185m). Morjim beach biosphere reports active Olive Ridley turtle arrivals.`;
-      }
+    // Never invent an answer: say the system could not reach its agents.
+    document.dispatchEvent(new CustomEvent('orca:answer', { detail: { data: null } }));
+    const failText = 'ORCA could not reach its agents right now, so no advice is given. Check your official marine forecast (INCOIS or your national met service) before going out, and keep VHF Channel 16 on.';
+    const localized = await translateForLanguage(failText, currentLang);
+    reply.dataset.level = 'OFFLINE';
+    finish(`
+      <div class="msg-meta"><span class="msg-name">ORCA</span><span class="verdict-status">Offline</span></div>
+      <p class="answer-lead">${escapeHtml(localized)}</p>`);
+  }
 
-      smartReply = await translateForLanguage(smartReply, currentLang);
+  function scrollThread(thread) {
+    requestAnimationFrame(() => thread.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' }));
+  }
 
-      loadingBubble.innerHTML = `
-        <div class="chat-bubble-header"><span>${escapeHtml(t('chatDispatch', 'ORCA NEURAL DISPATCH'))}</span><span>${escapeHtml(t('chatNominal', 'NOMINAL'))}</span></div>
-        <div>${formatMarkdown(smartReply)}</div>
-        ${speakerButtonMarkup(smartReply)}
-      `;
-      thread.scrollTop = thread.scrollHeight;
-    }, 600);
+  function orcaAvatar() {
+    return `<div class="msg-avatar" aria-hidden="true"><svg viewBox="0 0 32 32"><path class="brand-wave" d="M6 20c3 0 4.5-2.4 7.5-2.4S17 20 20 20s4.2-1.2 6-1.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M12 17.4c1-4.6 3.6-8.2 7.5-9.4-1.1 3.4-1.1 6.3 0 9.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></div>`;
+  }
+
+  // English answers are laid out as lead / actions / why; translated answers
+  // stay as one localized paragraph.
+  function structuredAnswer(data, reply, lang) {
+    const rec = data && data.recommendation;
+    if (lang !== 'en' || !rec || !rec.message) return `<p class="answer-lead">${formatMarkdown(reply)}</p>`;
+    const tips = (rec.recommendations || []).slice(0, 4);
+    const tidy = value => String(value).replace(/OFFICIAL /g, 'Official ');
+    return `
+      <p class="answer-lead">${escapeHtml(tidy(rec.message))}</p>
+      ${tips.length ? `<div class="answer-block"><span class="answer-label">What to do</span><ul class="answer-list">${tips.map(tip => `<li><i class="ph ph-check-circle icon" aria-hidden="true"></i><span>${escapeHtml(tidy(tip))}</span></li>`).join('')}</ul></div>` : ''}
+      ${rec.explanation ? `<p class="answer-why">${escapeHtml(tidy(rec.explanation))}</p>` : ''}`;
+  }
+
+  // Explainability: which agents ran, what they found, how confident ORCA is.
+  function agentReasoningMarkup(data) {
+    if (!data || data.status !== 'success') return '';
+    const risk = data.risk || {};
+    const findings = (data.consensus || {}).findings || [];
+    const trace = data.agent_trace || [];
+    const typeLabel = { agreement: 'Agrees', conflict: 'Conflict', trend: 'Trend', official: 'Official', gap: 'Data gap', insight: 'Insight', ecosystem: 'Ecosystem' };
+    const rows = findings.map(f => `
+        <li data-type="${escapeHtml(f.type)}">
+          <span class="tl-dot" aria-hidden="true"></span>
+          <div><span class="tl-head"><strong>${escapeHtml(typeLabel[f.type] || f.type)}</strong><span class="finding-agents">${escapeHtml((f.agents || []).join(' + ').replace(/_agent/g, '').replace(/_/g, ' '))}</span></span>
+          <span class="tl-text">${escapeHtml(String(f.message).replace(/^(INCOIS|GDACS) /, 'Official $1 '))}</span></div>
+        </li>`).join('');
+    const okCount = trace.filter(a => a.status === 'ok').length;
+    const chips = trace.map(a => `<span class="trace-chip ${a.status === 'ok' ? 'ok' : 'failed'}" title="${escapeHtml(a.error || '')}">${escapeHtml(a.agent.replace('_agent', '').replace(/_/g, ' '))} ${a.status === 'ok' ? `${a.ms} ms` : 'failed'}</span>`).join('');
+    return `
+      <details class="agent-reasoning">
+        <summary><i class="ph ph-tree-structure icon" aria-hidden="true"></i>How ORCA decided<span class="summary-meta">risk ${risk.risk_score ?? '-'}/100 · ${escapeHtml(risk.confidence || '?')} confidence · ${okCount}/${trace.length} agents</span></summary>
+        ${rows ? `<ol class="reason-timeline">${rows}</ol>` : '<p class="answer-why">No cross-check findings.</p>'}
+        <div class="trace-row">${chips}</div>
+      </details>`;
   }
 
   // Voice Command (Web Speech API)
@@ -1289,123 +1637,68 @@
   }
 
   // 9. 24-HOUR LINEAR REGRESSION PREDICTION MODELLING ENGINE
-  const REG_VARIABLE_CONFIGS = {
-    wave_height: { unit: 'm', label: 'Significant Wave Height', safeMax: 1.5, cautionMax: 2.5, dangerMin: 2.5, minPhys: 0.2, maxPhys: 6.0, defaultAnchor: 1.25, slopeSim: 0.032 },
-    wind_speed: { unit: 'kts', label: 'Wind Speed', safeMax: 15.0, cautionMax: 25.0, dangerMin: 25.0, minPhys: 2.0, maxPhys: 55.0, defaultAnchor: 14.5, slopeSim: 0.35 },
-    swell_wave_height: { unit: 'm', label: 'Swell Wave Height', safeMax: 1.2, cautionMax: 2.0, dangerMin: 2.0, minPhys: 0.1, maxPhys: 5.0, defaultAnchor: 1.10, slopeSim: 0.022 },
-    ocean_current_velocity: { unit: 'm/s', label: 'Current Velocity', safeMax: 0.8, cautionMax: 1.5, dangerMin: 1.5, minPhys: 0.1, maxPhys: 3.5, defaultAnchor: 0.75, slopeSim: 0.015 },
-    risk_score: { unit: 'idx', label: 'Marine Risk Index', safeMax: 35.0, cautionMax: 70.0, dangerMin: 70.0, minPhys: 5.0, maxPhys: 100.0, defaultAnchor: 32.0, slopeSim: 1.10 }
-  };
 
   let activeRegVar = 'wave_height';
   let regShowCI = true;
   let regressionDataCache = null;
   let hoverActiveIndex = null;
 
-  function computeClientOLS(xArr, yArr) {
-    const n = xArr.length;
-    if (n < 2) return { slope: 0, intercept: yArr[0] || 0, rSquared: 0, stdError: 0, equation: 'y = 0.00x + 0.00' };
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-    for (let i = 0; i < n; i++) {
-      sumX += xArr[i]; sumY += yArr[i];
-      sumXY += xArr[i] * yArr[i]; sumX2 += xArr[i] * xArr[i]; sumY2 += yArr[i] * yArr[i];
-    }
-    const denom = (n * sumX2) - (sumX * sumX);
-    const slope = Math.abs(denom) > 1e-9 ? ((n * sumXY) - (sumX * sumY)) / denom : 0;
-    const intercept = (sumY - (slope * sumX)) / n;
-
-    const yMean = sumY / n;
-    let ssTot = 0, ssRes = 0;
-    for (let i = 0; i < n; i++) {
-      const yPred = (slope * xArr[i]) + intercept;
-      ssTot += Math.pow(yArr[i] - yMean, 2);
-      ssRes += Math.pow(yArr[i] - yPred, 2);
-    }
-    const rSquared = ssTot > 1e-9 ? Math.max(0, Math.min(1, 1 - (ssRes / ssTot))) : 0.88;
-    const stdError = Math.sqrt(Math.max(0, ssRes / Math.max(1, n - 2)));
-    const eqSign = intercept >= 0 ? '+' : '-';
-    return { slope, intercept, rSquared, stdError, equation: `y = ${slope.toFixed(4)}x ${eqSign} ${Math.abs(intercept).toFixed(3)}` };
-  }
-
-  function computeLocal24hPrediction(varKey) {
-    const cfg = REG_VARIABLE_CONFIGS[varKey];
-    const anchor = cfg.defaultAnchor;
-    const history = [];
-    const now = new Date();
-
-    for (let h = -24; h <= 0; h++) {
-      const dt = new Date(now.getTime() + h * 3600 * 1000);
-      const tidal = Math.sin(h * (2 * Math.PI / 12.4)) * (anchor * 0.12);
-      const val = Math.max(cfg.minPhys, Math.min(cfg.maxPhys, anchor + (cfg.slopeSim * h) + tidal));
-      history.push({ hour_offset: h, timestamp: dt.toISOString(), time_label: `${dt.getUTCHours()}:00 UTC`, value: parseFloat(val.toFixed(2)) });
-    }
-
-    const xHist = history.map(p => p.hour_offset);
-    const yHist = history.map(p => p.value);
-    const metrics = computeClientOLS(xHist, yHist);
-    const predictions = [];
-
-    for (let h = 1; h <= 24; h++) {
-      const dt = new Date(now.getTime() + h * 3600 * 1000);
-      let predVal = (metrics.slope * h) + metrics.intercept;
-      predVal = Math.max(cfg.minPhys, Math.min(cfg.maxPhys, predVal));
-      const margin = 1.96 * metrics.stdError * 1.05;
-      const ciLower = Math.max(cfg.minPhys, predVal - margin);
-      const ciUpper = Math.min(cfg.maxPhys, predVal + margin);
-      const safetyStatus = predVal >= cfg.dangerMin ? 'danger' : (predVal >= cfg.cautionMax ? 'caution' : 'safe');
-
-      predictions.push({
-        hour_offset: h,
-        timestamp: dt.toISOString(),
-        time_label: `+${h}h`,
-        predicted_value: parseFloat(predVal.toFixed(2)),
-        ci_lower: parseFloat(ciLower.toFixed(2)),
-        ci_upper: parseFloat(ciUpper.toFixed(2)),
-        safety_status: safetyStatus,
-        delta_from_now: parseFloat((predVal - yHist[yHist.length - 1]).toFixed(2))
-      });
-    }
-
-    return {
-      success: true,
-      variable: varKey,
-      unit: cfg.unit,
-      label: cfg.label,
-      metrics,
-      summary: {
-        val_now: yHist[yHist.length - 1],
-        peak_val: Math.max(...predictions.map(p => p.predicted_value)),
-        peak_hour: 24,
-        overall_status: predictions.some(p => p.safety_status === 'danger') ? 'danger' : 'safe',
-        advisory_en: `24-Hour statistical OLS projection confirms steady trend for ${cfg.label}. Maintain regular marine monitoring.`
-      },
-      history,
-      predictions
-    };
-  }
-
   async function loadRegressionData(varKey) {
     varKey = varKey || activeRegVar;
     activeRegVar = varKey;
-    const lat = vesselLocation ? vesselLocation.latitude : 15.246;
-    const lon = vesselLocation ? vesselLocation.longitude : 73.803;
+    document.querySelectorAll('.graph-var-pill').forEach(btn => btn.classList.toggle('active', btn.dataset.var === varKey));
+    const params = new URLSearchParams({ variable: varKey, lat: vesselLocation.latitude, lon: vesselLocation.longitude, horizon_hours: 24, past_hours: 24 });
     try {
-      const params = new URLSearchParams({ variable: varKey, lat, lon, horizon_hours: 24, past_hours: 24 });
-      const response = await fetch(`${BACKEND_API_BASE}/predictions/linear-regression?${params}`);
-      if (!response.ok) throw new Error(`Prediction request failed (${response.status})`);
-      regressionDataCache = await response.json();
+      const response = await fetch(`${BACKEND_API_BASE}/predictions/forecast?${params}`);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body.success === false) throw new Error(body.error || `Forecast request failed (${response.status})`);
+      regressionDataCache = body;
     } catch (error) {
-      console.warn('Backend model evaluation unavailable; using local OLS:', error);
-      regressionDataCache = computeLocal24hPrediction(varKey);
+      // No synthetic fallback: show that the forecast is unavailable.
+      regressionDataCache = null;
+      const plot = document.getElementById('regressionPlotly');
+      if (plot && window.Plotly) window.Plotly.purge(plot);
+      const adv = document.getElementById('txtRegAdvisoryBody');
+      if (adv) adv.textContent = `Forecast unavailable for this location: ${error.message}`;
+      ['valBtmCurrent', 'valBtmMid', 'valBtmPeak', 'txtRegEquation', 'txtRegR2'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '--'; });
+      const panel = document.getElementById('modelEvaluationPanel');
+      if (panel) panel.textContent = '';
+      return;
     }
     drawRegressionPlotly();
     updateRegressionHUD();
   }
 
+  // Plotly (about 3.5 MB) is only needed for the Forecast chart, so it is not
+  // in <head> where it would block the first paint on slow mobile networks.
+  // It is fetched in the background after load, or on demand here.
+  const PLOTLY_SRC = 'https://cdn.plot.ly/plotly-2.35.2.min.js';
+  let plotlyLoading = null;
+  function ensurePlotly() {
+    if (window.Plotly) return Promise.resolve(window.Plotly);
+    if (!plotlyLoading) {
+      plotlyLoading = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = PLOTLY_SRC;
+        script.async = true;
+        script.onload = () => (window.Plotly ? resolve(window.Plotly) : reject(new Error('Chart library did not initialise')));
+        script.onerror = () => { plotlyLoading = null; reject(new Error('Chart library could not be downloaded')); };
+        document.head.appendChild(script);
+      });
+    }
+    return plotlyLoading;
+  }
+
   function drawRegressionPlotly() {
     const plot = document.getElementById('regressionPlotly');
     const data = regressionDataCache;
-    if (!plot || !data || typeof window.Plotly === 'undefined') {
+    if (plot && data && typeof window.Plotly === 'undefined') {
+      ensurePlotly()
+        .then(() => drawRegressionPlotly())
+        .catch(() => { plot.innerHTML = '<p class="empty-state">The chart library could not be loaded. The figures below are still live.</p>'; });
+      return;
+    }
+    if (!plot || !data) {
       drawRegressionCanvas();
       return;
     }
@@ -1413,23 +1706,63 @@
     const predictions = data.predictions || [];
     const evaluation = data.model_evaluation || {};
     const traces = [
-      { x: history.map(point => point.hour_offset), y: history.map(point => point.value), mode: 'lines+markers', name: 'Observed', line: { color: '#00F0FF' } },
-      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.predicted_value), mode: 'lines', name: `${evaluation.best_model || 'OLS'} forecast`, line: { color: '#FFB703', dash: 'dash' } },
-      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.ci_upper), mode: 'lines', name: '95% upper bound', line: { color: 'rgba(255,183,3,0.25)', width: 1 }, hoverinfo: 'skip' },
-      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.ci_lower), mode: 'lines', name: '95% lower bound', line: { color: 'rgba(255,183,3,0.25)', width: 1 }, fill: 'tonexty', fillcolor: 'rgba(255,183,3,0.08)', hoverinfo: 'skip' }
+      { x: history.map(point => point.hour_offset), y: history.map(point => point.value), text: history.map(point => point.time_label), mode: 'lines+markers', name: 'Past 24 h (model hindcast)', line: { color: themeColor('--text-2', '#A5B3C1'), width: 2 }, marker: { size: 4 } },
+      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.predicted_value), text: predictions.map(point => point.time_label), mode: 'lines', name: 'Forecast (best model blend)', line: { color: themeColor('--accent', '#E0559A'), width: 2.5 } },
+      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.ci_upper), mode: 'lines', name: 'Highest model', line: { color: themeColor('--accent-line', 'rgba(224,85,154,0.42)'), width: 1 }, hoverinfo: 'skip', showlegend: !!data.uncertainty_available },
+      { x: predictions.map(point => point.hour_offset), y: predictions.map(point => point.ci_lower), mode: 'lines', name: 'Lowest model', line: { color: themeColor('--accent-line', 'rgba(224,85,154,0.42)'), width: 1 }, fill: 'tonexty', fillcolor: themeColor('--accent-soft', 'rgba(224,85,154,0.14)'), hoverinfo: 'skip', showlegend: !!data.uncertainty_available }
     ];
     const thresholds = data.thresholds || {};
     const shapes = [];
-    if (Number.isFinite(thresholds.safe_max)) shapes.push({ type: 'line', x0: -24, x1: 24, y0: thresholds.safe_max, y1: thresholds.safe_max, line: { color: '#00F5D4', dash: 'dot' } });
-    if (Number.isFinite(thresholds.danger_min)) shapes.push({ type: 'line', x0: -24, x1: 24, y0: thresholds.danger_min, y1: thresholds.danger_min, line: { color: '#FF3366', dash: 'dot' } });
+    if (Number.isFinite(thresholds.safe_max)) shapes.push({ type: 'line', x0: -24, x1: 24, y0: thresholds.safe_max, y1: thresholds.safe_max, line: { color: themeColor('--ok', '#6DB894'), dash: 'dot', width: 1 } });
+    if (Number.isFinite(thresholds.danger_min)) shapes.push({ type: 'line', x0: -24, x1: 24, y0: thresholds.danger_min, y1: thresholds.danger_min, line: { color: themeColor('--bad', '#E0625A'), dash: 'dot', width: 1 } });
     const variableLabel = data.label || data.variable || activeRegVar;
-    window.Plotly.react(plot, traces, { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#C9D6E8' }, autosize: true, margin: { l: 55, r: 20, t: 20, b: 45 }, xaxis: { title: 'Hours from now', gridcolor: 'rgba(0,240,255,0.1)' }, yaxis: { title: `${variableLabel} (${data.unit || ''})`, gridcolor: 'rgba(0,240,255,0.1)' }, shapes, legend: { orientation: 'h', y: 1.08 } }, { responsive: true, displaylogo: false });
+    const grid = themeColor('--line', 'rgba(150,178,204,0.1)');
+    const strong = themeColor('--line-strong', 'rgba(150,178,204,0.18)');
+    const mono = themeColor('--font-mono', 'monospace');
+    const narrow = plot.clientWidth > 0 && plot.clientWidth < 560;
+    const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+    // "Now" divides the hindcast from the forecast.
+    shapes.push({ type: 'line', x0: 0, x1: 0, yref: 'paper', y0: 0, y1: 1, line: { color: strong, width: 1, dash: 'dash' } });
+    window.Plotly.react(plot, traces, {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      font: { color: themeColor('--text-2', '#A5B3C1'), family: themeColor('--font-ui', 'sans-serif'), size: 12 },
+      autosize: true,
+      margin: narrow ? { l: 44, r: 10, t: 28, b: 96 } : { l: 56, r: 20, t: 40, b: 46 },
+      hovermode: 'x unified',
+      hoverlabel: { bgcolor: themeColor('--surface-2', '#17232F'), bordercolor: strong, font: { color: themeColor('--text', '#E7ECF1'), family: themeColor('--font-ui', 'sans-serif') } },
+      xaxis: { title: { text: 'Hours from now', font: { size: 11 } }, gridcolor: grid, zerolinecolor: strong, tickfont: { family: mono }, showspikes: true, spikemode: 'across', spikethickness: 1, spikecolor: strong, spikedash: 'solid' },
+      yaxis: { title: { text: `${variableLabel} (${data.unit || ''})`, font: { size: 11 } }, gridcolor: grid, zerolinecolor: strong, tickfont: { family: mono }, rangemode: 'tozero' },
+      shapes,
+      annotations: [{ x: 0, y: 1, xref: 'x', yref: 'paper', text: 'Now', showarrow: false, yanchor: 'bottom', font: { size: 11, color: themeColor('--text-3', '#74808B'), family: mono } }],
+      // On narrow screens the legend sits under the chart instead of over the lines.
+      legend: narrow ? { orientation: 'h', y: -0.32, x: 0, font: { size: 10 } } : { orientation: 'h', y: 1.14, x: 0, font: { size: 11 } }
+    }, { responsive: true, displaylogo: false, displayModeBar: !narrow && !coarse, modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'] });
     const panel = document.getElementById('modelEvaluationPanel');
-    if (panel && evaluation.models) {
-      const rows = Object.entries(evaluation.models).map(([name, model]) => `${name}: RMSE ${model.rmse}, R² ${model.r_squared}`).join(' &nbsp; | &nbsp; ');
+    if (panel) {
+      const names = { nwp_24h_ahead: 'Model forecast (made 24 h earlier)', persistence: 'Persistence ("same as yesterday")', linear_trend: 'Straight-line trend' };
+      const models = Object.entries(evaluation.models || {});
       const matrix = evaluation.confusion_matrix && evaluation.confusion_matrix.matrix;
-      const matrixText = matrix ? Object.entries(matrix).map(([actual, values]) => `${actual}→ S:${values.safe} C:${values.caution} D:${values.danger}`).join(' &nbsp; | &nbsp; ') : 'unavailable';
-      panel.innerHTML = `<strong>Selected model:</strong> ${evaluation.best_model || 'OLS'} &nbsp; <strong>Validation:</strong> ${rows}<br><strong>Confusion matrix:</strong> ${matrixText}`;
+      if (!models.length) {
+        panel.innerHTML = `<p class="model-eval-note">${escapeHtml(evaluation.note || 'Verification unavailable.')}</p>`;
+      } else {
+        const best = models.reduce((a, b) => (Number(b[1].mae) < Number(a[1].mae) ? b : a))[0];
+        const rows = models.map(([name, m]) => `
+            <tr class="${name === best ? 'is-best' : ''}">
+              <th scope="row">${escapeHtml(names[name] || name)}${name === best ? '<span class="eval-best">Lowest error</span>' : ''}</th>
+              <td>${escapeHtml(String(m.mae))}</td><td>${escapeHtml(String(m.rmse))}</td><td>${escapeHtml(String(m.validation_size))} h</td>
+            </tr>`).join('');
+        const matrixRows = matrix ? Object.entries(matrix).map(([actual, v]) => `<tr><th scope="row">${escapeHtml(actual)}</th><td>${escapeHtml(String(v.safe ?? '-'))}</td><td>${escapeHtml(String(v.caution ?? '-'))}</td><td>${escapeHtml(String(v.danger ?? '-'))}</td></tr>`).join('') : '';
+        panel.innerHTML = `
+          <div class="eval-block">
+            <h3>How the last 24 hours compared with ${escapeHtml(evaluation.truth_source || 'the hindcast')}</h3>
+            <table class="eval-table"><thead><tr><th scope="col">Method</th><th scope="col">MAE</th><th scope="col">RMSE</th><th scope="col">Hours</th></tr></thead><tbody>${rows}</tbody></table>
+          </div>
+          ${matrixRows ? `<div class="eval-block">
+            <h3>Safety bands: what happened vs what the model said</h3>
+            <table class="eval-table"><thead><tr><th scope="col">Actual</th><th scope="col">Safe</th><th scope="col">Caution</th><th scope="col">Danger</th></tr></thead><tbody>${matrixRows}</tbody></table>
+          </div>` : ''}`;
+      }
     }
   }
 
@@ -1452,7 +1785,8 @@
     ctx.clearRect(0, 0, w, h);
 
     const data = regressionDataCache;
-    const cfg = REG_VARIABLE_CONFIGS[activeRegVar] || REG_VARIABLE_CONFIGS.wave_height;
+    const th = data.thresholds || {};
+    const cfg = { unit: data.unit || '', safeMax: Number(th.safe_max) || 1, dangerMin: Number(th.danger_min) || 2 };
     const history = data.history || [];
     const predictions = data.predictions || [];
 
@@ -1494,7 +1828,7 @@
     }
 
     // Historical Line
-    ctx.strokeStyle = '#00F0FF';
+    ctx.strokeStyle = themeColor('--text-2', '#A5B3C1');
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     history.forEach((pt, i) => {
@@ -1505,7 +1839,7 @@
     ctx.stroke();
 
     // Regression Future Line
-    ctx.strokeStyle = '#FFB703';
+    ctx.strokeStyle = themeColor('--accent', '#E0559A');
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
@@ -1520,14 +1854,14 @@
 
     // Present marker
     const xNow = toX(0);
-    ctx.strokeStyle = '#00F0FF';
+    ctx.strokeStyle = themeColor('--text-2', '#A5B3C1');
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(xNow, padTop);
     ctx.lineTo(xNow, padTop + plotH);
     ctx.stroke();
 
-    ctx.fillStyle = '#00F0FF';
+    ctx.fillStyle = themeColor('--text-2', '#A5B3C1');
     ctx.beginPath();
     ctx.arc(xNow, toY(history[history.length - 1].value), 5, 0, Math.PI * 2);
     ctx.fill();
@@ -1539,21 +1873,20 @@
     const s = d.summary || {};
     const m = d.metrics || {};
     const p = d.predictions || [];
+    const unit = d.unit || '';
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
 
-    const valCur = document.getElementById('valBtmCurrent');
-    const valMid = document.getElementById('valBtmMid');
-    const valPeak = document.getElementById('valBtmPeak');
-    if (valCur) valCur.textContent = `${Number(s.val_now || 0).toFixed(2)} ${d.unit || ''}`;
-    if (valMid && p.length >= 6) valMid.textContent = `${Number(p[5].predicted_value || 0).toFixed(2)} ${d.unit || ''}`;
-    if (valPeak) valPeak.textContent = `${Number(s.peak_val || 0).toFixed(2)} ${d.unit || ''}`;
-
-    const eqEl = document.getElementById('txtRegEquation');
-    const r2El = document.getElementById('txtRegR2');
-    if (eqEl) eqEl.textContent = m.equation || `Best model: ${(d.model_evaluation || {}).best_model || 'OLS'}`;
-    if (r2El) r2El.textContent = Number(m.r_squared ?? m.rSquared ?? 0).toFixed(3);
-
-    const advBody = document.getElementById('txtRegAdvisoryBody');
-    if (advBody) advBody.textContent = s.advisory_en || 'Prediction data is not available for this location.';
+    setText('valBtmCurrent', `${Number(s.val_now ?? 0).toFixed(2)} ${unit}`);
+    const p6 = p.find(pt => pt.hour_offset === 6);
+    setText('valBtmMid', p6 ? `${Number(p6.predicted_value).toFixed(2)} ${unit}` : '--');
+    setText('subBtmMid', p6 ? `${p6.delta_from_now >= 0 ? '+' : ''}${p6.delta_from_now} ${unit} vs now` : '--');
+    setText('valBtmPeak', `${Number(s.peak_val ?? 0).toFixed(2)} ${unit}`);
+    setText('subBtmPeak', s.peak_hour ? `around +${s.peak_hour} h (worst model)` : 'worst model');
+    setText('txtRegEquation', m.mae !== null && m.mae !== undefined ? `${m.mae} ${unit}` : 'not verified');
+    setText('txtRegR2', m.skill_vs_persistence !== null && m.skill_vs_persistence !== undefined ? Number(m.skill_vs_persistence).toFixed(2) : 'n/a');
+    setText('txtRegAdvisoryBody', s.advisory_en || 'Forecast data is not available for this location.');
+    const box = document.getElementById('boxRegAdvisory');
+    if (box) box.className = `regression-advisory-box ${s.overall_status || 'safe'}`;
   }
 
   // 10. LANGUAGE & UTILITIES
@@ -1593,9 +1926,9 @@
     const translatedElements = {
       txtHeroTagline: 'heroTagline', btnHeroExplore: 'heroExploreCta', btnHeroMap: 'heroMapCta',
       txtBridgeSubtitle: 'bridgeSubtitle', txtSunlightLabel: 'sunlight', txtViewPC: 'viewPC', txtViewPhone: 'viewPhone',
-      txtTelemetryFix: 'telemetryFix', txtLegendTitle: 'legendTitle', txtRegistryTitle: 'registryTitle',
+      txtLegendTitle: 'legendTitle', txtRegistryTitle: 'registryTitle',
       txtDrawerAsk: 'drawerAsk', txtDrawerDismiss: 'drawerDismiss', txtBriefBody: 'briefBody',
-      txtMobChart: 'mobChart', txtMobAlerts: 'mobAlerts', txtMobSpecies: 'mobSpecies',
+      txtMobChart: 'mobChart', txtMobMap: 'mobMap', txtMobAlerts: 'mobAlerts', txtMobSpecies: 'mobSpecies',
       txtMobGraph: 'mobGraph', txtMobChat: 'mobChat'
     };
     Object.entries(translatedElements).forEach(([id, key]) => {
@@ -1610,8 +1943,10 @@
     if (submit && dict.submitBtn) submit.textContent = dict.submitBtn;
     localizeInputPlaceholder(lang);
     [['btnFiltAll', 'filtAll'], ['btnFiltDanger', 'filtDanger'], ['btnFiltCaution', 'filtCaution'], ['btnFiltResolved', 'filtResolved']].forEach(([id, key]) => {
+      // Only the label span: the chip also holds a colour dot and a live count.
       const element = document.getElementById(id);
-      if (element && dict[key]) element.textContent = dict[key];
+      const label = element && (element.querySelector('.filt-label') || element);
+      if (label && dict[key]) label.textContent = dict[key];
     });
     document.querySelectorAll('.sidebar-nav-btn').forEach((button) => {
       const key = `nav${button.dataset.view.charAt(0).toUpperCase()}${button.dataset.view.slice(1)}`;
@@ -1626,9 +1961,9 @@
     renderSpeciesCatalog();
     renderLeafletTacticalZones();
     renderBulletinsList();
-    renderSpeciesMarkers();
     applyTranslatedStaticText(lang);
     localizeDynamicContent(lang);
+    localizeBriefBody(lang);
   }
 
   // Bulletins and advisories arrive in English from the backend. Translate the
@@ -1674,14 +2009,25 @@
 
   function renderQuickQueries() {
     const container = document.getElementById('quickQueriesRow');
-    if (!container) return;
+    const cards = document.getElementById('chatSuggest');
     const dict = I18N[currentLang] || I18N.en;
-    let html = '';
-    dict.queries.forEach(q => {
-      html += `<button type="button" class="quick-query-pill" onclick="window.orcaQuickQuery('${escapeHtml(q.query)}')">${q.label}</button>`;
-    });
-    container.innerHTML = html;
-
+    const queries = dict.queries || I18N.en.queries;
+    const enQueries = I18N.en.queries;
+    if (container) {
+      container.innerHTML = queries.map(q =>
+        `<button type="button" class="quick-query-pill" onclick="window.orcaQuickQuery('${escapeHtml(q.query)}')">${escapeHtml(q.label)}</button>`
+      ).join('');
+    }
+    if (cards) {
+      cards.innerHTML = queries.map((q, i) => {
+        const base = enQueries[i] || {};
+        return `<button type="button" class="chat-suggest-card" style="--i:${i}" onclick="window.orcaQuickQuery('${escapeHtml(q.query)}')">
+            <span class="sg-icon"><i class="ph ph-${escapeHtml(q.icon || base.icon || 'chat-circle-text')} icon" aria-hidden="true"></i></span>
+            <span class="sg-label">${escapeHtml(q.label)}</span>
+            <span class="sg-hint">${escapeHtml(q.hint || base.hint || '')}</span>
+          </button>`;
+      }).join('');
+    }
     // Languages without a hand-written dictionary keep the English prompt that
     // gets sent to the backend, but their visible labels are translated.
     localizeQuickQueryLabels(currentLang);
@@ -1689,7 +2035,7 @@
 
   async function localizeInputPlaceholder(lang) {
     const input = document.getElementById('tacticalQueryInput');
-    if (!input || lang === 'en' || I18N[lang]) return;
+    if (!input || lang === 'en' || (I18N[lang] && I18N[lang].inputPlaceholder)) return;
     const original = input.getAttribute('data-original-placeholder') || input.placeholder;
     if (!original) return;
     input.setAttribute('data-original-placeholder', original);
@@ -1699,8 +2045,8 @@
   }
 
   async function localizeQuickQueryLabels(lang) {
-    if (lang === 'en' || I18N[lang]) return;
-    const labels = Array.from(document.querySelectorAll('#quickQueriesRow .quick-query-pill'));
+    if (lang === 'en' || (I18N[lang] && I18N[lang].queries)) return;
+    const labels = Array.from(document.querySelectorAll('#quickQueriesRow .quick-query-pill, #chatSuggest .sg-label, #chatSuggest .sg-hint'));
     if (!labels.length) return;
     const translated = await translateBatchForLanguage(
       labels.map(button => button.textContent.trim()),
@@ -1710,6 +2056,17 @@
     labels.forEach((button, index) => {
       if (translated[index]) button.textContent = translated[index];
     });
+  }
+
+  // Languages without a hand-written brief get the English text machine-translated.
+  async function localizeBriefBody(lang) {
+    const el = document.getElementById('txtBriefBody');
+    if (!el || (I18N[lang] && I18N[lang].briefBody)) return;
+    const english = I18N.en.briefBody;
+    el.textContent = english;
+    if (lang === 'en') return;
+    const translated = await translateForLanguage(english, lang);
+    if (lang === currentLang && translated) el.textContent = translated;
   }
 
   window.orcaQuickQuery = function(queryText) {
@@ -1746,7 +2103,7 @@
 
   function speakerButtonMarkup(text) {
     const label = escapeHtml(t('chatSpeak', 'Speak this response'));
-    return `<button type="button" class="chat-speak-btn" data-speak-text="${escapeHtml(String(text).replace(/[*_`#]/g, ''))}" data-speak-lang="${speechLanguage(currentLang)}" title="${label}" aria-label="${label}">🔊</button>`;
+    return `<button type="button" class="chat-speak-btn" data-speak-text="${escapeHtml(String(text).replace(/[*_`#]/g, ''))}" data-speak-lang="${speechLanguage(currentLang)}" title="${label}" aria-label="${label}"><i class="ph ph-speaker-high icon" aria-hidden="true"></i>Listen</button>`;
   }
 
   // Translation cache: repeated strings (quick queries, advisories, static
@@ -1844,7 +2201,6 @@
 
   // Master Initialization
   function initDashboard() {
-    initHeroParticles();
     initVoiceRecognition();
     initLanguageSync();
     setLanguage(currentLang);
@@ -1852,17 +2208,49 @@
     // than fabricated around the default location.
     fetchLiveTelemetry(vesselLocation.latitude, vesselLocation.longitude);
     fetchLiveBulletins(vesselLocation.latitude, vesselLocation.longitude);
+    fetchEcosystem(vesselLocation.latitude, vesselLocation.longitude);
     if (isHeatmapActive) fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
     updateGpsButton();
+    // Upstream models update hourly and the backend caches for 10-15 min, so
+    // polling every 2 minutes is plenty (5 s polling caused rate limiting).
     telemetryTimer = window.setInterval(() => {
       if (document.hidden || !vesselLocation) return;
       const { latitude, longitude } = vesselLocation;
       fetchLiveTelemetry(latitude, longitude);
       fetchLiveBulletins(latitude, longitude);
       if (isHeatmapActive) fetchRiskHeatmap(latitude, longitude);
-    }, 5000);
+    }, 120000);
+    initSpeciesToolbar();
     renderSpeciesCatalog();
     loadRegressionData('wave_height');
+    initRoutePlanner();
+    if (currentActiveView === 'dashboard') initLeafletMap();
+    const chatPlace = document.getElementById('chatPlace');
+    if (chatPlace) chatPlace.textContent = vesselLocation.name;
+    const changePlace = document.getElementById('btnChatChangePlace');
+    if (changePlace) changePlace.addEventListener('click', () => {
+      window.location.hash = 'map';
+      setTimeout(() => { const box = document.getElementById('inputCustomLocation'); if (box) box.focus(); }, 300);
+    });
+    const verdictAsk = document.getElementById('btnVerdictAsk');
+    if (verdictAsk) verdictAsk.addEventListener('click', () => {
+      switchActiveView('chat');
+      triggerTacticalQuery('Is it safe to go fishing here today, and why?');
+    });
+    const verdictRoute = document.getElementById('btnVerdictRoute');
+    if (verdictRoute) verdictRoute.addEventListener('click', () => {
+      switchActiveView('map');
+      const body = document.getElementById('routePlannerBody');
+      if (body) body.hidden = false;
+      const to = document.getElementById('inputRouteTo');
+      if (to) setTimeout(() => to.focus(), 200);
+    });
+
+    // Deep links: index.html#map, #chat, #alerts, #species, #analytics
+    const VIEWS = ['dashboard', 'map', 'alerts', 'species', 'analytics', 'chat'];
+    const fromHash = () => { const v = (window.location.hash || '').replace('#', ''); if (VIEWS.includes(v)) switchActiveView(v); };
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
 
     // Sidebar navigation clicks
     document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
@@ -1898,21 +2286,10 @@
     const gpsLocate = document.getElementById('btnCurrentGpsLocation');
     if (gpsLocate) gpsLocate.addEventListener('click', startGpsTracking);
     const locationInput = document.getElementById('inputCustomLocation');
-    const submitLocation = () => {
-      const resolved = resolveLocationInput(locationInput && locationInput.value);
+    const submitLocation = async () => {
+      const resolved = await resolveLocationAnywhere(locationInput && locationInput.value);
       if (!resolved) {
-        // Try to use the input as coordinates if it looks like coordinates
-        const coords = locationInput.value.split(/[,\s]+/).map(Number);
-        if (coords.length === 2 && coords.every(Number.isFinite) && Math.abs(coords[0]) <= 90 && Math.abs(coords[1]) <= 180) {
-          stopGpsTracking();
-          updateLocation(coords[0], coords[1], `Coordinates: ${coords[0].toFixed(2)}°, ${coords[1].toFixed(2)}°`, 'manual');
-          if (locationInput) locationInput.value = '';
-          return;
-        }
-
-        // Show a more helpful message
-        const availablePorts = Object.keys(MARITIME_PORTS_CATALOG).map(k => MARITIME_PORTS_CATALOG[k].name).join(', ');
-        window.alert(`Location not found. Try:\n\n• Port names: ${availablePorts}\n• Coordinates: 15.24, 73.80\n• Click Quick Ports chips below`);
+        window.alert('Location not found. Try a port or town name (e.g. "Chennai", "Durban") or coordinates such as "15.24, 73.80" or "33.9S 18.4E".');
         return;
       }
       stopGpsTracking();
@@ -2015,7 +2392,11 @@
     const btnSunlight = document.getElementById('btnSunlightToggle');
     if (btnSunlight) {
       btnSunlight.addEventListener('click', () => {
-        document.body.classList.toggle('deck-sunlight');
+        const light = document.body.classList.toggle('deck-sunlight');
+        try { localStorage.setItem('orca_theme', light ? 'light' : 'dark'); } catch (e) {}
+        // Charts and map layers read colours from CSS variables; redraw them.
+        if (regressionDataCache) drawRegressionPlotly();
+        if (isHeatmapActive && vesselLocation) fetchRiskHeatmap(vesselLocation.latitude, vesselLocation.longitude);
       });
     }
 
@@ -2031,12 +2412,19 @@
     const recalc = document.getElementById('btnRecalcRegression');
     if (recalc) recalc.addEventListener('click', () => loadRegressionData(activeRegVar));
 
+    // Fetch the chart library once the page is idle, so Forecast opens ready.
+    const prefetchPlotly = () => ensurePlotly().then(() => { if (regressionDataCache) drawRegressionPlotly(); }).catch(() => {});
+    const whenIdle = cb => (window.requestIdleCallback ? window.requestIdleCallback(cb, { timeout: 4000 }) : window.setTimeout(cb, 1500));
+    if (document.readyState === 'complete') whenIdle(prefetchPlotly);
+    else window.addEventListener('load', () => whenIdle(prefetchPlotly), { once: true });
+
     // Master Clock
     setInterval(() => {
       const clock = document.getElementById('bridgeMasterClock');
       if (clock) {
         const now = new Date();
-        clock.textContent = `${now.toTimeString().split(' ')[0]} IST`;
+        const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace('_', ' ');
+        clock.textContent = `${now.toTimeString().slice(0, 5)} ${tz} · ${now.toISOString().slice(11, 16)} UTC`;
       }
     }, 1000);
   }
@@ -2138,7 +2526,67 @@
     initDashboard();
   }
 
+  // 11. SAFE ROUTE PLANNER
+  function initRoutePlanner() {
+    const toggle = document.getElementById('btnRouteToggle');
+    const body = document.getElementById('routePlannerBody');
+    const btn = document.getElementById('btnPlanRoute');
+    if (toggle && body) toggle.addEventListener('click', () => { body.hidden = !body.hidden; });
+    if (btn) btn.addEventListener('click', planSafeRoute);
+  }
+
+  async function planSafeRoute() {
+    const out = document.getElementById('routeResult');
+    const fromRaw = (document.getElementById('inputRouteFrom') || {}).value || '';
+    const toRaw = (document.getElementById('inputRouteTo') || {}).value || '';
+    const vessel = (document.getElementById('selectRouteVessel') || {}).value || 'small';
+    const show = html => { if (out) out.innerHTML = html; };
+    if (!toRaw.trim()) { show('<p class="route-error">Enter a destination.</p>'); return; }
+    show('<p>Resolving places…</p>');
+    const from = fromRaw.trim() ? await resolveLocationAnywhere(fromRaw) : { lat: vesselLocation.latitude, lon: vesselLocation.longitude, name: vesselLocation.name };
+    const to = await resolveLocationAnywhere(toRaw);
+    if (!from || !to) { show('<p class="route-error">Could not find the start or destination.</p>'); return; }
+    show('<p>Checking forecast along possible routes…</p>');
+    try {
+      const res = await fetch(`${BACKEND_API_BASE}/route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start_latitude: from.lat, start_longitude: from.lon, end_latitude: to.lat, end_longitude: to.lon, vessel })
+      });
+      const data = await res.json();
+      if (!res.ok) { show(`<p class="route-error">${escapeHtml(data.detail || 'Route planning failed.')}</p>`); return; }
+      drawRoute(data);
+      const cls = { DIRECT_OK: 'ok', DETOUR: 'detour', NO_SAFE_ROUTE: 'blocked' }[data.verdict] || '';
+      const rc = data.route_conditions || {};
+      show(`
+        <div class="route-verdict ${cls}">${escapeHtml(data.verdict.replace(/_/g, ' '))}</div>
+        <p>${escapeHtml(data.summary)}</p>
+        <p class="route-stats">${data.distance_nm} NM • ~${data.eta_hours} h at ${data.vessel.speed_kt} kt • max waves ${rc.max_wave_m ?? '-'} m • max wind ${rc.max_wind_kt ?? '-'} kt</p>
+        <p class="route-limits">${escapeHtml(data.limitations)}</p>`);
+    } catch (e) {
+      show('<p class="route-error">Route service unreachable.</p>');
+    }
+  }
+
+  function drawRoute(data) {
+    if (!leafletMap) { switchActiveView('map', { instant: true }); }
+    if (!leafletMap || !routeLayer) return;
+    routeLayer.clearLayers();
+    const pts = (data.waypoints || []).map(w => [w.latitude, w.longitude]);
+    if (pts.length < 2) return;
+    const color = data.verdict === 'NO_SAFE_ROUTE' ? themeColor('--bad', '#E0625A') : (data.verdict === 'DETOUR' ? themeColor('--warn', '#E2944F') : themeColor('--ok', '#6DB894'));
+    L.polyline(pts, { color, weight: 4, opacity: 0.9, dashArray: data.verdict === 'NO_SAFE_ROUTE' ? '8 6' : null }).addTo(routeLayer);
+    pts.forEach((p, i) => {
+      const label = i === 0 ? 'Start' : (i === pts.length - 1 ? 'Destination' : `Waypoint ${i}`);
+      L.circleMarker(p, { radius: i === 0 || i === pts.length - 1 ? 7 : 4, color: '#fff', weight: 1.5, fillColor: color, fillOpacity: 1 })
+        .bindTooltip(`${label}: ${formatCoord(p[0], p[1], 3)}`, { direction: 'top' }).addTo(routeLayer);
+    });
+    leafletMap.fitBounds(L.latLngBounds(pts).pad(0.2));
+  }
+
   window.ORCA = {
+    apiBase: BACKEND_API_BASE,
+    getLocation: () => (vesselLocation ? { latitude: vesselLocation.latitude, longitude: vesselLocation.longitude, name: vesselLocation.name } : null),
     switchActiveView,
     setLanguage,
     triggerTacticalQuery,

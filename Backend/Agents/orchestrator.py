@@ -1,16 +1,33 @@
 # backend/agents/orchestrator.py
+"""
+Multi-agent orchestrator.
+
+    conversational_agent ─┐
+    weather_agent ────────┤
+    marine_agent ─────────┼─► consensus_agent ─► calculate_risk ─► recommendation_agent
+    geospatial_agent ─────┤      (cross-checks)     (scoring)         (advice + LLM)
+    official_alerts ──────┘
+
+Every stage is recorded in `agent_trace` so the UI can show which agent
+contributed what, how long it took, and whether it succeeded.
+"""
 import asyncio
 import logging
 import re
-from typing import Optional, Union, Tuple
+import time
+from typing import Optional, Tuple, Union
 
+from Agents.consensus_agent import build_consensus
 from Agents.conversational_agent import conversational_agent
-from Agents.weather_agent import weather_agent
-from Agents.marine_agent import marine_agent
+from Agents.ecosystem_agent import ecosystem_agent, ecosystem_summary
 from Agents.geospatial_agent import geospatial_agent
-from Agents.recommendation_agent import recommendation_agent
 from Agents.gps_agent import gps_agent
+from Agents.marine_agent import marine_agent
+from Agents.recommendation_agent import recommendation_agent
+from Agents.weather_agent import weather_agent
 from Models.schemas import Location
+from Services.http_cache import UpstreamError, cached_get_json
+from Tools.official_alerts import get_official_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -23,65 +40,121 @@ INTENT_NEXT_ACTION = {
     "GENERAL_QUERY": "conversational_response",
 }
 
-# Named map-zone IDs used by the UI (coordinates are filled from live GPS, not a fixed harbour)
+# Zone IDs are presentation labels used by the map UI only; they carry no
+# coordinates. Analysis always uses a real position.
 KNOWN_ZONES = {
-    # Zone IDs are presentation labels only. They intentionally do not contain
-    # coordinates; all analysis must use a verified GPS fix or an explicit
-    # location in the request.
     "zone-danger-se": {"name": "Hazard sector (live weather)"},
     "zone-wind-ne": {"name": "Caution sector (live weather)"},
     "zone-pfz-sw": {"name": "Recommended fishing sector (live SST)"},
 }
 
+# Fast path for common Indian ports (offline, no geocoding round trip).
+# Anything else is resolved globally via geocoding in `resolve_location_from_text`.
+_PORTS = [
+    (("goa", "panaji", "mormugao"), 15.42, 73.78),
+    (("mumbai", "bombay"), 18.92, 72.83),
+    (("kochi", "cochin"), 9.97, 76.24),
+    (("chennai", "madras"), 13.08, 80.28),
+    (("visakhapatnam", "vizag"), 17.68, 83.22),
+    (("mangalore", "mangaluru"), 12.87, 74.84),
+    (("porbandar",), 21.64, 69.61),
+    (("kanyakumari",), 8.08, 77.55),
+    (("kolkata", "calcutta"), 22.55, 88.31),
+    (("netrani",), 14.01, 74.32),
+    (("malvan",), 16.06, 73.47),
+    (("karwar",), 14.81, 74.13),
+    (("ratnagiri",), 16.99, 73.30),
+    (("betul",), 15.14, 73.95),
+]
+
+# Lookahead so matches can overlap ("safe to fish near Durban" must yield "Durban").
+_PREPOSITIONS = ("near", "at", "in", "off", "around", "from", "to", "outside")
+_PLACE_PATTERN = re.compile(
+    r"\b(?:" + "|".join(_PREPOSITIONS) + r")\s+(?=([A-Za-z][A-Za-z .'-]{2,40}?)"
+    r"(?:[?.!,]|\s+(?:today|tomorrow|now|tonight|coast|harbou?r|port|beach|sea|this|right)\b|$))",
+    re.IGNORECASE,
+)
+_PLACE_STOPWORDS = {"the sea", "sea", "the morning", "the evening", "night", "risk", "danger", "safe"}
+
 
 def extract_location_and_zone_from_text(text: str) -> Tuple[Optional[Location], Optional[str]]:
-    """Detect explicitly mentioned geographical points, cities, ports, or coordinates in text."""
+    """Synchronous detection of explicit coordinates or known port names."""
     low = (text or "").lower()
-
-    # Explicit place name recognizer
-    if "goa" in low or "panaji" in low:
-        return Location(latitude=15.42, longitude=73.78), None
-    if "mumbai" in low or "bombay" in low:
-        return Location(latitude=18.92, longitude=72.83), None
-    if "kochi" in low or "cochin" in low:
-        return Location(latitude=9.97, longitude=76.24), None
-    if "chennai" in low or "madras" in low:
-        return Location(latitude=13.08, longitude=80.28), None
-    if "visakhapatnam" in low or "vizag" in low:
-        return Location(latitude=17.68, longitude=83.22), None
-    if "mangalore" in low:
-        return Location(latitude=12.87, longitude=74.84), None
-    if "porbandar" in low:
-        return Location(latitude=21.64, longitude=69.61), None
-    if "kanyakumari" in low:
-        return Location(latitude=8.08, longitude=77.55), None
-    if "kolkata" in low or "calcutta" in low:
-        return Location(latitude=22.55, longitude=88.31), None
-    if "netrani" in low:
-        return Location(latitude=14.01, longitude=74.32), None
-    if "malvan" in low:
-        return Location(latitude=16.06, longitude=73.47), None
-    if "karwar" in low:
-        return Location(latitude=14.81, longitude=74.13), None
-    if "ratnagiri" in low:
-        return Location(latitude=16.99, longitude=73.30), None
-    if any(k in low for k in ["mormugao", "fairway", "shipping channel"]):
-        return Location(latitude=15.42, longitude=73.78), None
-    if "betul" in low:
-        return Location(latitude=15.14, longitude=73.95), None
-
-    # Regex search for explicit decimal coordinates e.g. "18.92, 72.83"
-    coord_match = re.search(r'(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)', low)
+    coord_match = re.search(r"(-?\d{1,2}\.\d+)\s*°?\s*([ns])?[,\s]+(-?\d{1,3}\.\d+)\s*°?\s*([ew])?", low)
     if coord_match:
         try:
-            lat = float(coord_match.group(1))
-            lon = float(coord_match.group(2))
+            lat = float(coord_match.group(1)) * (-1 if coord_match.group(2) == "s" else 1)
+            lon = float(coord_match.group(3)) * (-1 if coord_match.group(4) == "w" else 1)
             if -90 <= lat <= 90 and -180 <= lon <= 180:
                 return Location(latitude=lat, longitude=lon), None
         except ValueError:
             pass
-
+    for names, lat, lon in _PORTS:
+        if any(re.search(rf"\b{re.escape(n)}\b", low) for n in names):
+            return Location(latitude=lat, longitude=lon), None
     return None, None
+
+
+async def geocode_place(name: str) -> Optional[dict]:
+    """Global place lookup via Open-Meteo geocoding (cached for a week)."""
+    name = (name or "").strip()
+    if len(name) < 3:
+        return None
+    try:
+        resp = await cached_get_json(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            {"name": name, "count": 1, "language": "en"},
+            ttl=7 * 24 * 3600,
+        )
+    except UpstreamError:
+        return None
+    results = (resp.data or {}).get("results") or []
+    if not results:
+        return None
+    r = results[0]
+    label = ", ".join(x for x in (r.get("name"), r.get("admin1"), r.get("country")) if x)
+    return {"latitude": float(r["latitude"]), "longitude": float(r["longitude"]), "name": label}
+
+
+async def resolve_location_from_text(text: str) -> Tuple[Optional[Location], Optional[str]]:
+    """Coordinates / known port first, then a geocoded place name ("near Durban")."""
+    loc, _ = extract_location_and_zone_from_text(text)
+    if loc:
+        return loc, None
+    candidates = [m.group(1).strip(" .'-") for m in _PLACE_PATTERN.finditer(text or "")]
+    for candidate in reversed(candidates):  # the last place mentioned wins
+        words = candidate.lower().split()
+        if candidate.lower() in _PLACE_STOPWORDS or any(w in _PREPOSITIONS for w in words):
+            continue
+        place = await geocode_place(candidate)
+        if place:
+            return Location(latitude=place["latitude"], longitude=place["longitude"]), place["name"]
+    return None, None
+
+
+# A metre figure only counts as a wave height when a wave word sits right next
+# to it ("3 m waves", "waves are 4 meters", "swell 2.5 m", "3 मीटर लहरें").
+# Boat lengths ("9 m boat"), depths, distances and m/s wind speeds are ignored.
+_NUM = r'(\d+(?:\.\d+)?)'
+_METRE = r'(?:m|mtr|mtrs|meter|meters|metre|metres|मीटर)(?![/\w])'
+_WAVE_WORD = r'(?:waves?|swells?|breakers?|surf|sea\s+state|लहर(?:ें|ों)?)'
+_NOT_WAVE_AFTER = (r'(?!\s*(?:long|length|boat|boats|vessel|craft|trawler|ship|canoe|dinghy|'
+                   r'deep|depth|offshore|away|from|off|nm|nautical|km|kilomet))')
+_WAVE_AFTER_NUMBER = re.compile(
+    _NUM + r'\s*' + _METRE + r'\s+(?:(?:high|tall|big|rough|heavy|ki|की|के)\s+)?' + _WAVE_WORD)
+_WAVE_BEFORE_NUMBER = re.compile(
+    _WAVE_WORD + r'(?:\s+(?!boat|vessel|craft|trawler|ship)[^\s\d]+){0,3}?\s+' + _NUM + r'\s*' + _METRE + _NOT_WAVE_AFTER)
+
+
+def _extract_wave_height(low: str) -> Optional[float]:
+    """Wave height in metres the user described, or None. Expects lowercase text."""
+    for pattern in (_WAVE_AFTER_NUMBER, _WAVE_BEFORE_NUMBER):
+        for match in pattern.finditer(low):
+            value = float(match.group(1))
+            # Nothing above 20 m is a plausible wave description.
+            if 0 < value <= 20.0:
+                return value
+    return None
 
 
 def extract_user_conditions(text: str) -> dict:
@@ -89,7 +162,6 @@ def extract_user_conditions(text: str) -> dict:
     conds = {}
     low = (text or "").lower()
 
-    # Wind speed extraction (knots, km/h, m/s)
     wind_kt = re.search(r'(\d+(?:\.\d+)?)\s*(?:knot|knots|kt|kts)\b', low)
     if wind_kt:
         conds["wind_speed_kts"] = float(wind_kt.group(1))
@@ -102,21 +174,41 @@ def extract_user_conditions(text: str) -> dict:
             if wind_ms:
                 conds["wind_speed_kts"] = float(wind_ms.group(1)) * 1.94384
 
-    # Wave height extraction (e.g. 3m wave, 3.5 meter, 4.0m)
-    wave_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:m|meter|meters|metre|metres|मीटर)\b(?:\s*(?:wave|waves|swell|लहर))?', low)
-    if wave_match:
-        val = float(wave_match.group(1))
-        # Ignore values > 20m as they typically refer to depths, distance, or craft length (e.g. 34m depth)
-        if val <= 20.0 and "depth" not in low[max(0, wave_match.start() - 10):wave_match.end()]:
-            conds["wave_height"] = val
+    wave_height = _extract_wave_height(low)
+    if wave_height is not None:
+        conds["wave_height"] = wave_height
 
-    # Thunderstorm & Lightning indicators
     if any(k in low for k in ["lightning", "तड़ित", "बिजली", "thunder"]):
         conds["lightning_risk"] = "HIGH"
     if any(k in low for k in ["squall", "cyclone", "storm", "toofan", "तूफान", "झंझावात", "red alert"]):
         conds["storm_risk"] = "HIGH"
-
     return conds
+
+
+# ---------------------------------------------------------------------------
+# Deterministic risk scoring
+# ---------------------------------------------------------------------------
+def _wave_tier(h: Optional[float]) -> int:
+    if h is None:
+        return 0
+    return 3 if h >= 3.5 else 2 if h >= 2.5 else 1 if h >= 1.8 else 0
+
+
+def _wind_tier(w: Optional[float]) -> int:
+    if w is None:
+        return 0
+    return 3 if w >= 35 else 2 if w >= 25 else 1 if w >= 18 else 0
+
+
+_WAVE_POINTS = {0: 0, 1: 20, 2: 35, 3: 50}
+_WIND_POINTS = {0: 0, 1: 15, 2: 30, 3: 45}
+_OFFICIAL_POINTS = {0: 5, 1: 15, 2: 40, 3: 60}
+
+
+def _as_dict(obj) -> dict:
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    return obj if isinstance(obj, dict) else {}
 
 
 def calculate_risk(
@@ -126,123 +218,243 @@ def calculate_risk(
     intent: Optional[str] = None,
     user_message: Optional[str] = None,
     zone_id: Optional[str] = None,
+    consensus: Optional[dict] = None,
 ) -> dict:
     """
-    Calculate comprehensive marine risk deterministically.
-    Considers:
-      1. Emergency distress intent (immediate 100/100 Critical override).
-      2. Target / active nautical safety zones (e.g. Red Alert squall zone).
-      3. Live sensor readings (normalized units: m/s -> knots).
-      4. Inquired / hypothetical conditions in user query (what-if evaluation).
-      5. Marine sanctuaries and restricted maritime boundaries.
+    Deterministic, explainable marine risk score (0-100).
+
+    Uses the consensus agent's conservative `effective` values, the 12 h
+    outlook, pressure trend, official alerts and protected areas. Missing data
+    is never scored as calm: if wind and waves are both unknown the level is
+    at least MEDIUM and confidence is "low".
     """
-    score = 0
-    reasons = []
-
-    # Safe conversion if inputs are Pydantic models or None
-    m_dict = marine.model_dump() if hasattr(marine, "model_dump") else (marine if isinstance(marine, dict) else {})
-    w_dict = weather.model_dump() if hasattr(weather, "model_dump") else (weather if isinstance(weather, dict) else {})
-    g_dict = geospatial.model_dump() if hasattr(geospatial, "model_dump") else (geospatial if isinstance(geospatial, dict) else {})
-
-    marine = m_dict
-    weather = w_dict
-    geospatial = g_dict
-
+    marine, weather, geospatial = _as_dict(marine), _as_dict(weather), _as_dict(geospatial)
     low_msg = (user_message or "").lower()
 
-    # 1. EMERGENCY DISTRESS OVERRIDE
-    is_emergency = (
-        intent == "EMERGENCY" or
-        any(k in low_msg for k in [
-            "mayday", "sinking", "man overboard", "engine failure",
-            "sos", "distress", "boat sinking", "fire on board",
-            "डूब", "आपातकाल", "जान जोखिम", "नाव डूब"
-        ])
-    )
+    is_emergency = intent == "EMERGENCY" or any(k in low_msg for k in [
+        "mayday", "sinking", "man overboard", "engine failure", "sos", "distress",
+        "boat sinking", "fire on board", "डूब", "आपातकाल", "जान जोखिम", "नाव डूब",
+    ])
     if is_emergency:
         return {
             "risk_score": 100,
             "risk_level": "CRITICAL",
             "reasons": [
                 "EMERGENCY DISTRESS DETECTED: Immediate threat to vessel/crew life",
-                "Stand by on VHF Channel 16 immediately",
-                "Alerting Indian Coast Guard Maritime Rescue Coordination Centre (National Toll-Free: 1554 / VHF Ch 16)"
-            ]
+                "Transmit MAYDAY on VHF Channel 16 / DSC distress and activate your EPIRB if fitted",
+                "Contact the nearest Maritime Rescue Coordination Centre (India Coast Guard: 1554)",
+            ],
+            "confidence": "high",
+            "data_gaps": [],
+            "findings": [],
+            "outlook": {},
         }
 
-    # 2. Extract hypothetical/queried conditions from user message
+    consensus = consensus or build_consensus(marine, weather)
+    eff = consensus.get("effective") or {}
     user_conds = extract_user_conditions(user_message or "")
+    score = 0
+    reasons: list[str] = []
 
-    # 3. Wave height evaluation (Douglas scale) — live marine / queried values only
-    raw_wave = float(marine.get("wave_height") or weather.get("wave_height") or 0.0)
-    queried_wave = float(user_conds.get("wave_height") or 0.0)
-    wave_h = max(raw_wave, queried_wave)
+    # --- Current sea state (conservative consensus values, or a what-if) ---
+    # A condition the user describes is scored only when it is worse than the
+    # measured value (conservative), and the reason says where it came from.
+    wave_h = eff.get("wave_height")
+    wave_note = ""
+    if user_conds.get("wave_height") is not None and user_conds["wave_height"] > (wave_h or 0.0):
+        wave_h = user_conds["wave_height"]
+        wave_note = ", as you described"
+    wave_t = _wave_tier(wave_h)
+    score += _WAVE_POINTS[wave_t]
+    if wave_t == 3:
+        reasons.append(f"Severe waves ({wave_h:.1f} m{wave_note}) - dangerous for all small craft")
+    elif wave_t == 2:
+        reasons.append(f"Rough sea ({wave_h:.1f} m{wave_note}) - vessels under 20 m use extreme caution")
+    elif wave_t == 1:
+        reasons.append(f"Moderate waves ({wave_h:.1f} m{wave_note})")
 
-    if wave_h >= 3.5:
-        score += 50
-        reasons.append(f"Severe wave height ({wave_h:.1f}m) - dangerous for all small craft")
-    elif wave_h >= 2.5:
-        score += 35
-        reasons.append(f"Rough sea swell ({wave_h:.1f}m) - vessels < 20m advised extreme caution")
-    elif wave_h >= 1.8:
-        score += 20
-        reasons.append(f"Moderate wave swell ({wave_h:.1f}m)")
+    wind = eff.get("wind_speed")
+    wind_note = ""
+    if user_conds.get("wind_speed_kts") is not None and user_conds["wind_speed_kts"] > (wind or 0.0):
+        wind = user_conds["wind_speed_kts"]
+        wind_note = ", as you described"
+    wind_t = _wind_tier(wind)
+    score += _WIND_POINTS[wind_t]
+    if wind_t == 3:
+        reasons.append(f"Gale-force wind ({wind:.0f} kt{wind_note}) - extreme capsize hazard")
+    elif wind_t == 2:
+        reasons.append(f"Strong wind ({wind:.0f} kt{wind_note}) - open boats unsafe")
+    elif wind_t == 1:
+        reasons.append(f"Fresh wind ({wind:.0f} kt{wind_note})")
 
-    # 4. Wind speed — weather_agent already returns knots
-    raw_wind = float(weather.get("wind_speed") or 0.0)
-    queried_wind = float(user_conds.get("wind_speed_kts") or 0.0)
-    wind_spd = max(raw_wind, queried_wind)
+    gust = eff.get("wind_gusts")
+    if gust is not None and gust >= 40:
+        score += 25
+        reasons.append(f"Dangerous gusts up to {gust:.0f} kt")
+    elif gust is not None and gust >= 30 and wind_t < 2:
+        score += 12
+        reasons.append(f"Strong gusts up to {gust:.0f} kt")
 
-    if wind_spd >= 35.0:
-        score += 45
-        reasons.append(f"Severe gale wind speed ({wind_spd:.1f} kts) - extreme capsize hazard")
-    elif wind_spd >= 25.0:
-        score += 30
-        reasons.append(f"Strong sustained winds ({wind_spd:.1f} kts) - open canoes unsafe")
-    elif wind_spd >= 18.0:
-        score += 15
-        reasons.append(f"Brisk winds ({wind_spd:.1f} kts)")
-
-    # 5. Lightning & Storm evaluation
     lightning = user_conds.get("lightning_risk") or weather.get("lightning_risk")
     storm = user_conds.get("storm_risk") or weather.get("storm_risk")
-
     if lightning == "HIGH":
         score += 40
-        reasons.append("Active lightning cell lock in sector")
-
+        reasons.append("Thunderstorm / lightning reported at this position")
     if storm == "HIGH":
-        score += 50
-        reasons.append("Squall or storm front detected")
+        score += 40
+        reasons.append("Squall or storm conditions")
+    elif storm == "MEDIUM":
+        score += 8
 
-    # 6. Geospatial protected area & boundary evaluation
+    # --- 12 h outlook: only counts when worse than now ---
+    wave_ahead_t = _wave_tier(eff.get("wave_height_max_12h"))
+    wind_ahead_t = _wind_tier(eff.get("wind_speed_max_12h"))
+    outlook_points = 0
+    if wave_ahead_t > wave_t:
+        outlook_points += (_WAVE_POINTS[wave_ahead_t] - _WAVE_POINTS[wave_t]) * 0.7
+        reasons.append(f"Forecast: waves building to {eff['wave_height_max_12h']:.1f} m within 12 h")
+    if wind_ahead_t > wind_t:
+        outlook_points += (_WIND_POINTS[wind_ahead_t] - _WIND_POINTS[wind_t]) * 0.7
+        reasons.append(f"Forecast: wind rising to {eff['wind_speed_max_12h']:.0f} kt within 12 h")
+    if eff.get("storm_expected_12h") and lightning != "HIGH":
+        outlook_points += 20
+        reasons.append("Forecast: thunderstorms expected within 12 h")
+    score += int(round(outlook_points))
+
+    if eff.get("pressure_trend") == "severe":
+        score += 25
+        reasons.append("Barometric pressure falling rapidly - approaching weather system")
+    elif eff.get("pressure_trend") == "falling":
+        score += 10
+        reasons.append("Barometric pressure falling - weather may deteriorate")
+
+    # --- Official warnings (INCOIS / GDACS) ---
+    official = consensus.get("official_alerts") or []
+    if official:
+        top = official[0]
+        points = _OFFICIAL_POINTS.get(int(top.get("severity", 1)), 15)
+        if any(a.get("kind") == "Tsunami" for a in official):
+            points = max(points, 80)
+        score += points
+        for alert in official[:3]:
+            where = f" - {alert['district']}" if alert.get("district") else ""
+            reasons.append(f"OFFICIAL {alert['source']}: {alert.get('alert') or alert['kind']} ({alert['level']}){where}, {alert['distance_km']:.0f} km away")
+
+    # --- Protected / restricted areas ---
     if geospatial.get("inside_protected_area") or geospatial.get("restricted_zone"):
         score += 50
-        sanctuary_notes = geospatial.get("restrictions", [])
-        if sanctuary_notes:
-            for sn in sanctuary_notes:
-                if sn not in reasons:
-                    reasons.append(sn)
-        else:
-            reasons.append("Vessel is inside a restricted or marine sanctuary zone")
+        notes = geospatial.get("restrictions") or ["Vessel is inside a restricted or protected marine area"]
+        reasons.extend(n for n in notes if n not in reasons)
     elif geospatial.get("near_boundary"):
         score += 25
-        reasons.append("Vessel is operating close to restricted boundary")
+        reasons.append("Vessel is close to a protected or restricted boundary")
 
-    # 7. Final Risk Tier Mapping
+    # --- Missing data must never read as "safe" ---
+    gaps = consensus.get("data_gaps") or []
+    if consensus.get("no_sea_coverage"):
+        reasons.append("Position is on land or outside marine model coverage - no sea-state assessment possible")
+        gaps = ["sea state (not at sea)"]
+    elif len(gaps) == 2:
+        score = max(score, 30)
+        reasons.append("Live wind and wave data unavailable - safety cannot be confirmed; check official forecasts")
+    elif gaps:
+        score += 15
+        reasons.append(f"Live {gaps[0]} unavailable - assessment is incomplete")
+
+    score = min(int(round(score)), 100)
     if score >= 80:
-        risk_level = "CRITICAL"
+        level = "CRITICAL"
     elif score >= 55:
-        risk_level = "HIGH"
+        level = "HIGH"
     elif score >= 30:
-        risk_level = "MEDIUM"
+        level = "MEDIUM"
     else:
-        risk_level = "LOW"
+        level = "LOW"
 
     return {
-        "risk_score": min(score, 100),
-        "risk_level": risk_level,
+        "risk_score": score,
+        "risk_level": level,
         "reasons": reasons,
+        "confidence": consensus.get("confidence", "medium"),
+        "data_gaps": gaps,
+        "findings": consensus.get("findings", []),
+        "outlook": {
+            "wave_height_max_12h": eff.get("wave_height_max_12h"),
+            "wind_speed_max_12h": eff.get("wind_speed_max_12h"),
+            "wind_gusts_max_12h": eff.get("wind_gusts_max_12h"),
+            "storm_expected_12h": eff.get("storm_expected_12h"),
+            "pressure_trend": eff.get("pressure_trend"),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+async def _timed(name: str, coro, trace: list):
+    start = time.perf_counter()
+    try:
+        result = await coro
+        trace.append({"agent": name, "status": "ok", "ms": int((time.perf_counter() - start) * 1000)})
+        return result
+    except Exception as exc:
+        trace.append({"agent": name, "status": "failed", "error": str(exc)[:160],
+                      "ms": int((time.perf_counter() - start) * 1000)})
+        logger.warning("%s failed: %s", name, exc)
+        return exc
+
+
+def _ok(result, fallback: dict) -> dict:
+    if result is None or isinstance(result, Exception):
+        return dict(fallback)
+    return _as_dict(result) or dict(fallback)
+
+
+async def run_agents(location: Location, include_conversation: Optional[str] = None,
+                     include_official: bool = True) -> dict:
+    """Run the domain agents concurrently and build the consensus."""
+    trace: list[dict] = []
+    tasks = [
+        _timed("weather_agent", weather_agent(location), trace),
+        _timed("marine_agent", marine_agent(location), trace),
+        _timed("geospatial_agent", geospatial_agent(location), trace),
+    ]
+    if include_official:
+        tasks.append(_timed("official_alerts_agent", get_official_alerts(location.latitude, location.longitude), trace))
+    tasks.append(_timed("ecosystem_agent", ecosystem_agent(location.latitude, location.longitude), trace))
+    if include_conversation is not None:
+        tasks.append(_timed("conversational_agent", asyncio.to_thread(conversational_agent, include_conversation), trace))
+
+    results = await asyncio.gather(*tasks)
+    weather = _ok(results[0], {})
+    marine = _ok(results[1], {})
+    if isinstance(results[1], Exception) and "coverage" in str(results[1]):
+        marine = {"data_available": False, "no_coverage": True}
+    geo = _ok(results[2], {"inside_protected_area": False, "restricted_zone": False,
+                           "near_boundary": False, "restrictions": []})
+    official = _ok(results[3], {"alerts": [], "feeds": {}}) if include_official else {"alerts": [], "feeds": {}}
+    ecosystem = _ok(results[4 if include_official else 3], {"available": False, "species": [], "total": 0})
+    conversation = None
+    if include_conversation is not None:
+        conversation = _ok(results[-1], {"intent": "GENERAL_QUERY", "response": ""})
+
+    start = time.perf_counter()
+    consensus = build_consensus(marine, weather, official, geo)
+    eco_note = ecosystem_summary(ecosystem)
+    if eco_note:
+        consensus["findings"].append({"agents": ["ecosystem_agent"], "type": "ecosystem", "message": eco_note, "impact": "info"})
+    trace.append({"agent": "consensus_agent", "status": "ok", "ms": int((time.perf_counter() - start) * 1000),
+                  "confidence": consensus["confidence"],
+                  "conflicts": sum(1 for f in consensus["findings"] if f["type"] == "conflict")})
+    return {
+        "weather": weather,
+        "marine": marine,
+        "geospatial": geo,
+        "official": official,
+        "ecosystem": ecosystem,
+        "conversation": conversation,
+        "consensus": consensus,
+        "trace": trace,
     }
 
 
@@ -250,158 +462,70 @@ async def orchestrate(
     user_message: str,
     location: Optional[Union[Location, dict]] = None,
     zone_id: Optional[str] = None,
+    place_name: Optional[str] = None,
 ) -> dict:
-    """
-    Full end-to-end multi-agent orchestrator:
-    1. Runs conversational_agent to extract user intent.
-    2. Dynamically extracts landmarks, coordinates, or zones from message.
-    3. Runs weather_agent, marine_agent, and geospatial_agent concurrently.
-    4. Calculates comprehensive context-aware risk assessment.
-    5. Runs recommendation_agent for safety action, actionable tips, and LLM advice.
-    6. Returns fully unified multi-agent telemetry and recommendation response.
-    """
-    conversation = conversational_agent(user_message)
-    intent = conversation.get("intent") or "GENERAL_QUERY"
-
-    # Contextual Location Extraction
-    detected_loc, detected_zone = extract_location_and_zone_from_text(user_message)
-    effective_zone = zone_id or detected_zone
-
-    if location is not None:
-        if isinstance(location, dict):
-            loc_obj = Location(**location)
-        else:
-            loc_obj = location
-    elif detected_loc is not None:
-        loc_obj = detected_loc
-    else:
-        loc_obj = None
-
-    if loc_obj is None:
+    """Full pipeline: agents -> consensus -> risk -> recommendation."""
+    if location is None:
+        location, place_name = await resolve_location_from_text(user_message)
+    if isinstance(location, dict):
+        location = Location(**location)
+    if location is None:
+        conversation = conversational_agent(user_message)
         return {
             "status": "location_required",
             "user_message": user_message,
-            "intent": intent,
+            "intent": conversation.get("intent") or "GENERAL_QUERY",
             "conversation": conversation,
-            "location": None,
-            "gps": None,
-            "zone_id": effective_zone,
-            "marine_data": {},
-            "weather_data": {},
-            "geospatial_data": {},
-            "risk_assessment": {"risk_score": 0, "risk_level": "LOW", "reasons": []},
-            "recommendation": {
-                "action": "SAFE",
-                "message": "Enable GPS or search a port so KyroX can load live marine conditions.",
-                "recommendations": [
-                    "Allow browser location, or type a coastal port name / lat, lon.",
-                    "Do not rely on a default harbour — readings are location-specific.",
-                ],
-                "explanation": "No coordinates were provided, so weather and marine agents were not run.",
-                "alerts": [],
-                "map_layers": [],
-            },
         }
 
-    # Process validated GPS pin via GPS Agent
-    gps_data = gps_agent(loc_obj.latitude, loc_obj.longitude)
+    gps_data = gps_agent(location.latitude, location.longitude)
+    agents = await run_agents(location, include_conversation=user_message)
+    conversation = agents["conversation"] or {"intent": "GENERAL_QUERY"}
+    intent = conversation.get("intent") or "GENERAL_QUERY"
 
-    # Run domain agents concurrently
-    marine_task = marine_agent(loc_obj)
-    weather_task = weather_agent(loc_obj)
-    geo_task = geospatial_agent(loc_obj)
-
-    results = await asyncio.gather(
-        marine_task,
-        weather_task,
-        geo_task,
-        return_exceptions=True,
+    risk = calculate_risk(
+        agents["marine"], agents["weather"], agents["geospatial"],
+        intent=intent, user_message=user_message, zone_id=zone_id,
+        consensus=agents["consensus"],
     )
 
-    marine_data = results[0] if not isinstance(results[0], Exception) else {}
-    if isinstance(results[0], Exception):
-        logger.warning("Marine agent failed in orchestrator: %s", results[0])
-    weather_res = results[1] if not isinstance(results[1], Exception) else None
-    if isinstance(results[1], Exception):
-        logger.warning("Weather agent failed in orchestrator: %s", results[1])
-    geo_data = results[2] if not isinstance(results[2], Exception) else {
-        "inside_protected_area": False,
-        "restricted_zone": False,
-        "near_boundary": False,
-        "restrictions": [],
-    }
-    if isinstance(results[2], Exception):
-        logger.warning("Geospatial agent failed in orchestrator: %s", results[2])
-
-    if hasattr(weather_res, "model_dump"):
-        weather_data = weather_res.model_dump()
-    elif isinstance(weather_res, dict):
-        weather_data = weather_res
-    else:
-        weather_data = {}
-
-    # Cross-fill wave height from marine if weather had 0.0
-    if not weather_data.get("wave_height") and marine_data.get("wave_height"):
-        weather_data["wave_height"] = marine_data["wave_height"]
-
-    # Calculate Contextual Risk
-    risk_assessment = calculate_risk(
-        marine=marine_data,
-        weather=weather_data,
-        geospatial=geo_data,
-        intent=intent,
-        user_message=user_message,
-        zone_id=effective_zone,
-    )
-
-    # Recommendation Agent Integration
+    start = time.perf_counter()
     recommendation = await recommendation_agent(
-        risk_data=risk_assessment,
-        weather_data=weather_data,
-        marine_data=marine_data,
-        geo_data=geo_data,
+        risk_data=risk,
+        weather_data=agents["weather"],
+        marine_data=agents["marine"],
+        geo_data=agents["geospatial"],
     )
+    eco_tips = (agents["ecosystem"] or {}).get("bycatch_tips") or []
+    if eco_tips and risk["risk_level"] in ("LOW", "MEDIUM"):
+        recommendation["recommendations"] = list(recommendation.get("recommendations") or []) + [f"Protected species recorded here: {eco_tips[0]}"]
+    agents["trace"].append({"agent": "recommendation_agent", "status": "ok",
+                            "ms": int((time.perf_counter() - start) * 1000),
+                            "mode": recommendation.get("mode", "rules")})
 
-    # Attach UI helper fields
-    recommendation["alerts"] = risk_assessment.get("reasons", [])
-    if risk_assessment["risk_level"] in ("HIGH", "CRITICAL"):
-        recommendation["map_layers"] = ["Weather Warnings", "Protected Areas"]
-    elif risk_assessment["risk_level"] == "MEDIUM":
-        recommendation["map_layers"] = ["Wind", "Waves", "Marine Conditions"]
-    else:
-        recommendation["map_layers"] = ["Sea Surface Temperature", "Chlorophyll", "PFZ"]
-
-    logger.info(
-        "Orchestrator completed: intent=%s, risk_level=%s, score=%d, action=%s",
-        intent,
-        risk_assessment["risk_level"],
-        risk_assessment["risk_score"],
-        recommendation.get("action"),
-    )
-
+    logger.info("Orchestrator: intent=%s level=%s score=%s confidence=%s",
+                intent, risk["risk_level"], risk["risk_score"], risk.get("confidence"))
     return {
+        "status": "success",
         "user_message": user_message,
         "intent": intent,
         "conversation": conversation,
-        "location": {"latitude": loc_obj.latitude, "longitude": loc_obj.longitude},
+        "location": {"latitude": location.latitude, "longitude": location.longitude},
+        "place_name": place_name,
         "gps": gps_data,
-        "zone_id": effective_zone,
-        "marine_data": marine_data,
-        "weather_data": weather_data,
-        "geospatial_data": geo_data,
-        "risk_assessment": risk_assessment,
+        "zone_id": zone_id,
+        "marine_data": agents["marine"],
+        "weather_data": agents["weather"],
+        "geospatial_data": agents["geospatial"],
+        "official_alerts": agents["official"],
+        "ecosystem": agents["ecosystem"],
+        "consensus": agents["consensus"],
+        "risk_assessment": risk,
         "recommendation": recommendation,
+        "agent_trace": agents["trace"],
     }
 
 
-def orchestrator(
-    user_message: str,
-    location: Optional[Union[Location, dict]] = None,
-    zone_id: Optional[str] = None,
-) -> dict:
+def orchestrator(user_message: str, location=None, zone_id=None) -> dict:
     """Synchronous entry point that runs the async orchestrate coroutine."""
-    try:
-        return asyncio.run(orchestrate(user_message, location, zone_id))
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(orchestrate(user_message, location, zone_id))
+    return asyncio.run(orchestrate(user_message, location, zone_id))

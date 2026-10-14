@@ -54,56 +54,6 @@ Return ONLY valid JSON with this exact shape and no markdown fences:
 {"message":"<brief safety summary>","recommendations":["<tip 1>","<tip 2>"],"explanation":"<why these conditions matter>"}
 """
 
-# =========================================================
-# SAFE FALLBACK (used when LLM fails or returns garbage)
-# =========================================================
-_FALLBACK_MESSAGES: dict[str, dict] = {
-    "SAFE": {
-        "message": "Current conditions appear safe for marine activity.",
-        "recommendations": [
-            "Continue monitoring weather and marine forecasts.",
-            "Keep communication equipment operational.",
-            "Follow standard maritime safety procedures.",
-        ],
-        "explanation": "The verified risk analysis shows low overall risk.",
-    },
-    "PROCEED_WITH_CAUTION": {
-        "message": "Conditions are moderate — proceed with caution.",
-        "recommendations": [
-            "Stay alert to changing weather and sea conditions.",
-            "Keep close to known safe harbors.",
-            "Monitor official weather alerts.",
-        ],
-        "explanation": (
-            "The verified risk analysis detected moderate concerns. "
-            "Exercise caution and be prepared to return to shore."
-        ),
-    },
-    "RETURN_TO_SHORE": {
-        "message": "Safety risk is high based on the current analysis.",
-        "recommendations": [
-            "Move toward the nearest safe location.",
-            "Avoid dangerous marine conditions.",
-            "Monitor official weather alerts.",
-        ],
-        "explanation": (
-            "The verified risk analysis detected significant safety concerns."
-        ),
-    },
-    "DO_NOT_PROCEED": {
-        "message": "Conditions are critical — do not proceed to sea.",
-        "recommendations": [
-            "Stay on shore or seek immediate shelter.",
-            "Do not launch vessels until conditions improve.",
-            "Follow all emergency advisories from local authorities.",
-        ],
-        "explanation": (
-            "The verified risk analysis detected critical safety threats. "
-            "Going to sea would endanger lives."
-        ),
-    },
-}
-
 # Cap on the user-message payload sent to the LLM (chars).
 _MAX_DATA_PAYLOAD_CHARS = 3000
 
@@ -125,28 +75,18 @@ async def recommendation_agent(
     Generate a safety recommendation for the vessel.
 
     1. Determines the safety **action** deterministically from risk_level.
-    2. Calls the Hugging Face LLM to produce a human-friendly explanation.
-    3. If the LLM fails, returns a safe deterministic fallback.
+    2. Calls the Hugging Face LLM (if configured) for plain-language advice.
+    3. Otherwise returns rule-based advice built only from verified values.
 
-    Args:
-        risk_data:    Dict with keys like risk_score, risk_level, reasons.
-        weather_data: Dict with keys like wind_speed, lightning_risk, storm_risk.
-        marine_data:  Dict with keys like wave_height, wave_direction, etc.
-        geo_data:     Dict with keys like near_boundary, restricted_zone, etc.
-
-    Returns:
-        dict with keys: action, message, recommendations, explanation.
+    Returns dict with: action, message, recommendations, explanation,
+    confidence, mode ("llm" | "rules").
     """
-    # ---- Safely coerce inputs to dicts ----
     risk_data = risk_data if isinstance(risk_data, dict) else {}
     weather_data = weather_data if isinstance(weather_data, dict) else {}
     marine_data = marine_data if isinstance(marine_data, dict) else {}
     geo_data = geo_data if isinstance(geo_data, dict) else {}
 
-    # ---- Step 1: Deterministic action ----
     action = _determine_action(risk_data)
-
-    # ---- Step 2: Ask the LLM for human-friendly advice ----
     llm_output = await _query_llm(
         action=action,
         risk_data=risk_data,
@@ -154,13 +94,13 @@ async def recommendation_agent(
         marine_data=marine_data,
         geo_data=geo_data,
     )
-
-    # ---- Step 3: Merge deterministic action with LLM-generated fields ----
     return {
         "action": action,
         "message": llm_output.get("message", ""),
         "recommendations": llm_output.get("recommendations", []),
         "explanation": llm_output.get("explanation", ""),
+        "confidence": risk_data.get("confidence", "medium"),
+        "mode": llm_output.get("mode", "rules"),
     }
 
 
@@ -180,7 +120,7 @@ def _determine_action(risk_data: dict) -> str:
     action = _RISK_LEVEL_TO_ACTION.get(risk_level)
     if action is None:
         logger.warning(
-            "Unrecognized risk_level %r — defaulting to RETURN_TO_SHORE",
+            "Unrecognized risk_level %r - defaulting to RETURN_TO_SHORE",
             risk_level,
         )
         action = "RETURN_TO_SHORE"
@@ -248,7 +188,9 @@ async def _query_llm(
         return fallback
 
     # Validate and sanitize the parsed output
-    return _validate_llm_output(parsed, fallback)
+    validated = _validate_llm_output(parsed, fallback)
+    validated["mode"] = "llm"
+    return validated
 
 
 def _build_user_message(
@@ -268,9 +210,15 @@ def _build_user_message(
             "risk_score": risk_data.get("risk_score"),
             "risk_level": risk_data.get("risk_level"),
             "reasons": risk_data.get("reasons", []),
+            "confidence": risk_data.get("confidence"),
+            "data_gaps": risk_data.get("data_gaps", []),
+            "outlook_next_12h": risk_data.get("outlook", {}),
+            "agent_findings": [f.get("message") for f in risk_data.get("findings", [])][:8],
         },
         "weather_conditions": {
-            "wind_speed": weather_data.get("wind_speed"),
+            "wind_speed_kt": weather_data.get("wind_speed"),
+            "wind_gusts_kt": weather_data.get("wind_gusts"),
+            "pressure_tendency_3h_hpa": weather_data.get("pressure_tendency_3h"),
             "lightning_risk": weather_data.get("lightning_risk"),
             "storm_risk": weather_data.get("storm_risk"),
         },
@@ -279,7 +227,7 @@ def _build_user_message(
             "wave_direction": marine_data.get("wave_direction"),
             "wave_period": marine_data.get("wave_period"),
             "swell_wave_height": marine_data.get("swell_wave_height"),
-            "ocean_current_velocity": marine_data.get("ocean_current_velocity"),
+            "ocean_current_knots": marine_data.get("ocean_current_velocity"),
             "sea_surface_temperature": marine_data.get("sea_surface_temperature"),
         },
         "geospatial_conditions": {
@@ -397,7 +345,7 @@ def _get_fallback(
     marine_data: dict = None,
     geo_data: dict = None,
 ) -> dict:
-    """Return an intelligent, dynamic fallback customized with verified real-time conditions."""
+    """Rule-based advice built strictly from verified values (no invented numbers)."""
     r_dict = risk_data or {}
     w_dict = weather_data or {}
     m_dict = marine_data or {}
@@ -405,102 +353,93 @@ def _get_fallback(
 
     reasons = r_dict.get("reasons", [])
     risk_score = r_dict.get("risk_score", 0)
+    confidence = r_dict.get("confidence", "medium")
+    gaps = r_dict.get("data_gaps") or []
+    outlook = r_dict.get("outlook") or {}
 
     def _f(src, key):
         v = src.get(key)
-        if v is None:
-            return None
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return None
+        return float(v) if isinstance(v, (int, float)) else None
 
-    wave_h = _f(m_dict, "wave_height") or _f(w_dict, "wave_height")
+    wave_h = _f(m_dict, "wave_height")
     wind_spd = _f(w_dict, "wind_speed")
+    gust = _f(w_dict, "wind_gusts")
     swell_h = _f(m_dict, "swell_wave_height")
     curr_vel = _f(m_dict, "ocean_current_velocity")
     curr_dir = _f(m_dict, "ocean_current_direction")
     sst = _f(m_dict, "sea_surface_temperature")
-    baro = _f(w_dict, "surface_pressure")
 
-    wave_txt = f"{wave_h:.1f}m" if wave_h is not None else "unavailable"
-    wind_txt = f"{wind_spd:.1f} kt" if wind_spd is not None else "unavailable"
-    swell_txt = f"{swell_h:.1f}m" if swell_h is not None else "unavailable"
-    curr_txt = f"{curr_vel:.1f} kts" if curr_vel is not None else "unavailable"
-    sst_txt = f"{sst:.1f}°C" if sst is not None else "unavailable"
-    baro_txt = f"{baro:.1f} hPa" if baro is not None else "unavailable"
-    dir_txt = f"{int(curr_dir)}°" if curr_dir is not None else "unknown"
+    def fmt(v, unit, digits=1):
+        return f"{v:.{digits}f} {unit}" if v is not None else "unavailable"
 
-    primary_hazard = reasons[0] if reasons else None
-    reasons_text = "; ".join(reasons) if reasons else ""
+    wave_txt, wind_txt = fmt(wave_h, "m"), fmt(wind_spd, "kt", 0)
+    conditions = f"Waves {wave_txt}, wind {wind_txt}" + (f" (gusts {gust:.0f} kt)" if gust is not None else "")
+    ahead = []
+    if isinstance(outlook.get("wind_speed_max_12h"), (int, float)):
+        ahead.append(f"wind up to {outlook['wind_speed_max_12h']:.0f} kt")
+    if isinstance(outlook.get("wave_height_max_12h"), (int, float)):
+        ahead.append(f"waves up to {outlook['wave_height_max_12h']:.1f} m")
+    outlook_txt = f" Next 12 h: {', '.join(ahead)}." if ahead else ""
+    conf_txt = {
+        "high": "Independent sources agree.",
+        "medium": "Sources partly disagree - the more dangerous values were used.",
+        "low": "Low confidence - data is incomplete or conflicting.",
+    }.get(confidence, "")
+    reasons_text = "; ".join(reasons[:4])
 
-    shore_m = g_dict.get("distance_to_shore_meters")
-    shore_txt = f"{float(shore_m)/1000:.1f} km" if isinstance(shore_m, (int, float)) else "unknown"
-
-    if action in ("CRITICAL", "DO_NOT_PROCEED"):
-        hazard_label = primary_hazard or f"Extreme sea state (waves {wave_txt}, wind {wind_txt})"
-        msg = f"CRITICAL DANGER: {hazard_label}. Immediate return to harbor or shore shelter mandatory."
-        explanation = (
-            f"Dangerous maritime conditions detected (Risk Score {risk_score}/100). "
-            + (f"Hazards: {reasons_text}. " if reasons_text else "")
-            + f"Live sensors: wind {wind_txt}, waves {wave_txt}."
-        )
+    if action == "DO_NOT_PROCEED":
+        msg = f"DANGER - DO NOT GO TO SEA. {reasons[0] if reasons else conditions}."
         recommendations = [
-            "Maintain continuous active guard on VHF Channel 16.",
-            "Contact Indian Coast Guard Maritime Rescue (National Emergency: 1554 / VHF Ch 16) if in distress.",
-            "Don all SOLAS-approved lifejackets immediately and secure deck gear.",
-            f"Head towards closest port; prevailing sea state {wave_txt}.",
+            "Stay in harbour; if already at sea, head for the nearest safe shelter now.",
+            "Keep VHF Channel 16 on; in distress send MAYDAY / DSC alert (India Coast Guard: 1554).",
+            "Everyone on deck wears a lifejacket; secure all gear.",
         ]
-    elif action in ("HIGH", "RETURN_TO_SHORE"):
-        hazard_label = primary_hazard or f"High sea swell ({wave_txt}) and wind ({wind_txt})"
-        msg = f"HIGH RISK ADVISORY: {hazard_label}. Abort fishing operations and navigate towards shore."
-        explanation = (
-            f"Elevated marine hazards present (Risk Score {risk_score}/100). "
-            + (f"Active alerts: {reasons_text}. " if reasons_text else "")
-            + f"Live sensors: waves {wave_txt}, wind {wind_txt}."
-        )
+    elif action == "RETURN_TO_SHORE":
+        msg = f"HIGH RISK - RETURN TO SHORE. {reasons[0] if reasons else conditions}."
         recommendations = [
-            "Proceed at safe navigational speed towards the nearest designated harbor.",
-            f"Secure all trawl gear, nets, and loose equipment (sea state {wave_txt}).",
-            f"Ocean current {curr_txt} towards {dir_txt} — account for set and drift.",
-            "Monitor official INCOIS and Coast Guard safety bulletins continuously on VHF CH 16.",
+            "Stop fishing operations and move towards the nearest harbour.",
+            "Secure nets and loose gear; keep the bow into the waves.",
+            "Tell someone ashore your position and expected arrival time.",
         ]
     elif action == "PROCEED_WITH_CAUTION":
-        hazard_label = primary_hazard or f"Moderate swell ({wave_txt}) with wind {wind_txt}"
-        msg = f"CAUTION ADVISORY: {hazard_label}. Proceed with heightened vigilance."
-        explanation = (
-            f"Moderate sea conditions observed (Risk Score {risk_score}/100). "
-            + (f"Notes: {reasons_text}. " if reasons_text else "")
-            + f"Waves {wave_txt}, swell {swell_txt}, barometer {baro_txt}."
-        )
+        msg = f"CAUTION. {reasons[0] if reasons else conditions}."
         recommendations = [
-            f"Remain within a known operational sector (distance to shore: {shore_txt}).",
-            f"SST {sst_txt}; watch for wind changes (now {wind_txt}).",
-            f"Current {curr_txt} — adjust anchor scope and drift lines accordingly.",
-            "Ensure navigation lights, bilge pumps, and VHF radio are fully functional.",
+            "Stay close to the coast and plan an early return.",
+            "Re-check conditions before going further out.",
+            "Carry lifejackets, a charged radio/phone and enough fuel to return.",
         ]
-    else:  # SAFE
-        msg = f"CLEAR & SAFE: Live conditions — waves {wave_txt}, wind {wind_txt}."
-        explanation = (
-            f"Low maritime risk detected (Risk Score {risk_score}/100). "
-            f"Barometer {baro_txt}, sea state {wave_txt}, SST {sst_txt}."
-        )
+    else:
+        msg = f"Conditions look suitable now. {conditions}." + (f" Note: {reasons[0]}." if reasons else "")
         recommendations = [
-            f"SST {sst_txt} from live marine telemetry.",
-            f"Current {curr_txt}; swell {swell_txt}.",
-            "Maintain standard VHF Channel 16 guard and log GPS waypoint hourly.",
-            "Re-check conditions if wind or swell increases.",
+            "Re-check the forecast before departure and again at sea.",
+            "Keep VHF Channel 16 on and share your fishing area with someone ashore.",
         ]
 
+    if any("not at sea" in g for g in gaps):
+        msg = "No sea-state data here: this position looks like land. Choose a harbour or a point at sea."
+        recommendations = ["Search a coastal port, tap the sea on the map, or enable GPS when at the coast."]
+    elif gaps:
+        msg = f"CANNOT CONFIRM SAFETY - live {' and '.join(gaps)} unavailable. " + msg
+        recommendations.insert(0, "Check the official marine forecast (e.g. INCOIS or your national met service) before going out.")
+    if curr_vel is not None:
+        dir_txt = f" towards {int(curr_dir)}°" if curr_dir is not None else ""
+        recommendations.append(f"Current {curr_vel:.1f} kt{dir_txt} - allow for drift.")
     if g_dict.get("inside_protected_area"):
-        recommendations.insert(0, "ALERT: Operating inside protected sanctuary boundary — bottom trawling prohibited.")
+        recommendations.insert(0, "You are inside a protected or restricted area - follow local fishing rules.")
     elif g_dict.get("near_boundary"):
-        recommendations.insert(0, "CAUTION: Operating within 2 km of marine sanctuary boundary.")
+        recommendations.insert(0, "You are close to a protected-area boundary.")
+
+    explanation = (
+        f"Risk {risk_score}/100. {conditions}; swell {fmt(swell_h, 'm')}, sea temperature {fmt(sst, '°C')}."
+        f"{outlook_txt} {conf_txt}"
+        + (f" Reasons: {reasons_text}." if reasons_text else "")
+    ).strip()
 
     return {
         "message": msg,
         "recommendations": recommendations,
         "explanation": explanation,
+        "mode": "rules",
     }
 
 

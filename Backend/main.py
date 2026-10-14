@@ -1,13 +1,13 @@
 # Backend/main.py
 """
-Marine AI Multi-Agent Safety & Recommendation Backend
-Integrates:
-  - Recommendation Agent (LLM + Deterministic Safety Actions)
-  - Weather Agent (OpenWeather API)
-  - Marine Agent (Open-Meteo Marine API)
-  - Geospatial Agent (Protected Areas & Sanctuary Boundaries)
-  - Conversational Agent (Multilingual Intent Classifier)
-  - Orchestrator (Multi-Agent Dispatcher)
+ORCA / KyroX - Marine Ecosystem Reasoning with Collaborative Agents.
+
+Agents:  weather, marine, geospatial, official alerts (INCOIS + GDACS),
+         conversational, consensus (cross-validation), recommendation,
+         risk grid / route planner.
+Sources: Open-Meteo (ECMWF + NOAA models, global), INCOIS high-wave & swell
+         surge alerts (India), GDACS cyclones & tsunamis (global),
+         OpenStreetMap protected areas.
 """
 import sys
 import os
@@ -15,29 +15,33 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Query, Body, HTTPException
+import time
+from collections import defaultdict, deque
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
+
+from dotenv import load_dotenv
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from Models.schemas import (
-    Location,
-    WeatherData,
-    MarineData,
-    GeoData,
-    RiskResult,
-    Recommendation,
-    SafetyAnalysisResponse,
-    UserRequest,
-)
-from Agents.marine_agent import marine_agent as run_marine_agent
-from Agents.weather_agent import weather_agent as run_weather_agent
-from Agents.geospatial_agent import geospatial_agent as run_geospatial_agent
-from Agents.recommendation_agent import recommendation_agent as run_recommendation_agent
-from Agents.conversational_agent import conversational_agent as run_conversational_agent
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+from Models.schemas import Location, UserRequest
 from Agents.gps_agent import gps_agent
+from Agents.ecosystem_agent import ecosystem_agent
+from Agents.orchestrator import (
+    geocode_place,
+    calculate_risk,
+    orchestrate,
+    resolve_location_from_text,
+    run_agents,
+)
 from Agents.risk_agent import generate_risk_heatmap
-from Services.prediction_service import compute_24h_prediction, compute_24h_prediction_async
+from Services.http_cache import UpstreamError, close_client
+from Services.prediction_service import PredictionUnavailable, compute_forecast
+from Services.route_planner import VESSEL_LIMITS, RouteError, plan_route
 from Services.translation_service import (
     LANGUAGE_CODE_TO_NAME,
     MAX_TRANSLATE_BATCH,
@@ -46,488 +50,333 @@ from Services.translation_service import (
     translate_text,
     translate_to_all_indian_languages,
 )
-from Tools.marine_tools import get_nearest_maritime_sector
-from Agents.orchestrator import (
-    calculate_risk,
-    orchestrate,
-    extract_location_and_zone_from_text,
-    KNOWN_ZONES,
-)
+from Tools.official_alerts import get_incois_alerts, get_official_alerts
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
+APP_VERSION = "3.0.0"
+DATA_SOURCES = [
+    {"name": "Open-Meteo Marine", "provides": "waves, swell, currents, SST, modelled sea level", "models": ["ECMWF WAM", "NOAA GFS-Wave"], "coverage": "global"},
+    {"name": "Open-Meteo Weather", "provides": "wind, gusts, pressure, thunderstorms", "models": ["ECMWF IFS", "NOAA GFS"], "coverage": "global"},
+    {"name": "INCOIS", "provides": "official High Wave & Swell Surge alerts", "coverage": "Indian coast"},
+    {"name": "GDACS (UN / EC JRC)", "provides": "active tropical cyclones & tsunamis", "coverage": "global"},
+    {"name": "OpenStreetMap / Overpass", "provides": "protected & restricted areas", "coverage": "global"},
+    {"name": "OBIS (UNESCO-IOC)", "provides": "threatened species occurrence records", "coverage": "global"},
+]
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Warm the INCOIS district geocoding cache so the first user is not slow.
+    warm = asyncio.create_task(get_incois_alerts(15.0, 74.0))
+    yield
+    warm.cancel()
+    await close_client()
+
+
 app = FastAPI(
-    title="KyroX Marine AI Multi-Agent System",
-    description="Real-time Marine Safety, Weather, Geospatial Risk, and LLM Recommendation Engine",
-    version="2.0.0"
+    title="ORCA Marine Multi-Agent System",
+    description="Marine safety advisories from collaborating AI agents over fused ocean & weather data",
+    version=APP_VERSION,
+    lifespan=lifespan,
 )
 
-# --------------------------------------------------
-# CORS MIDDLEWARE
-# --------------------------------------------------
+_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# A location is required for live marine analysis. Never substitute a fixed
-# harbour when the device has not provided a GPS fix.
+# Simple per-IP sliding-window rate limit. Protects the free upstream APIs and
+# the server when publicly deployed; tune with RATE_LIMIT_PER_MINUTE.
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
+_hits: Dict[str, deque] = defaultdict(deque)
 
 
-# --------------------------------------------------
-# AGENT RESULT NORMALIZATION & MODEL SERIALIZATION
-# --------------------------------------------------
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    if RATE_LIMIT > 0 and request.method != "OPTIONS":
+        ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+        now = time.time()
+        q = _hits[ip]
+        while q and now - q[0] > 60:
+            q.popleft()
+        if len(q) >= RATE_LIMIT:
+            return JSONResponse({"detail": "Too many requests - please slow down."}, status_code=429)
+        q.append(now)
+    return await call_next(request)
+
+
+# --------------------------------------------------------------------------
+# Helpers
+# --------------------------------------------------------------------------
 def _dump_model(m: Any) -> Dict[str, Any]:
-    """Safely serialize Pydantic model to dict across Pydantic v1 and v2."""
     if m is None:
         return {}
     if hasattr(m, "model_dump"):
         return m.model_dump()
-    if hasattr(m, "dict"):
-        return m.dict()
-    if isinstance(m, dict):
-        return m
-    return {}
+    return m if isinstance(m, dict) else {}
 
 
-def _normalize_agent_result(result: Any, fallback: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Agent calls can come back as a Pydantic model, a plain dict, or (when run
-    through asyncio.gather(..., return_exceptions=True)) an Exception object.
-    Always normalize to a plain dict so downstream `.get(...)` calls never
-    raise AttributeError, and so real data isn't silently discarded just
-    because it came back as a model instance instead of a dict.
-    """
-    if result is None or isinstance(result, Exception):
-        return dict(fallback)
-    if hasattr(result, "model_dump"):
-        return result.model_dump()
-    if hasattr(result, "dict"):
-        return result.dict()
-    if isinstance(result, dict):
-        return result
-    return dict(fallback)
+def format_coords(lat: float, lon: float) -> str:
+    return f"{abs(lat):.2f}°{'N' if lat >= 0 else 'S'}, {abs(lon):.2f}°{'E' if lon >= 0 else 'W'}"
 
 
-import math
-from datetime import datetime, timezone, timedelta
+def _fmt(value, unit: str, digits: int = 1) -> str:
+    return f"{float(value):.{digits}f}{unit}" if isinstance(value, (int, float)) else "UNAVAILABLE"
 
-def _compute_dynamic_tides_and_nav(
-    marine_data: Dict[str, Any],
-    weather_data: Dict[str, Any],
-    geo_data: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    """Dynamically compute astronomical tides, baro, SOG, COG, and depth."""
-    now_utc = datetime.now(timezone.utc)
-    # India Standard Time (IST) is UTC + 5:30
-    now_ist = now_utc + timedelta(hours=5, minutes=30)
 
-    # Semi-diurnal M2 lunar tidal cycle: ~12.42 hours (745 minutes)
-    epoch_min = int(now_utc.timestamp() / 60)
-    cycle_pos = (epoch_min % 745) / 745.0  # 0.0 to 1.0
+def _cardinal(deg: Optional[float]) -> str:
+    if deg is None:
+        return ""
+    return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][int(((deg % 360) + 22.5) // 45) % 8]
 
-    if cycle_pos <= 0.5:
-        min_to_high = int((0.5 - cycle_pos) * 745) if cycle_pos > 0.05 else int((1.0 - cycle_pos) * 745)
-        min_to_low = int((0.25 - cycle_pos) * 745) if cycle_pos <= 0.25 else int((0.75 - cycle_pos) * 745)
-    else:
-        min_to_high = int((1.0 - cycle_pos) * 745)
-        min_to_low = int((0.75 - cycle_pos) * 745) if cycle_pos <= 0.75 else int((1.25 - cycle_pos) * 745)
 
-    next_high_dt = now_ist + timedelta(minutes=min_to_high)
-    next_low_dt = now_ist + timedelta(minutes=min_to_low)
+def _visibility_text(vis_m: Optional[float]) -> str:
+    if vis_m is None:
+        return "UNAVAILABLE"
+    nm = vis_m / 1852
+    quality = "GOOD" if nm >= 5 else "MODERATE" if nm >= 2 else "POOR"
+    return f"{quality} ({nm:.0f} NM)"
 
-    wave_h = marine_data.get("wave_height") or weather_data.get("wave_height")
-    wind_spd = weather_data.get("wind_speed")
-    current_vel = marine_data.get("ocean_current_velocity")
-    current_dir = marine_data.get("ocean_current_direction") or marine_data.get("wave_direction")
-    baro = weather_data.get("surface_pressure")
-    sst = marine_data.get("sea_surface_temperature")
-    dist_shore = (geo_data or {}).get("distance_to_shore_meters")
 
-    depth_m = max(14, min(85, int(float(dist_shore) * 0.0075))) if dist_shore is not None else None
-    current_dir = float(current_dir) if current_dir is not None else None
-    cardinal = ("SW" if 180 <= current_dir <= 270 else ("NW" if 270 < current_dir <= 360 else ("NE" if 0 <= current_dir <= 90 else "SE"))) if current_dir is not None else None
+def _tide_text(event: Optional[dict]) -> str:
+    if not event:
+        return "UNAVAILABLE"
+    return f"{event['time'][11:16]} UTC ({event['level_m']:+.2f} m, model)"
 
+
+def build_telemetry(marine: dict, weather: dict, risk: dict, loc: Location) -> Dict[str, Any]:
+    """Bridge-panel telemetry. Only measured/modelled values; never synthesised."""
+    tide = marine.get("tide") or {}
+    cur_dir = marine.get("ocean_current_direction")
+    wind_dir = weather.get("wind_direction")
     return {
-        "depth": f"{depth_m}m" if depth_m is not None else "UNAVAILABLE",
-        "baro": f"{float(baro):.1f} hPa" if baro is not None else "UNAVAILABLE",
+        "fix": f"GPS: {format_coords(loc.latitude, loc.longitude)}",
         "sog": "UNAVAILABLE",
-        "cog": f"{current_dir:.0f}° {cardinal}" if current_dir is not None else "UNAVAILABLE",
-        "highTide": "UNAVAILABLE - tide station data not configured",
-        "lowTide": "UNAVAILABLE - tide station data not configured",
-        "visibility": "UNAVAILABLE" if not weather_data else ("EXCELLENT (>10 NM)" if weather_data.get("storm_risk") == "LOW" else "MODERATE (5-8 NM)"),
-        "wave": f"{float(wave_h):.1f}m" if wave_h is not None else "UNAVAILABLE",
-        "wave_height": wave_h,
-        "wave_period": marine_data.get("wave_period"),
-        "wave_direction": marine_data.get("wave_direction"),
-        "swell_height": marine_data.get("swell_wave_height"),
-        "swell_period": marine_data.get("swell_wave_period"),
-        "swell_direction": marine_data.get("swell_wave_direction"),
-        "wind": f"{float(wind_spd):.1f} kts" if wind_spd is not None else "UNAVAILABLE",
-        "wind_speed": wind_spd,
-        "current": f"{float(current_vel):.1f} m/s" if current_vel is not None else "UNAVAILABLE",
-        "sst": f"{float(sst):.1f}°C" if sst is not None else "UNAVAILABLE",
+        "cog": "UNAVAILABLE",
+        "depth": "UNAVAILABLE",
+        "current_direction": f"{cur_dir:.0f}° {_cardinal(cur_dir)}" if cur_dir is not None else "UNAVAILABLE",
+        "bearing": f"{cur_dir:.0f}° {_cardinal(cur_dir)}" if cur_dir is not None else "UNAVAILABLE",
+        "baro": _fmt(weather.get("pressure_msl") or weather.get("surface_pressure"), " hPa"),
+        "pressure_tendency_3h": weather.get("pressure_tendency_3h"),
+        "wave": _fmt(marine.get("wave_height"), " m"),
+        "wave_height": marine.get("wave_height"),
+        "wave_period": marine.get("wave_period"),
+        "wave_direction": marine.get("wave_direction"),
+        "swell": _fmt(marine.get("swell_wave_height"), " m"),
+        "swell_height": marine.get("swell_wave_height"),
+        "swell_period": marine.get("swell_wave_period"),
+        "swell_direction": marine.get("swell_wave_direction"),
+        "wind": (_fmt(weather.get("wind_speed"), " kt", 0) + (f" {_cardinal(wind_dir)}" if wind_dir is not None else "")) if weather.get("wind_speed") is not None else "UNAVAILABLE",
+        "wind_speed": weather.get("wind_speed"),
+        "wind_gusts": weather.get("wind_gusts"),
+        "current": _fmt(marine.get("ocean_current_velocity"), " kt"),
+        "sst": _fmt(marine.get("sea_surface_temperature"), " °C"),
+        "highTide": _tide_text(tide.get("next_high")),
+        "lowTide": _tide_text(tide.get("next_low")),
+        "tide_source": tide.get("source"),
+        "visibility": _visibility_text(weather.get("visibility_m")),
+        "sea_surface_height_anomaly": "N/A",
+        "sea_surface_height_unit": "",
+        "vhf": "VHF CH 16",
+        "clearance": risk.get("risk_level"),
+        "risk_level": risk.get("risk_level"),
+        "risk_score": risk.get("risk_score"),
+        "confidence": risk.get("confidence"),
+        "outlook": risk.get("outlook"),
+        "observed_at": marine.get("observed_at") or weather.get("observed_at"),
+        "sources": [s for s in (marine.get("source"), weather.get("source")) if s],
+        "stale": bool(marine.get("stale") or weather.get("stale")),
     }
 
 
-# --------------------------------------------------
-# CORE HEALTH CHECK
-# --------------------------------------------------
+def _build_natural_language_response(recommendation: Dict[str, Any], risk: Dict[str, Any]) -> str:
+    parts = [p.strip() for p in (str(recommendation.get("message") or ""), str(recommendation.get("explanation") or "")) if p.strip()]
+    tips = [str(t).strip() for t in (recommendation.get("recommendations") or [])[:3] if str(t).strip()]
+    if tips:
+        parts.append("What to do: " + " ".join(tips))
+    if not parts:
+        parts.append(f"The current marine safety assessment is {risk.get('risk_level', 'unknown').lower()}.")
+    return " ".join(parts)
+
+
+async def _noop() -> None:
+    return None
+
+
+async def _localized_text(text: str, language: str) -> str:
+    if not text or not language or language == "en":
+        return text
+    result = await translate_text(text, language, "en")
+    return result.get("translated_text") if result.get("success") and result.get("translated_text") else text
+
+
+def _alerts_from_risk(risk: Dict[str, Any], action: str, zone: str, loc: Location) -> List[Dict[str, Any]]:
+    level = risk.get("risk_level", "LOW")
+    kind = "danger" if level in ("HIGH", "CRITICAL") else ("caution" if level == "MEDIUM" else "resolved")
+    return [{
+        "id": f"ALERT-{i + 1:03d}",
+        "type": kind,
+        "risk_level": level,
+        "title": f"Advisory ({level})",
+        "description": reason,
+        "action": action,
+        "zone_id": zone,
+        "coords": format_coords(loc.latitude, loc.longitude),
+    } for i, reason in enumerate(risk.get("reasons", []))]
+
+
+def _zone_for(level: str, requested: Optional[str]) -> str:
+    if requested:
+        return requested
+    if level in ("HIGH", "CRITICAL"):
+        return "zone-danger-se"
+    if level == "MEDIUM":
+        return "zone-wind-ne"
+    return "zone-pfz-sw"
+
+
+def _location_or_none(lat, lon) -> Optional[Location]:
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return None
+    try:
+        gps = gps_agent(lat, lon)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Location(latitude=gps["latitude"], longitude=gps["longitude"])
+
+
+# --------------------------------------------------------------------------
+# Health
+# --------------------------------------------------------------------------
 @app.get("/")
 @app.get("/health")
 async def health_check():
     return {
         "status": "online",
-        "system": "KyroX Marine Multi-Agent AI",
-        "version": "2.0.0",
+        "system": "ORCA Marine Multi-Agent AI",
+        "version": APP_VERSION,
         "agents": [
-            "recommendation_agent",
-            "weather_agent",
-            "marine_agent",
-            "geospatial_agent",
-            "conversational_agent",
-            "orchestrator",
-        ]
+            "weather_agent", "marine_agent", "geospatial_agent", "official_alerts_agent",
+            "conversational_agent", "ecosystem_agent", "consensus_agent", "recommendation_agent", "risk_grid_agent", "route_planner",
+        ],
+        "data_sources": DATA_SOURCES,
+        "llm_configured": bool(os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_KEY")),
     }
 
 
-async def _noop() -> None:
-    """Awaitable placeholder used when an optional translation is not requested."""
-    # Returning None keeps asyncio.gather unpacking symmetric with the
-    # real translation call when the language bundle is not requested.
-    return None
-
-async def _localized_text(text: str, language: str) -> str:
-    """Return `text` in `language`, falling back to the English original.
-
-    Translation is best-effort: an unavailable translator must never break a
-    safety response, so failures simply return the English text.
-    """
-    if not text or not language or language == "en":
-        return text
-    result = await translate_text(text, language, "en")
-    if result.get("success") and result.get("translated_text"):
-        return result["translated_text"]
-    logger.warning("Localization to '%s' failed: %s", language, result.get("error"))
-    return text
-
-def _build_natural_language_response(
-    recommendation: Dict[str, Any],
-    risk_assessment: Dict[str, Any],
-    conversation: Any,
-) -> str:
-    """Return a conversational answer for the chat UI, not a telemetry dump."""
-    message = str(recommendation.get("message") or conversation.get("response") or "")
-    explanation = str(recommendation.get("explanation") or "")
-    tips = recommendation.get("recommendations") or []
-    parts = [part.strip() for part in (message, explanation) if part and part.strip()]
-    if tips:
-        parts.append("What to do: " + " ".join(str(t).strip() for t in tips[:3] if str(t).strip()))
-    if not parts:
-        level = risk_assessment.get("risk_level", "UNKNOWN")
-        parts.append(f"The current marine safety assessment is {level.lower()}. Please continue monitoring official advisories.")
-    return " ".join(parts)
-
-
-# --------------------------------------------------
-# MAIN QUERY ENDPOINT: RUNS FULL AGENT PIPELINE
-# --------------------------------------------------
+# --------------------------------------------------------------------------
+# Main query: full agent pipeline
+# --------------------------------------------------------------------------
 @app.post("/query")
 async def process_query(request: UserRequest):
-    """
-    Main endpoint called by bridge chat/voice UI:
-    1. Runs conversational agent for intent classification.
-    2. Runs weather, marine, and geospatial agents in parallel.
-    3. Computes deterministic marine risk level.
-    4. Invokes recommendation_agent for safety action, tips, and LLM advice.
-    5. Returns unified response with real live data.
-    """
-    query_text = (request.message or "What is the current safety status?").strip()
-    if not query_text:
-        query_text = "What is the current safety status?"
+    query_text = (request.message or "").strip() or "What is the current safety status?"
+    language = (request.language or "en").lower()
+    if language != "en" and not is_supported_language(language):
+        logger.warning("Unsupported response language requested: %s", language)
+        language = "en"
 
-    # 1. Resolve navigational zone and coordinates from request or query text
-    detected_loc, detected_zone = extract_location_and_zone_from_text(query_text)
-    target_zone = request.zone_id or detected_zone
-
+    place_name = None
     if request.location:
-        gps_val = gps_agent(request.location.latitude, request.location.longitude)
-        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
+        loc = _location_or_none(request.location.latitude, request.location.longitude)
     elif request.latitude is not None and request.longitude is not None:
-        gps_val = gps_agent(request.latitude, request.longitude)
-        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
-    elif detected_loc:
-        gps_val = gps_agent(detected_loc.latitude, detected_loc.longitude)
-        loc = Location(latitude=gps_val["latitude"], longitude=gps_val["longitude"])
-    elif target_zone and target_zone in KNOWN_ZONES:
-        # A zone label cannot replace a device fix. Do not invent coordinates.
+        loc = _location_or_none(request.latitude, request.longitude)
+    else:
+        loc = None
+    # A place named in the question ("near Durban") overrides the device position.
+    named_loc, named_place = await resolve_location_from_text(query_text)
+    if named_loc is not None:
+        loc, place_name = named_loc, named_place
+
+    if loc is None:
         return {
             "status": "location_required",
             "message": await _localized_text(
-                "A verified GPS location or explicit latitude/longitude is required for live analysis.",
-                (request.language or "en").lower(),
-            ),
-            "language": (request.language or "en").lower(),
-            "zone_id": target_zone,
-        }
-    else:
-        return {
-            "status": "location_required",
-            "message": await _localized_text(
-                "Allow browser location or provide latitude and longitude for live marine analysis.",
-                (request.language or "en").lower(),
-            ),
-            "language": (request.language or "en").lower(),
-            "zone_id": target_zone,
+                "Allow location access, or name a port / give latitude and longitude, for live marine analysis.", language),
+            "language": language,
+            "zone_id": request.zone_id,
         }
 
-    logger.info(
-        "Processing /query: '%s' | zone: %s | loc: (%s, %s)",
-        query_text, target_zone, loc.latitude, loc.longitude
-    )
+    result = await orchestrate(query_text, location=loc, zone_id=request.zone_id, place_name=place_name)
+    risk = result["risk_assessment"]
+    recommendation = result["recommendation"]
+    marine, weather, geo = result["marine_data"], result["weather_data"], result["geospatial_data"]
 
-    # Concurrently run conversational analysis and domain agents
-    conv_task = asyncio.to_thread(run_conversational_agent, query_text)
-    marine_task = run_marine_agent(loc)
-    weather_task = run_weather_agent(loc)
-    geo_task = run_geospatial_agent(loc)
-
-    conv_res, marine_res, weather_res, geo_res = await asyncio.gather(
-        conv_task,
-        marine_task,
-        weather_task,
-        geo_task,
-        return_exceptions=True
-    )
-
-    # Safe handling of conversational agent
-    if isinstance(conv_res, Exception):
-        logger.warning("Conversational agent error: %s", conv_res)
-        conv_data = {
-            "intent": "GENERAL_QUERY",
-            "response": "Processing your marine safety inquiry.",
-            "user_message": request.message,
-        }
-    else:
-        conv_data = conv_res
-
-    # Safe handling of marine agent (normalize to dict)
-    marine_fallback = {}
-    if isinstance(marine_res, Exception):
-        logger.warning("Marine agent error: %s", marine_res)
-    marine_data = _normalize_agent_result(marine_res, marine_fallback)
-
-    # Safe handling of weather agent
-    weather_fallback = {}
-    if isinstance(weather_res, Exception):
-        logger.warning("Weather agent error: %s", weather_res)
-    weather_data = _normalize_agent_result(weather_res, weather_fallback)
-
-    # Cross-fill wave height from marine if weather had 0.0
-    if not weather_data.get("wave_height") and marine_data.get("wave_height"):
-        weather_data["wave_height"] = marine_data["wave_height"]
-
-    # Safe handling of geospatial agent
-    geo_fallback = {
-        "inside_protected_area": False,
-        "restricted_zone": False,
-        "near_boundary": False,
-        "distance_to_boundary_meters": 10000.0,
-        "restrictions": [],
-    }
-    if isinstance(geo_res, Exception):
-        logger.warning("Geospatial agent error: %s", geo_res)
-    geo_data = _normalize_agent_result(geo_res, geo_fallback)
-
-    # 3. Deterministic Risk Assessment (incorporating intent, message, zone)
-    risk_assessment = calculate_risk(
-        marine_data,
-        weather_data,
-        geo_data,
-        intent=conv_data.get("intent"),
-        user_message=request.message,
-        zone_id=target_zone,
-    )
-
-    # 4. Integrate Recommendation Agent
-    try:
-        recommendation = await run_recommendation_agent(
-            risk_data=risk_assessment,
-            weather_data=weather_data,
-            marine_data=marine_data,
-            geo_data=geo_data,
-        )
-    except Exception as exc:
-        logger.error("Recommendation agent invocation failed: %s", exc)
-        recommendation = {
-            "action": "PROCEED_WITH_CAUTION" if risk_assessment["risk_level"] != "LOW" else "SAFE",
-            "message": "Continue monitoring local weather and marine advisories.",
-            "recommendations": [
-                "Maintain continuous VHF Channel 16 watch.",
-                "Ensure lifejackets and emergency flares are accessible.",
-                "Monitor swell and wind updates regularly.",
-            ],
-            "explanation": "Automatic safety fallback based on verified risk calculation.",
-        }
-
-    # Provide one complete natural-language answer for chat clients. Structured
-    # telemetry remains available separately for the bridge/map panels.
-    response_text = _build_natural_language_response(
-        recommendation, risk_assessment, conv_data
-    )
+    response_text = _build_natural_language_response(recommendation, risk)
+    if place_name:
+        response_text = f"[{place_name}] " + response_text
     recommendation["response_text"] = response_text
 
-    # Localize the user-facing answer for the language the chat client asked
-    # for. The structured recommendation stays in English for the dashboard.
-    response_language = (request.language or "en").lower()
-    if response_language != "en" and not is_supported_language(response_language):
-        logger.warning("Unsupported response language requested: %s", response_language)
-        response_language = "en"
-
-    # A non-English response language doubles as the client's request for the
-    # full language bundle, so both translations are requested in parallel
-    # instead of two sequential round trips.
-    wants_bundle = response_language != "en"
+    wants_bundle = language != "en"
     language_result, all_languages = await asyncio.gather(
-        translate_text(response_text, response_language, "en"),
+        translate_text(response_text, language, "en"),
         translate_to_all_indian_languages(response_text, "en") if wants_bundle else _noop(),
     )
-
-    localized_response = language_result.get("translated_text") or response_text
+    localized = language_result.get("translated_text") or response_text
     translation_success = bool(language_result.get("success"))
-    if not translation_success and response_language != "en":
-        logger.warning(
-            "Translation to %s failed: %s", response_language, language_result.get("error")
-        )
-    if wants_bundle and isinstance(all_languages, dict):
-        translations = all_languages.get("translations")
-        if translations:
-            # The bundle is generated from English, so make sure the language
-            # the client actually asked for holds the localized answer.
-            translated_entry = translations.get(LANGUAGE_CODE_TO_NAME.get(response_language, ""))
-            if translated_entry is not None and translation_success:
-                translated_entry["text"] = localized_response
-                translated_entry["success"] = True
-            recommendation["translations"] = translations
+    if wants_bundle and isinstance(all_languages, dict) and all_languages.get("translations"):
+        translations = all_languages["translations"]
+        entry = translations.get(LANGUAGE_CODE_TO_NAME.get(language, ""))
+        if entry is not None and translation_success:
+            entry["text"], entry["success"] = localized, True
+        recommendation["translations"] = translations
 
-    # Resolve effective navigational zone for UI highlighting
-    if target_zone:
-        effective_zone = target_zone
-    elif risk_assessment.get("risk_level") in ("HIGH", "CRITICAL"):
-        effective_zone = "zone-danger-se"
-    elif risk_assessment.get("risk_level") == "MEDIUM":
-        effective_zone = "zone-wind-ne"
-    else:
-        effective_zone = "zone-pfz-sw"
+    zone = _zone_for(risk["risk_level"], request.zone_id)
+    recommendation["zone_id"] = zone
+    recommendation["alerts"] = risk.get("reasons", [])
+    recommendation["map_layers"] = (["Weather Warnings", "Protected Areas"] if risk["risk_level"] in ("HIGH", "CRITICAL")
+                                    else ["Wind", "Waves", "Marine Conditions"] if risk["risk_level"] == "MEDIUM"
+                                    else ["Sea Surface Temperature"])
+    telemetry = build_telemetry(marine, weather, risk, loc)
+    telemetry["clearance"] = recommendation.get("action", risk["risk_level"])
 
-    # Backward compatible fields for UI
-    recommendation["zone_id"] = effective_zone
-    recommendation["alerts"] = risk_assessment.get("reasons", [])
-    if risk_assessment["risk_level"] in ("HIGH", "CRITICAL"):
-        recommendation["map_layers"] = ["Weather Warnings", "Protected Areas"]
-    elif risk_assessment["risk_level"] == "MEDIUM":
-        recommendation["map_layers"] = ["Wind", "Waves", "Marine Conditions"]
-    else:
-        recommendation["map_layers"] = ["Sea Surface Temperature", "Chlorophyll", "PFZ"]
-
-    # Synthesize live dynamic telemetry snapshot
-    nav_telemetry = _compute_dynamic_tides_and_nav(marine_data, weather_data, geo_data)
-    maritime_sector = get_nearest_maritime_sector(loc.latitude, loc.longitude)
-    telemetry_snapshot = {
-        "bearing": nav_telemetry["cog"],
-        "depth": nav_telemetry["depth"],
-        "wave": nav_telemetry["wave"],
-        "swell": f"{float(marine_data.get('swell_wave_height') or 0.8):.1f}m",
-        "current": nav_telemetry["current"],
-        "wind": nav_telemetry["wind"],
-        "sst": nav_telemetry["sst"],
-        "highTide": nav_telemetry["highTide"],
-        "lowTide": nav_telemetry["lowTide"],
-        "visibility": nav_telemetry["visibility"],
-        "baro": nav_telemetry["baro"],
-        "sea_surface_height_anomaly": maritime_sector["ssh_anomaly_cm"],
-        "sea_surface_height_unit": maritime_sector["ssh_unit"],
-        "sog": nav_telemetry["sog"],
-        "cog": nav_telemetry["cog"],
-        "clearance": recommendation.get("action", "SAFE"),
-        "vhfGuard": "CH 16 GUARD ACTIVE",
-        "mrccPhone": "See official local maritime authority",
-        "gpsBeacon": "VERIFIED GPS FIX",
-        "patrolVessel": "UNAVAILABLE",
-    }
-
-    # Generate standardized GPS user location marker via GPS Agent
-    gps_data = gps_agent(loc.latitude, loc.longitude)
-
-    # Heatmaps are intentionally loaded through /heatmap separately. Running
-    # nine extra agent evaluations here makes the chat response unnecessarily slow.
-    risk_points = []
-
-    # Build canonical alerts list
-    alerts_list = []
-    for reason in risk_assessment.get("reasons", []):
-        alert_type = (
-            "danger" if risk_assessment["risk_level"] in ("HIGH", "CRITICAL")
-            else ("caution" if risk_assessment["risk_level"] == "MEDIUM" else "resolved")
-        )
-        alerts_list.append({
-            "id": f"ALERT-{abs(hash(reason)) % 10000:04d}",
-            "type": alert_type,
-            "risk_level": risk_assessment["risk_level"],
-            "title": f"Advisory ({risk_assessment['risk_level']})",
-            "description": reason,
-            "action": recommendation.get("action", "PROCEED_WITH_CAUTION"),
-            "zone_id": effective_zone,
-            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
-        })
-
-    # Return Canonical Contract with Full Backward Compatibility
     return {
         "status": "success",
-        # Canonical Contract Fields
         "location": _dump_model(loc),
+        "place_name": place_name,
         "chat": {
             "user_message": query_text,
-            "intent": conv_data.get("intent", "GENERAL_QUERY"),
-            "response": localized_response,
-            "language": response_language,
+            "intent": result["intent"],
+            "response": localized,
+            "language": language,
             "translation_success": translation_success,
             "translations": recommendation.get("translations", {}),
         },
-        "weather": weather_data,
-        "marine": marine_data,
-        "geospatial": geo_data,
+        "weather": weather,
+        "marine": marine,
+        "geospatial": geo,
         "risk": {
-            "risk_score": risk_assessment.get("risk_score", 0),
-            "risk_level": risk_assessment.get("risk_level", "LOW"),
-            "reasons": risk_assessment.get("reasons", []),
+            "risk_score": risk["risk_score"],
+            "risk_level": risk["risk_level"],
+            "reasons": risk["reasons"],
+            "confidence": risk.get("confidence"),
+            "data_gaps": risk.get("data_gaps", []),
+            "outlook": risk.get("outlook", {}),
         },
+        "consensus": result["consensus"],
+        "official_alerts": result["official_alerts"],
+        "ecosystem": result["ecosystem"],
+        "agent_trace": result["agent_trace"],
         "recommendation": recommendation,
-        "heatmap": {
-            "user_location": _dump_model(loc),
-            "risk_points": risk_points,
-        },
-        "alerts": alerts_list,
-
-        # Backward compatibility aliases for existing UI bindings
+        "heatmap": {"user_location": _dump_model(loc), "risk_points": []},
+        "alerts": _alerts_from_risk(risk, recommendation.get("action", ""), zone, loc),
+        # Backward-compatible aliases used by existing UI bindings
         "user_query": query_text,
-        "intent": conv_data.get("intent", "GENERAL_QUERY"),
-        "conversation": conv_data,
-        "gps": gps_data,
-        "risk_points": risk_points,
-        "zone_id": effective_zone,
-        "marine_data": marine_data,
-        "weather_data": weather_data,
-        "geospatial_data": geo_data,
-        "risk_assessment": risk_assessment,
-        "telemetry": telemetry_snapshot,
+        "intent": result["intent"],
+        "conversation": result["conversation"],
+        "gps": result["gps"],
+        "risk_points": [],
+        "zone_id": zone,
+        "marine_data": marine,
+        "weather_data": weather,
+        "geospatial_data": geo,
+        "risk_assessment": risk,
+        "telemetry": telemetry,
     }
 
 
@@ -539,517 +388,300 @@ async def process_query_get(
     zone_id: Optional[str] = Query(None),
     language: str = Query("en"),
 ):
-    """GET query endpoint for fast browser inspection and developer testing."""
-    req = UserRequest(
-        message=message or "What is the current safety status?",
-        latitude=lat,
-        longitude=lon,
-        zone_id=zone_id,
-        language=language,
-    )
-    return await process_query(req)
+    return await process_query(UserRequest(message=message or "", latitude=lat, longitude=lon,
+                                           zone_id=zone_id, language=language))
 
 
-# --------------------------------------------------
-# LIVE TELEMETRY ENDPOINT
-# --------------------------------------------------
+# --------------------------------------------------------------------------
+# Telemetry / location
+# --------------------------------------------------------------------------
+async def _live_snapshot(loc: Location) -> Dict[str, Any]:
+    agents = await run_agents(loc)
+    risk = calculate_risk(agents["marine"], agents["weather"], agents["geospatial"], consensus=agents["consensus"])
+    return {"agents": agents, "risk": risk, "telemetry": build_telemetry(agents["marine"], agents["weather"], risk, loc)}
+
+
 @app.get("/telemetry")
 @app.post("/telemetry")
-async def get_live_telemetry(
-    lat: Optional[float] = Query(None, ge=-90, le=90),
-    lon: Optional[float] = Query(None, ge=-180, le=180)
-):
-    """Returns live vessel bridge telemetry for given or current coordinates."""
-    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+async def get_live_telemetry(lat: Optional[float] = Query(None, ge=-90, le=90),
+                             lon: Optional[float] = Query(None, ge=-180, le=180)):
+    loc = _location_or_none(lat, lon)
+    if loc is None:
         return {"status": "location_required", "message": "A verified GPS location is required.", "risk_points": []}
-    loc = Location(latitude=lat, longitude=lon)
-    try:
-        marine_res, weather_res = await asyncio.gather(
-            run_marine_agent(loc),
-            run_weather_agent(loc),
-            return_exceptions=True
-        )
-    except Exception:
-        marine_res, weather_res = None, None
-
-    m_data = _normalize_agent_result(marine_res, {})
-    w_data = _normalize_agent_result(weather_res, {})
-
-    gps_data = gps_agent(loc.latitude, loc.longitude)
-
-    # Do not block telemetry on nine additional upstream calls. The dedicated
-    # /heatmap endpoint supplies this optional layer.
-    risk_points = []
-
-    nav_telemetry = _compute_dynamic_tides_and_nav(m_data, w_data)
-
-    risk_state = calculate_risk(marine=m_data, weather=w_data, geospatial={})
-    maritime_sector = get_nearest_maritime_sector(loc.latitude, loc.longitude)
+    snap = await _live_snapshot(loc)
+    agents, risk = snap["agents"], snap["risk"]
     return {
-        "fix": f"DGPS: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
-        "sog": nav_telemetry["sog"],
-        "cog": nav_telemetry["cog"],
-        "depth": nav_telemetry["depth"],
-        "baro": nav_telemetry["baro"],
-        "wave": nav_telemetry["wave"],
-        "wave_height": nav_telemetry["wave_height"],
-        "wave_period": nav_telemetry["wave_period"],
-        "wave_direction": nav_telemetry["wave_direction"],
-        "swell": f"{float(nav_telemetry['swell_height']):.1f}m" if nav_telemetry["swell_height"] is not None else "UNAVAILABLE",
-        "swell_height": nav_telemetry["swell_height"],
-        "swell_period": nav_telemetry["swell_period"],
-        "swell_direction": nav_telemetry["swell_direction"],
-        "wind": nav_telemetry["wind"],
-        "wind_speed": nav_telemetry["wind_speed"],
-        "current": nav_telemetry["current"],
-        "sst": nav_telemetry["sst"],
-        "sea_surface_height_anomaly": maritime_sector["ssh_anomaly_cm"],
-        "sea_surface_height_unit": maritime_sector["ssh_unit"],
-        "vhf": "VHF CH 16 GUARD",
-        "highTide": nav_telemetry["highTide"],
-        "lowTide": nav_telemetry["lowTide"],
-        "visibility": nav_telemetry["visibility"],
-        "clearance": risk_state["risk_level"],
-        "risk_level": risk_state["risk_level"],
+        **snap["telemetry"],
         "location": _dump_model(loc),
-        "gps": gps_data,
-        "risk_points": risk_points,
-        "maritime_intelligence": maritime_sector,
+        "gps": gps_agent(loc.latitude, loc.longitude),
+        "risk_points": [],
+        "reasons": risk["reasons"],
+        "consensus": agents["consensus"],
+        "official_alerts": agents["official"]["alerts"],
+        "official_feeds": agents["official"].get("feeds", {}),
+        "ecosystem": {k: v for k, v in agents["ecosystem"].items() if k != "species"},
+        "agent_trace": agents["trace"],
+        "marine_available": bool(agents["marine"].get("data_available")),
+        "weather_available": bool(agents["weather"].get("data_available")),
     }
 
 
-# --------------------------------------------------
-# GPS LOCATION PIN & UPDATE ENDPOINT
-# --------------------------------------------------
 class LocationUpdateRequest(BaseModel):
-    latitude: float = Field(..., ge=-90, le=90, description="Latitude of user device")
-    longitude: float = Field(..., ge=-180, le=180, description="Longitude of user device")
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
 
 
 @app.post("/location")
 @app.get("/location")
-async def update_user_location(
-    body: Optional[LocationUpdateRequest] = Body(None),
-    lat: Optional[float] = Query(None),
-    lon: Optional[float] = Query(None)
-):
-    """
-    Receives user's current GPS coordinates from device/browser.
-    Validates via GPS Agent and updates multi-agent telemetry analysis.
-    """
-    target_lat = body.latitude if body else lat
-    target_lon = body.longitude if body else lon
-    if target_lat is None or target_lon is None:
+async def update_user_location(body: Optional[LocationUpdateRequest] = Body(None),
+                               lat: Optional[float] = Query(None), lon: Optional[float] = Query(None)):
+    loc = _location_or_none(body.latitude if body else lat, body.longitude if body else lon)
+    if loc is None:
         return {"status": "location_required", "message": "A verified GPS location is required."}
-
-    gps_data = gps_agent(target_lat, target_lon)
-    loc = Location(latitude=gps_data["latitude"], longitude=gps_data["longitude"])
-
-    try:
-        marine_res, weather_res = await asyncio.gather(
-            run_marine_agent(loc),
-            run_weather_agent(loc),
-            return_exceptions=True
-        )
-    except Exception:
-        marine_res, weather_res = None, None
-
-    m_data = _normalize_agent_result(marine_res, {})
-    w_data = _normalize_agent_result(weather_res, {})
-
-    # The map requests /heatmap independently so location updates remain fast.
-    risk_points = []
-
-    nav_telemetry = _compute_dynamic_tides_and_nav(m_data, w_data)
-    maritime_sector = get_nearest_maritime_sector(loc.latitude, loc.longitude)
-
+    snap = await _live_snapshot(loc)
     return {
         "status": "success",
         "user_location": _dump_model(loc),
         "location": _dump_model(loc),
-        "gps": gps_data,
-        "risk_points": risk_points,
-        "telemetry": {
-            "fix": f"DGPS FIX: {loc.latitude:.4f}°N, {loc.longitude:.4f}°E",
-            "sog": nav_telemetry["sog"],
-            "cog": nav_telemetry["cog"],
-            "depth": nav_telemetry["depth"],
-            "baro": nav_telemetry["baro"],
-            "wave": nav_telemetry["wave"],
-            "wave_height": nav_telemetry["wave_height"],
-            "wave_period": nav_telemetry["wave_period"],
-            "wave_direction": nav_telemetry["wave_direction"],
-            "swell": f"{float(nav_telemetry['swell_height']):.1f}m" if nav_telemetry["swell_height"] is not None else "UNAVAILABLE",
-            "swell_height": nav_telemetry["swell_height"],
-            "swell_period": nav_telemetry["swell_period"],
-            "swell_direction": nav_telemetry["swell_direction"],
-            "wind": nav_telemetry["wind"],
-            "wind_speed": nav_telemetry["wind_speed"],
-            "current": nav_telemetry["current"],
-            "sst": nav_telemetry["sst"],
-            "clearance": calculate_risk(marine=m_data, weather=w_data, geospatial={})["risk_level"],
-            "sea_surface_height_anomaly": maritime_sector["ssh_anomaly_cm"],
-            "sea_surface_height_unit": maritime_sector["ssh_unit"],
-        },
-        "maritime_intelligence": maritime_sector
+        "gps": gps_agent(loc.latitude, loc.longitude),
+        "risk_points": [],
+        "telemetry": snap["telemetry"],
     }
 
 
-# --------------------------------------------------
-# DYNAMIC 3x3 RISK HEATMAP ENDPOINT
-# --------------------------------------------------
+# --------------------------------------------------------------------------
+# Heatmap
+# --------------------------------------------------------------------------
 class HeatmapRequest(BaseModel):
-    latitude: Optional[float] = Field(None, ge=-90, le=90, description="Center latitude of user GPS")
-    longitude: Optional[float] = Field(None, ge=-180, le=180, description="Center longitude of user GPS")
-    step: Optional[float] = Field(0.035, ge=0.005, le=0.5, description="Geographic step in degrees")
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
+    step: Optional[float] = Field(0.035, ge=0.005, le=0.5)
 
 
 @app.post("/heatmap")
 @app.get("/heatmap")
 @app.post("/api/v1/risk-analysis")
 @app.get("/api/v1/risk-analysis")
-async def get_risk_heatmap(
-    body: Optional[HeatmapRequest] = Body(None),
-    lat: Optional[float] = Query(None),
-    lon: Optional[float] = Query(None),
-    step: Optional[float] = Query(0.035)
-):
-    """
-    Computes dynamic 3x3 geographic risk grid centered on user GPS coordinates.
-    Returns:
-        {
-            "user_location": {"latitude": ..., "longitude": ...},
-            "risk_points": [
-                {"latitude": ..., "longitude": ..., "risk": ..., "risk_level": ...},
-                ... (9 points)
-            ]
-        }
-    """
-    target_lat = body.latitude if (body and body.latitude is not None) else (lat if lat is not None else None)
-    target_lon = body.longitude if (body and body.longitude is not None) else (lon if lon is not None else None)
-    target_step = body.step if (body and body.step is not None) else (step if step is not None else 0.035)
-
-    if target_lat is None or target_lon is None:
-        return {
-            "error": "latitude and longitude are required",
-            "user_location": None,
-            "risk_points": [],
-        }
-
+async def get_risk_heatmap(body: Optional[HeatmapRequest] = Body(None), lat: Optional[float] = Query(None),
+                           lon: Optional[float] = Query(None), step: Optional[float] = Query(0.035)):
+    t_lat = body.latitude if body and body.latitude is not None else lat
+    t_lon = body.longitude if body and body.longitude is not None else lon
+    t_step = body.step if body and body.step is not None else (step or 0.035)
+    if t_lat is None or t_lon is None:
+        return {"error": "latitude and longitude are required", "user_location": None, "risk_points": []}
     try:
-        heatmap_data = await generate_risk_heatmap(target_lat, target_lon, step=target_step)
-
-        # If no real data is available, return empty risk_points with a message
-        if not heatmap_data.get("risk_points") or len(heatmap_data["risk_points"]) == 0:
-            logger.info("No real data available for heatmap at (%.4f, %.4f)", target_lat, target_lon)
-            return {
-                "user_location": {"latitude": target_lat, "longitude": target_lon},
-                "risk_points": [],
-                "message": "No real data available for this location",
-                "has_data": False
-            }
-
-        heatmap_data["has_data"] = True
-        return heatmap_data
+        data = await generate_risk_heatmap(t_lat, t_lon, step=t_step)
     except Exception as exc:
-        logger.error("Heatmap generation failed: %s", type(exc).__name__)
-        return {
-            "user_location": {"latitude": target_lat, "longitude": target_lon},
-            "risk_points": [],
-            "error": "Unable to compute risk heatmap right now",
-            "has_data": False
-        }
+        logger.error("Heatmap generation failed: %s", exc)
+        return {"user_location": {"latitude": t_lat, "longitude": t_lon}, "risk_points": [],
+                "error": "Unable to compute risk heatmap right now", "has_data": False}
+    data["has_data"] = bool(data.get("risk_points"))
+    if not data["has_data"]:
+        data["message"] = "No marine model coverage around this location (on land?)"
+    return data
 
 
-# --------------------------------------------------
-# TRANSLATION ENDPOINTS
-# --------------------------------------------------
-class TranslationRequest(BaseModel):
-    text: str = Field(..., description="Text to translate")
-    target_lang: str = Field("hi", description="Target language code (e.g., 'hi' for Hindi)")
-    source_lang: str = Field("en", description="Source language code (default: 'en')")
+# --------------------------------------------------------------------------
+# Safe route planner
+# --------------------------------------------------------------------------
+class RouteRequest(BaseModel):
+    start_latitude: float = Field(..., ge=-90, le=90)
+    start_longitude: float = Field(..., ge=-180, le=180)
+    end_latitude: float = Field(..., ge=-90, le=90)
+    end_longitude: float = Field(..., ge=-180, le=180)
+    vessel: str = Field("small", description="small | medium | large")
 
 
-@app.post("/translate")
-@app.get("/translate")
-async def translate_endpoint(
-    body: Optional[TranslationRequest] = Body(None),
-    text: Optional[str] = Query(None),
-    target_lang: Optional[str] = Query("hi"),
-    source_lang: Optional[str] = Query("en")
-):
-    """
-    Translate text to a specific language (supports all 22 official Indian languages)
-
-    Returns:
-        {
-            "translated_text": "...",
-            "source_language": "...",
-            "target_language": "...",
-            "success": true/false
-        }
-    """
-    target_text = body.text if body else text
-    if not target_text:
-        raise HTTPException(status_code=400, detail="text is required")
-
-    target = body.target_lang if body else target_lang
-    source = body.source_lang if body else source_lang
-
-    result = await translate_text(target_text, target, source)
-    return result
+@app.post("/route")
+async def safe_route(body: RouteRequest):
+    try:
+        return await plan_route(body.start_latitude, body.start_longitude,
+                                body.end_latitude, body.end_longitude, vessel=body.vessel)
+    except RouteError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except UpstreamError as exc:
+        raise HTTPException(status_code=503, detail="Forecast provider is busy or unreachable - try again in a minute.") from exc
 
 
-class BatchTranslationRequest(BaseModel):
-    texts: List[str] = Field(..., description="Texts to translate, in display order")
-    target_lang: str = Field("hi", description="Target language code (e.g., 'hi' for Hindi)")
-    source_lang: str = Field("en", description="Source language code (default: 'en')")
-
-@app.post("/translate/batch")
-async def translate_batch_endpoint(body: BatchTranslationRequest):
-    """Translate a list of UI strings in a single Google Translate request.
-
-    The response preserves the input order, so clients can map results back to
-    the interface elements they came from.
-    """
-    if not body.texts:
-        return {"translations": [], "count": 0}
-    if len(body.texts) > MAX_TRANSLATE_BATCH:
-        raise HTTPException(
-            status_code=400,
-            detail=f"At most {MAX_TRANSLATE_BATCH} texts can be translated per request",
-        )
-
-    results = await translate_batch(body.texts, body.target_lang, body.source_lang)
-    return {
-        "source_language": (body.source_lang or "en").lower(),
-        "target_language": (body.target_lang or "hi").lower(),
-        "translations": results,
-        "count": len(results),
-    }
-
-class MultiLanguageTranslationRequest(BaseModel):
-    text: str = Field(..., description="Text to translate")
-    source_lang: str = Field("en", description="Source language code (default: 'en')")
+@app.get("/route/vessels")
+async def route_vessels():
+    return VESSEL_LIMITS
 
 
-@app.post("/translate/all")
-@app.get("/translate/all")
-async def translate_all_endpoint(
-    body: Optional[MultiLanguageTranslationRequest] = Body(None),
-    text: Optional[str] = Query(None),
-    source_lang: Optional[str] = Query("en")
-):
-    """
-    Translate text to all 22 official Indian languages
-
-    Returns:
-        {
-            "source_text": "...",
-            "source_language": "...",
-            "translations": {
-                "hindi": {"text": "...", "code": "hi", "success": true},
-                "bengali": {"text": "...", "code": "bn", "success": true},
-                ...
-            },
-            "total_languages": 22
-        }
-    """
-    target_text = body.text if body else text
-    if not target_text:
-        raise HTTPException(status_code=400, detail="text is required")
-
-    source = body.source_lang if body else source_lang
-
-    result = await translate_to_all_indian_languages(target_text, source)
-    return result
+@app.get("/ecosystem")
+async def ecosystem(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
+    return await ecosystem_agent(lat, lon)
 
 
-@app.get("/translate/languages")
-async def get_supported_languages():
-    """
-    Get list of all supported Indian languages with their codes
-
-    Returns:
-        {
-            "languages": {
-                "hindi": "hi",
-                "bengali": "bn",
-                ...
-            }
-        }
-    """
-    from Services.translation_service import INDIAN_LANGUAGES
-    return {"languages": INDIAN_LANGUAGES}
+@app.get("/geocode")
+async def geocode(q: str = Query(..., min_length=2, max_length=80)):
+    place = await geocode_place(q)
+    if not place:
+        raise HTTPException(status_code=404, detail="Place not found")
+    return place
 
 
-# --------------------------------------------------
-# LIVE BULLETINS ENDPOINT
-# --------------------------------------------------
+# --------------------------------------------------------------------------
+# Official alerts & bulletins
+# --------------------------------------------------------------------------
+@app.get("/alerts/official")
+async def official_alerts(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
+    return await get_official_alerts(lat, lon)
+
+
 @app.get("/bulletins")
 @app.post("/bulletins")
-async def get_bulletins(
-    lat: Optional[float] = Query(None),
-    lon: Optional[float] = Query(None)
-):
-    """Returns live safety bulletins computed from marine and weather conditions."""
+async def get_bulletins(lat: Optional[float] = Query(None), lon: Optional[float] = Query(None)):
+    """Bulletins = official warnings near the position + the live agent assessment."""
     if lat is None or lon is None:
         raise HTTPException(status_code=400, detail="lat and lon are required for live bulletins")
-    try:
-        validated_gps = gps_agent(lat, lon)
-        loc = Location(latitude=validated_gps["latitude"], longitude=validated_gps["longitude"])
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid latitude or longitude") from exc
-
-    try:
-        geo_res = await run_geospatial_agent(loc)
-    except Exception as exc:
-        logger.warning("Geospatial agent error in /bulletins: %s", exc)
-        geo_res = None
-    geo_info = _normalize_agent_result(geo_res, {"inside_protected_area": False, "restrictions": []})
-    marine_res, weather_res = await asyncio.gather(
-        run_marine_agent(loc), run_weather_agent(loc), return_exceptions=True
-    )
-    marine_info = _normalize_agent_result(marine_res, {})
-    weather_info = _normalize_agent_result(weather_res, {})
-    risk_info = calculate_risk(marine_info, weather_info, geo_info)
-    live_reasons = risk_info.get("reasons", [])
+    loc = _location_or_none(lat, lon)
+    snap = await _live_snapshot(loc)
+    agents, risk = snap["agents"], snap["risk"]
+    coords = format_coords(loc.latitude, loc.longitude)
     bulletins = []
-    if live_reasons:
-        level = risk_info.get("risk_level", "LOW")
+
+    for i, alert in enumerate(agents["official"]["alerts"][:6]):
+        level = alert.get("level", "")
+        where = alert.get("district") or f"{alert['distance_km']:.0f} km away"
         bulletins.append({
-            "id": "LIVE-RISK-001",
-            "type": "danger" if level in ("HIGH", "CRITICAL") else "caution",
-            "source_en": "KyroX live sensor analysis",
-            "title_en": f"Live conditions: {level}",
-            "desc_en": "; ".join(live_reasons),
-            "action_en": "Follow the recommendation and monitor official advisories.",
-            "zone_id": "zone-danger-se" if level in ("HIGH", "CRITICAL") else "zone-wind-ne",
-            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
+            "id": f"OFFICIAL-{alert['source']}-{i + 1}",
+            "type": "danger" if alert.get("severity", 0) >= 2 else "caution",
+            "source_en": f"{alert['source']} (official)",
+            "title_en": f"{alert.get('alert') or alert['kind']} - {where}",
+            "desc_en": alert.get("message") or "",
+            "action_en": "Follow the official advisory and local authority instructions.",
+            "zone_id": "zone-danger-se" if alert.get("severity", 0) >= 2 else "zone-wind-ne",
+            "coords": coords,
+            "official": True,
+            "issued": alert.get("issued"),
+            "level": level,
+            "url": alert.get("url"),
         })
-    if geo_info.get("restrictions"):
-        bulletins.insert(0, {
-            "id": "LIVE-GEO-001",
-            "type": "danger",
-            "source_en": "Live geospatial boundary analysis",
-            "title_en": "Protected or restricted area detected",
-            "desc_en": "; ".join(geo_info["restrictions"]),
-            "action_en": "Leave the restricted area and follow local maritime rules.",
-            "zone_id": "zone-danger-se",
-            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
-        })
-    if not bulletins:
+
+    if agents["geospatial"].get("restrictions"):
         bulletins.append({
-            "id": "LIVE-STATUS-001",
-            "type": "resolved",
-            "source_en": "KyroX live sensor analysis",
-            "title_en": "No active risk reason reported",
-            "desc_en": "Live agents returned no current risk indicators for this verified position.",
-            "action_en": "Continue monitoring official weather and maritime advisories.",
-            "zone_id": "zone-pfz-sw",
-            "coords": f"{loc.latitude:.2f}°N, {loc.longitude:.2f}°E",
+            "id": "LIVE-GEO-001", "type": "danger", "source_en": "Geospatial agent (OpenStreetMap)",
+            "title_en": "Protected or restricted area nearby",
+            "desc_en": "; ".join(agents["geospatial"]["restrictions"]),
+            "action_en": "Check local rules before fishing here.",
+            "zone_id": "zone-danger-se", "coords": coords,
         })
+
+    live_reasons = [r for r in risk["reasons"] if not r.startswith("OFFICIAL")]
+    level = risk["risk_level"]
+    bulletins.append({
+        "id": "LIVE-RISK-001",
+        "type": "danger" if level in ("HIGH", "CRITICAL") else ("caution" if level == "MEDIUM" else "resolved"),
+        "source_en": f"ORCA agents ({risk.get('confidence', 'medium')} confidence)",
+        "title_en": f"Live assessment: {level}",
+        "desc_en": "; ".join(live_reasons) if live_reasons else "No hazards in current conditions or the 12 h forecast.",
+        "action_en": {"LOW": "Normal precautions; re-check before departure.",
+                      "MEDIUM": "Stay near the coast and plan an early return.",
+                      "HIGH": "Return to shore / do not depart.",
+                      "CRITICAL": "Do not go to sea."}.get(level, "Monitor official advisories."),
+        "zone_id": _zone_for(level, None),
+        "coords": coords,
+    })
+    for name, meta in agents["official"].get("feeds", {}).items():
+        if meta.get("available") is False:
+            bulletins.append({
+                "id": f"FEED-{name}", "type": "caution", "source_en": "ORCA system",
+                "title_en": f"{name} official feed unavailable",
+                "desc_en": f"Could not reach {name}. Check official channels directly.",
+                "action_en": "Do not assume there are no official warnings.",
+                "zone_id": "zone-wind-ne", "coords": coords,
+            })
     return bulletins
 
-    return bulletins
 
-
-# --------------------------------------------------
-# 24-HOUR LINEAR REGRESSION PREDICTION ENDPOINT
-# --------------------------------------------------
+# --------------------------------------------------------------------------
+# Forecast (kept at the legacy linear-regression path for the UI)
+# --------------------------------------------------------------------------
+@app.get("/predictions/forecast")
 @app.get("/predictions/linear-regression")
 @app.post("/predictions/linear-regression")
-async def get_linear_regression_predictions(
-    lat: Optional[float] = Query(None),
-    lon: Optional[float] = Query(None),
-    variable: Optional[str] = Query("wave_height"),
-    horizon_hours: Optional[int] = Query(24),
-    past_hours: Optional[int] = Query(24),
-    body: Optional[Dict[str, Any]] = Body(None),
-):
-    """
-    24-Hour Marine Linear Regression Modelling Endpoint.
-    Computes an Ordinary Least Squares (OLS) line of best fit over marine time-series,
-    determines R-squared, slope, intercept, standard error, and returns forward 24-hour
-    hourly projections with 95% confidence intervals and multi-lingual marine safety advisories.
-    """
-    req_body = body or {}
-    target_lat = lat if lat is not None else req_body.get("lat")
-    target_lon = lon if lon is not None else req_body.get("lon")
-    if target_lat is None or target_lon is None:
+async def get_forecast(lat: Optional[float] = Query(None), lon: Optional[float] = Query(None),
+                       variable: Optional[str] = Query("wave_height"), horizon_hours: Optional[int] = Query(24),
+                       past_hours: Optional[int] = Query(24), body: Optional[Dict[str, Any]] = Body(None)):
+    req = body or {}
+    t_lat = lat if lat is not None else req.get("lat")
+    t_lon = lon if lon is not None else req.get("lon")
+    if t_lat is None or t_lon is None:
         raise HTTPException(status_code=400, detail="lat and lon are required for live predictions")
-    target_var = (variable or req_body.get("variable") or "wave_height").strip().lower()
-    h_hours = horizon_hours or req_body.get("horizon_hours") or 24
-    p_hours = past_hours or req_body.get("past_hours") or 24
-
-    # Validate GPS coordinates safely
+    loc = _location_or_none(float(t_lat), float(t_lon))
     try:
-        validated_gps = gps_agent(target_lat, target_lon)
-        loc = Location(latitude=validated_gps["latitude"], longitude=validated_gps["longitude"])
+        result = await compute_forecast((variable or req.get("variable") or "wave_height").strip().lower(),
+                                        loc.latitude, loc.longitude,
+                                        horizon_hours=horizon_hours or req.get("horizon_hours") or 24,
+                                        past_hours=past_hours or req.get("past_hours") or 24)
+    except PredictionUnavailable as exc:
+        return JSONResponse({"success": False, "error": str(exc)}, status_code=404)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid latitude or longitude") from exc
-
-    # Attempt to retrieve live anchor value for the target variable
-    current_val = None
-    try:
-        if target_var in ("wave_height", "swell_wave_height", "ocean_current_velocity"):
-            marine_res = await run_marine_agent(loc)
-            marine_dict = _normalize_agent_result(marine_res, {})
-            if target_var == "wave_height":
-                current_val = marine_dict.get("wave_height")
-            elif target_var == "swell_wave_height":
-                current_val = marine_dict.get("swell_wave_height")
-            elif target_var == "ocean_current_velocity":
-                current_val = marine_dict.get("ocean_current_velocity")
-        elif target_var == "wind_speed":
-            weather_res = await run_weather_agent(loc)
-            weather_dict = _normalize_agent_result(weather_res, {})
-            current_val = weather_dict.get("wind_speed")
-        elif target_var == "risk_score":
-            w_res, m_res, g_res = await asyncio.gather(
-                run_weather_agent(loc),
-                run_marine_agent(loc),
-                run_geospatial_agent(loc),
-                return_exceptions=True
-            )
-            w_dict = _normalize_agent_result(w_res, {})
-            m_dict = _normalize_agent_result(m_res, {})
-            g_dict = _normalize_agent_result(g_res, {})
-            risk_calc = calculate_risk(marine=m_dict, weather=w_dict, geospatial=g_dict)
-            current_val = risk_calc.get("risk_score")
-    except Exception as exc:
-        logger.warning("Could not fetch real-time anchor for %s: %s", target_var, exc)
-
-    # Compute regression model
-    try:
-        result = await compute_24h_prediction_async(
-            variable=target_var,
-            current_val=current_val,
-            past_hours=p_hours,
-            horizon_hours=h_hours,
-            lat=loc.latitude,
-            lon=loc.longitude,
-        )
-    except Exception as exc:
-        logger.warning("compute_24h_prediction_async failed, falling back to baseline: %s", exc)
-        result = compute_24h_prediction(
-            variable=target_var,
-            current_val=current_val,
-            past_hours=p_hours,
-            horizon_hours=h_hours
-        )
+        logger.warning("Forecast failed: %s", exc)
+        return JSONResponse({"success": False, "error": "Forecast service temporarily unavailable"}, status_code=503)
     result["location"] = {"latitude": loc.latitude, "longitude": loc.longitude}
     return result
 
 
-# --------------------------------------------------
-# RUN SERVER
-# --------------------------------------------------
+# --------------------------------------------------------------------------
+# Translation
+# --------------------------------------------------------------------------
+class TranslationRequest(BaseModel):
+    text: str = Field(..., max_length=5000)
+    target_lang: str = Field("hi")
+    source_lang: str = Field("en")
+
+
+@app.post("/translate")
+@app.get("/translate")
+async def translate_endpoint(body: Optional[TranslationRequest] = Body(None), text: Optional[str] = Query(None),
+                             target_lang: Optional[str] = Query("hi"), source_lang: Optional[str] = Query("en")):
+    target_text = body.text if body else text
+    if not target_text:
+        raise HTTPException(status_code=400, detail="text is required")
+    return await translate_text(target_text, body.target_lang if body else target_lang,
+                                body.source_lang if body else source_lang)
+
+
+class BatchTranslationRequest(BaseModel):
+    texts: List[str]
+    target_lang: str = Field("hi")
+    source_lang: str = Field("en")
+
+
+@app.post("/translate/batch")
+async def translate_batch_endpoint(body: BatchTranslationRequest):
+    if not body.texts:
+        return {"translations": [], "count": 0}
+    if len(body.texts) > MAX_TRANSLATE_BATCH:
+        raise HTTPException(status_code=400, detail=f"At most {MAX_TRANSLATE_BATCH} texts can be translated per request")
+    results = await translate_batch(body.texts, body.target_lang, body.source_lang)
+    return {"source_language": (body.source_lang or "en").lower(), "target_language": (body.target_lang or "hi").lower(),
+            "translations": results, "count": len(results)}
+
+
+class MultiLanguageTranslationRequest(BaseModel):
+    text: str = Field(..., max_length=5000)
+    source_lang: str = Field("en")
+
+
+@app.post("/translate/all")
+@app.get("/translate/all")
+async def translate_all_endpoint(body: Optional[MultiLanguageTranslationRequest] = Body(None),
+                                 text: Optional[str] = Query(None), source_lang: Optional[str] = Query("en")):
+    target_text = body.text if body else text
+    if not target_text:
+        raise HTTPException(status_code=400, detail="text is required")
+    return await translate_to_all_indian_languages(target_text, body.source_lang if body else source_lang)
+
+
+@app.get("/translate/languages")
+async def get_supported_languages():
+    from Services.translation_service import INDIAN_LANGUAGES
+    return {"languages": INDIAN_LANGUAGES}
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True
-    )
+    uvicorn.run("main:app", host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8000")))

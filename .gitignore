@@ -7,3 +7,6 @@
 env.js
 **/env.js
 **/.venv/
+
+# Local Claude Code / preview tooling (machine-specific paths)
+.claude/

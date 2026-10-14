@@ -1,654 +1,337 @@
 # Backend/Services/prediction_service.py
 """
-24-Hour Marine Linear Regression Prediction Service.
-Performs Ordinary Least Squares (OLS) regression on marine time-series telemetry
-(wave height, wind speed, ocean currents, swell, risk score) to model trendlines,
-compute statistical fit metrics (slope, intercept, R², standard error), and project
-hourly forward predictions for the next 24 hours with 95% confidence intervals.
+24-hour marine forecast service with an honest, verifiable evaluation.
+
+Forecast
+    The next 24 h come from physics-based numerical models (Open-Meteo best
+    match; for waves and wind also ECMWF and NOAA as independent members).
+    The uncertainty band is the SPREAD BETWEEN MODELS - a real disagreement
+    measure - not a synthetic interval. If only one model is available the
+    band collapses and `uncertainty_available` is False.
+
+Evaluation (last 24 h)
+    For every hour of the past day we compare three forecasting methods
+    against the latest model hindcast ("truth" - note: a model analysis, not
+    an in-situ buoy observation):
+      * nwp_24h_ahead  - what the model predicted 24 h earlier (previous run)
+      * persistence    - "same as 24 h ago"
+      * linear_trend   - OLS line fitted on the preceding 24 h, extrapolated
+    MAE / RMSE / R2 and a safety-band confusion matrix are reported, plus
+    skill vs persistence. Nothing is ever filled with invented values: if a
+    series is unavailable the endpoint says so.
 """
 
-import math
+import asyncio
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone, timedelta
-import httpx
+import math
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from Services.http_cache import UpstreamError, cached_get_json
 
 logger = logging.getLogger(__name__)
 
-from Tools.marine_tools import _find_nearest_coastal_anchor
+MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
+WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+PREVIOUS_RUNS_URL = "https://previous-runs-api.open-meteo.com/v1/forecast"
+KMH_TO_KNOTS = 0.539957
 
-# Standard maritime safety threshold limits for operational craft (<20m)
 VARIABLE_THRESHOLDS = {
-    "wave_height": {
-        "unit": "m",
-        "label": "Significant Wave Height",
-        "safe_max": 1.5,
-        "caution_max": 2.5,
-        "danger_min": 2.5,
-        "min_physical": 0.2,
-        "max_physical": 9.0,
-    },
-    "wind_speed": {
-        "unit": "kts",
-        "label": "Wind Speed",
-        "safe_max": 15.0,
-        "caution_max": 25.0,
-        "danger_min": 25.0,
-        "min_physical": 0.0,
-        "max_physical": 75.0,
-    },
-    "swell_wave_height": {
-        "unit": "m",
-        "label": "Swell Wave Height",
-        "safe_max": 1.2,
-        "caution_max": 2.0,
-        "danger_min": 2.0,
-        "min_physical": 0.1,
-        "max_physical": 8.0,
-    },
-    "ocean_current_velocity": {
-        "unit": "m/s",
-        "label": "Ocean Current Velocity",
-        "safe_max": 0.8,
-        "caution_max": 1.5,
-        "danger_min": 1.5,
-        "min_physical": 0.05,
-        "max_physical": 4.0,
-    },
-    "risk_score": {
-        "unit": "idx",
-        "label": "Marine Risk Index",
-        "safe_max": 35.0,
-        "caution_max": 70.0,
-        "danger_min": 70.0,
-        "min_physical": 0.0,
-        "max_physical": 100.0,
-    },
+    "wave_height": {"unit": "m", "label": "Significant Wave Height", "safe_max": 1.5, "caution_max": 2.5, "danger_min": 2.5},
+    "wind_speed": {"unit": "kt", "label": "Wind Speed", "safe_max": 15.0, "caution_max": 25.0, "danger_min": 25.0},
+    "swell_wave_height": {"unit": "m", "label": "Swell Wave Height", "safe_max": 1.2, "caution_max": 2.0, "danger_min": 2.0},
+    "ocean_current_velocity": {"unit": "kt", "label": "Ocean Current", "safe_max": 1.5, "caution_max": 3.0, "danger_min": 3.0},
+    "risk_score": {"unit": "idx", "label": "Marine Risk Index", "safe_max": 30.0, "caution_max": 55.0, "danger_min": 55.0},
 }
 
 
+class PredictionUnavailable(Exception):
+    """No real series exists for this variable / location."""
+
+
+# ---------------------------------------------------------------------------
+# Statistics helpers
+# ---------------------------------------------------------------------------
 def fit_linear_regression(x_values: List[float], y_values: List[float]) -> Dict[str, Any]:
-    """
-    Fits an Ordinary Least Squares (OLS) line: y = m*x + c
-    Computes:
-      - slope (m)
-      - intercept (c)
-      - R² (coefficient of determination)
-      - Pearson correlation (r)
-      - Residual standard error (SE)
-    """
+    """Ordinary least squares y = m*x + c with R2, Pearson r and residual SE."""
     n = len(x_values)
     if n < 2 or len(y_values) != n:
-        return {
-            "slope": 0.0,
-            "intercept": y_values[0] if y_values else 0.0,
-            "r_squared": 0.0,
-            "correlation": 0.0,
-            "standard_error": 0.0,
-            "equation": f"y = 0.00x + {(y_values[0] if y_values else 0.0):.2f}"
-        }
-
-    sum_x = sum(x_values)
-    sum_y = sum(y_values)
-    sum_xy = sum(x * y for x, y in zip(x_values, y_values))
-    sum_x2 = sum(x ** 2 for x in x_values)
-    sum_y2 = sum(y ** 2 for y in y_values)
-
-    denominator = (n * sum_x2) - (sum_x ** 2)
-    if abs(denominator) < 1e-9:
-        slope = 0.0
-        intercept = sum_y / n
-    else:
-        slope = ((n * sum_xy) - (sum_x * sum_y)) / denominator
-        intercept = (sum_y - (slope * sum_x)) / n
-
-    # Calculate residuals and R²
-    y_mean = sum_y / n
-    ss_tot = sum((y - y_mean) ** 2 for y in y_values)
+        c = y_values[0] if y_values else 0.0
+        return {"slope": 0.0, "intercept": c, "r_squared": 0.0, "correlation": 0.0,
+                "standard_error": 0.0, "equation": f"y = 0.00x + {c:.2f}"}
+    sx, sy = sum(x_values), sum(y_values)
+    sxy = sum(x * y for x, y in zip(x_values, y_values))
+    sx2, sy2 = sum(x * x for x in x_values), sum(y * y for y in y_values)
+    den = n * sx2 - sx ** 2
+    slope = 0.0 if abs(den) < 1e-9 else (n * sxy - sx * sy) / den
+    intercept = (sy - slope * sx) / n
+    mean_y = sy / n
+    ss_tot = sum((y - mean_y) ** 2 for y in y_values)
     ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(x_values, y_values))
-
-    if ss_tot > 1e-9:
-        r_squared = max(0.0, min(1.0, 1.0 - (ss_res / ss_tot)))
-    else:
-        r_squared = 1.0 if ss_res < 1e-9 else 0.0
-
-    # Pearson correlation r
-    denom_r = math.sqrt(max(1e-9, ((n * sum_x2) - sum_x ** 2) * ((n * sum_y2) - sum_y ** 2)))
-    correlation = ((n * sum_xy) - (sum_x * sum_y)) / denom_r if denom_r > 1e-9 else 0.0
-    correlation = max(-1.0, min(1.0, correlation))
-
-    # Residual standard error
-    dof = max(1, n - 2)
-    standard_error = math.sqrt(max(0.0, ss_res / dof))
-
-    eq_sign = "+" if intercept >= 0 else "-"
-    equation = f"y = {slope:.4f}x {eq_sign} {abs(intercept):.3f}"
-
-    return {
-        "slope": round(slope, 5),
-        "intercept": round(intercept, 4),
-        "r_squared": round(r_squared, 4),
-        "correlation": round(correlation, 4),
-        "standard_error": round(standard_error, 4),
-        "equation": equation
-    }
+    r2 = max(0.0, min(1.0, 1 - ss_res / ss_tot)) if ss_tot > 1e-9 else (1.0 if ss_res < 1e-9 else 0.0)
+    den_r = math.sqrt(max(1e-9, (n * sx2 - sx ** 2) * (n * sy2 - sy ** 2)))
+    corr = max(-1.0, min(1.0, (n * sxy - sx * sy) / den_r)) if den_r > 1e-9 else 0.0
+    se = math.sqrt(max(0.0, ss_res / max(1, n - 2)))
+    sign = "+" if intercept >= 0 else "-"
+    return {"slope": round(slope, 5), "intercept": round(intercept, 4), "r_squared": round(r2, 4),
+            "correlation": round(corr, 4), "standard_error": round(se, 4),
+            "equation": f"y = {slope:.4f}x {sign} {abs(intercept):.3f}"}
 
 
 def _safety_class(value: float, config: Dict[str, Any]) -> str:
-    '''Convert a continuous measurement into a safety class for validation.'''
     if value >= config["danger_min"]:
         return "danger"
-    if value >= config["caution_max"]:
+    if value >= config["safe_max"]:
         return "caution"
     return "safe"
 
 
 def _regression_metrics(actual: List[float], predicted: List[float]) -> Dict[str, float]:
-    '''Return regression metrics without requiring an optional ML dependency.'''
     if not actual or len(actual) != len(predicted):
-        return {"mae": 0.0, "rmse": 0.0, "r_squared": 0.0}
-    mean_actual = sum(actual) / len(actual)
-    errors = [a - p for a, p in zip(actual, predicted)]
-    ss_res = sum(error * error for error in errors)
-    ss_tot = sum((value - mean_actual) ** 2 for value in actual)
+        return {"mae": None, "rmse": None, "r_squared": None}
+    mean_a = sum(actual) / len(actual)
+    errs = [a - p for a, p in zip(actual, predicted)]
+    ss_res = sum(e * e for e in errs)
+    ss_tot = sum((a - mean_a) ** 2 for a in actual)
     return {
-        "mae": round(sum(abs(error) for error in errors) / len(errors), 4),
-        "rmse": round(math.sqrt(ss_res / len(errors)), 4),
-        "r_squared": round(1.0 - ss_res / ss_tot, 4) if ss_tot > 1e-9 else 1.0,
+        "mae": round(sum(abs(e) for e in errs) / len(errs), 4),
+        "rmse": round(math.sqrt(ss_res / len(errs)), 4),
+        "r_squared": round(1 - ss_res / ss_tot, 4) if ss_tot > 1e-9 else None,
     }
 
 
 def _confusion_matrix(actual: List[float], predicted: List[float], config: Dict[str, Any]) -> Dict[str, Any]:
-    '''Classify continuous values into safety bands and count their confusion.'''
     labels = ["safe", "caution", "danger"]
-    matrix = {actual_label: {predicted_label: 0 for predicted_label in labels} for actual_label in labels}
-    for actual_value, predicted_value in zip(actual, predicted):
-        actual_label = _safety_class(actual_value, config)
-        predicted_label = _safety_class(predicted_value, config)
-        matrix[actual_label][predicted_label] += 1
-    return {"labels": labels, "matrix": matrix, "total": sum(sum(row.values()) for row in matrix.values())}
+    matrix = {a: {p: 0 for p in labels} for a in labels}
+    for a, p in zip(actual, predicted):
+        matrix[_safety_class(a, config)][_safety_class(p, config)] += 1
+    return {"labels": labels, "matrix": matrix, "total": len(actual)}
 
 
-def evaluate_regression_models(
-    x_values: List[float], y_values: List[float], config: Dict[str, Any], folds: int = 5
-) -> Dict[str, Any]:
-    '''Compare OLS, a chronological train/test split, and K-fold OLS.
-
-    K-fold and split validation are evaluation strategies rather than different
-    estimators; each candidate is scored on held-out observations. A confusion
-    matrix is included by converting values to the existing safety bands.
-    '''
-    n = len(y_values)
-    if n < 4:
-        return {"best_model": "ols", "models": {}, "confusion_matrix": _confusion_matrix(y_values, y_values, config)}
-
-    def predict(train_x: List[float], train_y: List[float], test_x: List[float]) -> List[float]:
-        fit = fit_linear_regression(train_x, train_y)
-        return [fit["slope"] * x + fit["intercept"] for x in test_x]
-
-    candidates: Dict[str, Dict[str, Any]] = {}
-    # Chronological holdout avoids leaking future values into the test set.
-    split_at = max(2, min(n - 1, int(round(n * 0.8))))
-    test_x, test_y = x_values[split_at:], y_values[split_at:]
-    split_pred = predict(x_values[:split_at], y_values[:split_at], test_x)
-    candidates["train_test_split"] = {
-        **_regression_metrics(test_y, split_pred),
-        "validation_size": len(test_y),
-        "confusion_matrix": _confusion_matrix(test_y, split_pred, config),
-    }
-
-    # Deterministic contiguous folds preserve time ordering within each fold.
-    fold_count = max(2, min(int(folds), n))
-    kfold_actual: List[float] = []
-    kfold_predicted: List[float] = []
-    for fold in range(fold_count):
-        test_indices = [index for index in range(n) if index % fold_count == fold]
-        train_indices = [index for index in range(n) if index not in test_indices]
-        if len(train_indices) < 2 or not test_indices:
-            continue
-        train_x = [x_values[index] for index in train_indices]
-        train_y = [y_values[index] for index in train_indices]
-        fold_x = [x_values[index] for index in test_indices]
-        kfold_actual.extend(y_values[index] for index in test_indices)
-        kfold_predicted.extend(predict(train_x, train_y, fold_x))
-    candidates["k_fold"] = {
-        **_regression_metrics(kfold_actual, kfold_predicted),
-        "folds": fold_count,
-        "validation_size": len(kfold_actual),
-        "confusion_matrix": _confusion_matrix(kfold_actual, kfold_predicted, config),
-    }
-
-    # OLS is trained on all observations and is the production forecast model.
-    ols_fit = fit_linear_regression(x_values, y_values)
-    ols_pred = [ols_fit["slope"] * x + ols_fit["intercept"] for x in x_values]
-    candidates["linear_regression"] = {
-        **_regression_metrics(y_values, ols_pred),
-        "validation_size": n,
-        "confusion_matrix": _confusion_matrix(y_values, ols_pred, config),
-    }
-    best_model = min(candidates, key=lambda name: (candidates[name]["rmse"], -candidates[name]["r_squared"]))
-    return {
-        "best_model": best_model,
-        "selection_metric": "lowest_validation_rmse",
-        "models": candidates,
-        "confusion_matrix": candidates[best_model]["confusion_matrix"],
-    }
-
-
-def generate_baseline_telemetry(
-    variable: str,
-    current_val: Optional[float] = None,
-    past_hours: int = 24
-) -> List[Dict[str, Any]]:
-    """
-    Constructs realistic observed historical telemetry for past_hours up to hour 0 (now).
-    If current_val is provided, sets the anchor at t=0 to current_val.
-    """
-    config = VARIABLE_THRESHOLDS.get(variable, VARIABLE_THRESHOLDS["wave_height"])
-    default_anchor = {
-        "wave_height": 1.45,
-        "wind_speed": 18.2,
-        "swell_wave_height": 1.15,
-        "ocean_current_velocity": 0.85,
-        "risk_score": 42.0,
-    }.get(variable, 1.5)
-
-    anchor = current_val if current_val is not None else default_anchor
-    anchor = max(config["min_physical"], min(config["max_physical"], anchor))
-
-    now = datetime.now(timezone.utc)
-    data_points = []
-
-    # Slight upward maritime wave/surge slope simulation typical before squalls
-    simulated_slope = {
-        "wave_height": 0.038,
-        "wind_speed": 0.35,
-        "swell_wave_height": 0.025,
-        "ocean_current_velocity": 0.018,
-        "risk_score": 1.1,
-    }.get(variable, 0.04)
-
-    for h in range(-past_hours, 1):
-        dt = now + timedelta(hours=h)
-        # Add slight natural oceanic tidal and diurnal wave oscillation
-        tidal_cycle = math.sin(h * (2 * math.pi / 12.4)) * (anchor * 0.12)
-        wind_gust_jitter = math.cos(h * (2 * math.pi / 6.0)) * (anchor * 0.06)
-        trend_component = simulated_slope * h
-        value = anchor + trend_component + tidal_cycle + wind_gust_jitter
-        value = max(config["min_physical"], min(config["max_physical"], value))
-
-        data_points.append({
-            "hour_offset": h,
-            "timestamp": dt.isoformat(),
-            "time_label": dt.strftime("%H:%M UTC"),
-            "value": round(value, 2),
-            "is_historical": True,
-            "is_current": (h == 0)
-        })
-
-    # Ensure hour 0 strictly equals current_val if given
-    if data_points:
-        data_points[-1]["value"] = round(anchor, 2)
-
-    return data_points
-
-
-async def fetch_real_hourly_series(
-    variable: str,
-    lat: float,
-    lon: float,
-    past_hours: int = 24
-) -> Optional[List[Dict[str, Any]]]:
-    """
-    Fetches real observed hourly time series from Open-Meteo Marine or Weather APIs.
-    Returns a list of point dictionaries aligned to hour offsets (-past_hours to 0).
-    """
-    target_var = variable.strip().lower()
-    config = VARIABLE_THRESHOLDS.get(target_var, VARIABLE_THRESHOLDS["wave_height"])
-    req_timeout = httpx.Timeout(12.0, connect=6.0)
-
-    try:
-        async with httpx.AsyncClient(timeout=req_timeout) as client:
-            if target_var in ("wave_height", "swell_wave_height", "ocean_current_velocity"):
-                q_lat, q_lon = lat, lon
-                # If inland, query closest coastal anchor
-                r = await client.get(
-                    "https://marine-api.open-meteo.com/v1/marine",
-                    params={
-                        "latitude": q_lat,
-                        "longitude": q_lon,
-                        "hourly": target_var,
-                        "past_days": 1,
-                        "forecast_days": 1,
-                    },
-                    headers={"User-Agent": "KyroX-Marine-AI/2.0"},
-                )
-                r.raise_for_status()
-                data = r.json()
-                hourly_block = data.get("hourly") or {}
-                vals = hourly_block.get(target_var) or []
-
-                # If values are None (inland), fallback to nearest coastal anchor
-                if not vals or vals[0] is None:
-                    c_lat, c_lon = _find_nearest_coastal_anchor(lat, lon)
-                    r = await client.get(
-                        "https://marine-api.open-meteo.com/v1/marine",
-                        params={
-                            "latitude": c_lat,
-                            "longitude": c_lon,
-                            "hourly": target_var,
-                            "past_days": 1,
-                            "forecast_days": 1,
-                        },
-                        headers={"User-Agent": "KyroX-Marine-AI/2.0"},
-                    )
-                    r.raise_for_status()
-                    data = r.json()
-                    hourly_block = data.get("hourly") or {}
-                    vals = hourly_block.get(target_var) or []
-
-                times = hourly_block.get("time") or []
-
-            elif target_var == "wind_speed":
-                r = await client.get(
-                    "https://api.open-meteo.com/v1/forecast",
-                    params={
-                        "latitude": lat,
-                        "longitude": lon,
-                        "hourly": "wind_speed_10m",
-                        "wind_speed_unit": "kn",
-                        "past_days": 1,
-                        "forecast_days": 1,
-                    },
-                    headers={"User-Agent": "KyroX-Marine-AI/2.0"},
-                )
-                r.raise_for_status()
-                data = r.json()
-                hourly_block = data.get("hourly") or {}
-                vals = hourly_block.get("wind_speed_10m") or []
-                times = hourly_block.get("time") or []
-
-            elif target_var == "risk_score":
-                # Compute risk score series by combining wind and waves
-                c_lat, c_lon = lat, lon
-                m_vals = []
-                w_vals = []
-                times = []
-
-                try:
-                    r_weather = await client.get(
-                        "https://api.open-meteo.com/v1/forecast",
-                        params={
-                            "latitude": lat,
-                            "longitude": lon,
-                            "hourly": "wind_speed_10m",
-                            "wind_speed_unit": "kn",
-                            "past_days": 1,
-                            "forecast_days": 1,
-                        },
-                        headers={"User-Agent": "KyroX-Marine-AI/2.0"},
-                    )
-                    if r_weather.status_code == 200:
-                        w_json = r_weather.json().get("hourly") or {}
-                        w_vals = w_json.get("wind_speed_10m") or []
-                        times = w_json.get("time") or []
-                except Exception as e_w:
-                    logger.warning("Weather series fetch for risk_score: %s", e_w)
-
-                try:
-                    r_marine = await client.get(
-                        "https://marine-api.open-meteo.com/v1/marine",
-                        params={
-                            "latitude": c_lat,
-                            "longitude": c_lon,
-                            "hourly": "wave_height",
-                            "past_days": 1,
-                            "forecast_days": 1,
-                        },
-                        headers={"User-Agent": "KyroX-Marine-AI/2.0"},
-                    )
-                    if r_marine.status_code == 200:
-                        m_vals = (r_marine.json().get("hourly") or {}).get("wave_height") or []
-                    if not m_vals or m_vals[0] is None:
-                        c_lat, c_lon = _find_nearest_coastal_anchor(lat, lon)
-                        r_marine2 = await client.get(
-                            "https://marine-api.open-meteo.com/v1/marine",
-                            params={"latitude": c_lat, "longitude": c_lon, "hourly": "wave_height", "past_days": 1, "forecast_days": 1},
-                            headers={"User-Agent": "KyroX-Marine-AI/2.0"},
-                        )
-                        if r_marine2.status_code == 200:
-                            m_vals = (r_marine2.json().get("hourly") or {}).get("wave_height") or []
-                except Exception as e_m:
-                    logger.warning("Marine series fetch for risk_score: %s", e_m)
-
-                vals = []
-                for i in range(min(len(m_vals), len(w_vals))):
-                    wv = float(m_vals[i] or 1.2)
-                    wd = float(w_vals[i] or 12.0)
-                    r_score = min(100.0, (wv * 15.0) + (wd * 1.5))
-                    vals.append(r_score)
-            else:
-                return None
-
-            if not vals or not times or len(vals) < 20:
-                return None
-
-            # Map hourly data to past_hours up to hour 0
-            now = datetime.now(timezone.utc)
-            # Find the time entry closest to now
-            best_idx = 0
-            best_diff = float("inf")
-            for idx, t_str in enumerate(times):
-                try:
-                    dt = datetime.fromisoformat(t_str).replace(tzinfo=timezone.utc)
-                    diff = abs((dt - now).total_seconds())
-                    if diff < best_diff:
-                        best_diff = diff
-                        best_idx = idx
-                except Exception:
-                    continue
-
-            start_idx = max(0, best_idx - past_hours)
-            slice_vals = vals[start_idx: best_idx + 1]
-            slice_times = times[start_idx: best_idx + 1]
-
-            history_points = []
-            n_pts = len(slice_vals)
-            for i, (v, t_str) in enumerate(zip(slice_vals, slice_times)):
-                h_offset = i - (n_pts - 1)
-                num_val = float(v) if v is not None else 1.2
-                num_val = max(config["min_physical"], min(config["max_physical"], num_val))
-                try:
-                    dt = datetime.fromisoformat(t_str).replace(tzinfo=timezone.utc)
-                    t_label = dt.strftime("%H:%M UTC")
-                    iso_t = dt.isoformat()
-                except Exception:
-                    t_label = f"{h_offset:+d}h"
-                    iso_t = (now + timedelta(hours=h_offset)).isoformat()
-
-                history_points.append({
-                    "hour_offset": h_offset,
-                    "timestamp": iso_t,
-                    "time_label": t_label,
-                    "value": round(num_val, 2),
-                    "is_historical": True,
-                    "is_current": (h_offset == 0)
-                })
-
-            return history_points if len(history_points) >= 5 else None
-
-    except Exception as exc:
-        logger.info("Live hourly series fetch skipped (%s), using deterministic telemetry", exc)
+def _risk_index(wave: Optional[float], wind: Optional[float]) -> Optional[float]:
+    """Same tiering as the live risk engine (waves + wind only)."""
+    if wave is None or wind is None:
         return None
+    score = 50 if wave >= 3.5 else 35 if wave >= 2.5 else 20 if wave >= 1.8 else 0
+    score += 45 if wind >= 35 else 30 if wind >= 25 else 15 if wind >= 18 else 0
+    return float(min(score, 100))
 
 
-def compute_24h_prediction(
-    variable: str = "wave_height",
-    current_val: Optional[float] = None,
-    past_hours: int = 24,
-    horizon_hours: int = 24,
-    history: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
-    """
-    Core function for 24-hour Linear Regression prediction modelling.
-    Accepts real historical hourly telemetry or generates baseline telemetry.
-    """
-    past_hours = int(past_hours) if past_hours else 24
-    horizon_hours = int(horizon_hours) if horizon_hours else 24
+# ---------------------------------------------------------------------------
+# Data access
+# ---------------------------------------------------------------------------
+def _num(v) -> Optional[float]:
+    return float(v) if isinstance(v, (int, float)) else None
 
-    if variable not in VARIABLE_THRESHOLDS:
-        variable = "wave_height"
 
+async def _marine_series(field: str, lat: float, lon: float) -> Dict[str, Any]:
+    base = {"latitude": round(lat, 3), "longitude": round(lon, 3), "past_days": 2,
+            "forecast_days": 2, "timezone": "GMT", "cell_selection": "sea"}
+    main = await cached_get_json(MARINE_URL, {**base, "hourly": f"{field},{field}_previous_day1"}, ttl=1800)
+    hourly = (main.data or {}).get("hourly") or {}
+    scale = KMH_TO_KNOTS if field == "ocean_current_velocity" else 1.0
+    conv = lambda s: [(_num(v) * scale if _num(v) is not None else None) for v in (s or [])]
+    out = {"time": hourly.get("time") or [], "latest": conv(hourly.get(field)),
+           "previous": conv(hourly.get(f"{field}_previous_day1")), "members": {}}
+    if field == "wave_height":
+        try:
+            ens = await cached_get_json(MARINE_URL, {**base, "hourly": "wave_height",
+                                                     "models": "ecmwf_wam025,ncep_gfswave025"}, ttl=1800)
+            eh = (ens.data or {}).get("hourly") or {}
+            times = eh.get("time") or []
+            for key, label in (("ecmwf_wam025", "ECMWF WAM"), ("ncep_gfswave025", "NOAA GFS-Wave")):
+                series = dict(zip(times, eh.get(f"wave_height_{key}") or []))
+                out["members"][label] = [_num(series.get(t)) for t in out["time"]]
+        except UpstreamError:
+            pass
+    return out
+
+
+async def _wind_series(lat: float, lon: float) -> Dict[str, Any]:
+    base = {"latitude": round(lat, 3), "longitude": round(lon, 3), "past_days": 2,
+            "forecast_days": 2, "timezone": "GMT", "wind_speed_unit": "kn"}
+    prev, ens = await asyncio.gather(
+        cached_get_json(PREVIOUS_RUNS_URL, {**base, "hourly": "wind_speed_10m,wind_speed_10m_previous_day1"}, ttl=1800),
+        cached_get_json(WEATHER_URL, {**base, "hourly": "wind_speed_10m", "models": "ecmwf_ifs025,gfs_seamless"}, ttl=1800),
+    )
+    ph = (prev.data or {}).get("hourly") or {}
+    eh = (ens.data or {}).get("hourly") or {}
+    times = ph.get("time") or []
+    members = {}
+    for key, label in (("ecmwf_ifs025", "ECMWF IFS"), ("gfs_seamless", "NOAA GFS")):
+        series = dict(zip(eh.get("time") or [], eh.get(f"wind_speed_10m_{key}") or []))
+        members[label] = [_num(series.get(t)) for t in times]
+    return {"time": times, "latest": [_num(v) for v in ph.get("wind_speed_10m") or []],
+            "previous": [_num(v) for v in ph.get("wind_speed_10m_previous_day1") or []], "members": members}
+
+
+async def _load_series(variable: str, lat: float, lon: float) -> Dict[str, Any]:
+    if variable == "wind_speed":
+        return await _wind_series(lat, lon)
+    if variable == "risk_score":
+        wave, wind = await asyncio.gather(_marine_series("wave_height", lat, lon), _wind_series(lat, lon))
+        wind_by_t = {t: (l, p) for t, l, p in zip(wind["time"], wind["latest"], wind["previous"])}
+        latest, previous = [], []
+        for t, wl, wp in zip(wave["time"], wave["latest"], wave["previous"]):
+            nl, np_ = wind_by_t.get(t, (None, None))
+            latest.append(_risk_index(wl, nl))
+            previous.append(_risk_index(wp, np_))
+        return {"time": wave["time"], "latest": latest, "previous": previous, "members": {}}
+    return await _marine_series(variable, lat, lon)
+
+
+def _now_index(times: List[str]) -> Optional[int]:
+    if not times:
+        return None
+    hour = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:00")
+    if hour in times:
+        return times.index(hour)
+    # Fall back to the closest earlier timestamp.
+    earlier = [i for i, t in enumerate(times) if t <= hour]
+    return earlier[-1] if earlier else None
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+async def compute_forecast(variable: str, lat: float, lon: float, horizon_hours: int = 24,
+                           past_hours: int = 24) -> Dict[str, Any]:
+    variable = variable if variable in VARIABLE_THRESHOLDS else "wave_height"
     cfg = VARIABLE_THRESHOLDS[variable]
-    if history and len(history) >= 2:
-        hist_data = history
-    else:
-        if current_val is None:
-            raise ValueError("Live telemetry is unavailable for this prediction")
-        hist_data = generate_baseline_telemetry(variable, current_val, past_hours)
+    horizon_hours = max(1, min(int(horizon_hours or 24), 24))
+    past_hours = max(6, min(int(past_hours or 24), 24))
 
-    x_hist = [pt["hour_offset"] for pt in hist_data]
-    y_hist = [pt["value"] for pt in hist_data]
+    series = await _load_series(variable, lat, lon)
+    times, latest, previous = series["time"], series["latest"], series["previous"]
+    now_i = _now_index(times)
+    if now_i is None or now_i >= len(latest) or latest[now_i] is None:
+        raise PredictionUnavailable(f"No {cfg['label'].lower()} data for this position (land or no model coverage)")
 
-    metrics = fit_linear_regression(x_hist, y_hist)
-    model_evaluation = evaluate_regression_models(x_hist, y_hist, cfg)
-    slope = metrics["slope"]
-    intercept = metrics["intercept"]
-    se = metrics["standard_error"]
+    def label(t: str, offset: int) -> str:
+        return f"{t[11:16]} UTC" if offset <= 0 else f"+{offset}h ({t[11:16]} UTC)"
 
-    now = datetime.now(timezone.utc)
+    # History (model hindcast) -------------------------------------------------
+    history = []
+    for off in range(-past_hours, 1):
+        i = now_i + off
+        if 0 <= i < len(latest) and latest[i] is not None:
+            history.append({"hour_offset": off, "timestamp": f"{times[i]}Z", "time_label": label(times[i], off),
+                            "value": round(latest[i], 2), "is_historical": True, "is_current": off == 0})
+
+    # Forecast with inter-model spread ---------------------------------------
+    val_now = latest[now_i]
     predictions = []
-    max_val = -1e9
-    max_val_hour = 0
-
-    x_mean = sum(x_hist) / len(x_hist)
-    sum_x_diff_sq = max(1e-6, sum((x - x_mean) ** 2 for x in x_hist))
-    n = len(x_hist)
-
+    band_available = False
     for h in range(1, horizon_hours + 1):
-        dt = now + timedelta(hours=h)
-        # Linear regression modeled value
-        pred_val = (slope * h) + intercept
-        # Clamp to physical real-world boundaries
-        pred_val = max(cfg["min_physical"], min(cfg["max_physical"], pred_val))
-
-        # 95% prediction interval band
-        leverage = math.sqrt(1.0 + (1.0 / n) + (((h - x_mean) ** 2) / sum_x_diff_sq))
-        margin = 1.96 * se * leverage
-        ci_lower = max(cfg["min_physical"], pred_val - margin)
-        ci_upper = min(cfg["max_physical"], pred_val + margin)
-
-        if pred_val >= cfg["danger_min"]:
-            safety_status = "danger"
-        elif pred_val >= cfg["caution_max"] or (pred_val >= cfg["safe_max"] and slope > 0):
-            safety_status = "caution"
-        else:
-            safety_status = "safe"
-
-        if pred_val > max_val:
-            max_val = pred_val
-            max_val_hour = h
-
+        i = now_i + h
+        if i >= len(latest) or latest[i] is None:
+            continue
+        value = latest[i]
+        members = [m[i] for m in series["members"].values() if i < len(m) and m[i] is not None]
+        lo, hi = min(members + [value]), max(members + [value])
+        band_available = band_available or len(members) >= 2
         predictions.append({
-            "hour_offset": h,
-            "timestamp": dt.isoformat(),
-            "time_label": f"+{h}h ({dt.strftime('%H:%M')})",
-            "predicted_value": round(pred_val, 2),
-            "ci_lower": round(ci_lower, 2),
-            "ci_upper": round(ci_upper, 2),
-            "safety_status": safety_status,
-            "delta_from_now": round(pred_val - y_hist[-1], 2)
+            "hour_offset": h, "timestamp": f"{times[i]}Z", "time_label": label(times[i], h),
+            "predicted_value": round(value, 2), "ci_lower": round(lo, 2), "ci_upper": round(hi, 2),
+            "safety_status": _safety_class(hi, cfg),  # judge on the worse member
+            "delta_from_now": round(value - val_now, 2),
         })
+    if not predictions:
+        raise PredictionUnavailable("Forecast series unavailable for this position")
 
-    # Overall 24h trend classification
-    val_now = y_hist[-1]
-    val_24h = predictions[-1]["predicted_value"] if predictions else val_now
-    delta_24h = round(val_24h - val_now, 2)
+    # Verification over the past 24 h ----------------------------------------
+    truth, nwp, persist, trend = [], [], [], []
+    for off in range(-24, 0):
+        t = now_i + off
+        if t - 48 < 0 or latest[t] is None or t >= len(previous) or previous[t] is None or latest[t - 24] is None:
+            continue
+        window = [(x, latest[t - 48 + x]) for x in range(24) if latest[t - 48 + x] is not None]
+        if len(window) < 12:
+            continue
+        fit = fit_linear_regression([w[0] for w in window], [w[1] for w in window])
+        truth.append(latest[t])
+        nwp.append(previous[t])
+        persist.append(latest[t - 24])
+        # Window x=0..23 covers t-48..t-25, so the target hour t is x=48.
+        trend.append(fit["slope"] * 48 + fit["intercept"])
+    evaluation_models = {}
+    verification_note = None
+    identical = sum(1 for a, b in zip(truth, nwp) if abs(a - b) < 1e-6)
+    if truth and identical >= 0.8 * len(truth):
+        # The upstream returned the latest run as the "previous" run, so a
+        # forecast-vs-truth comparison would be meaningless (MAE = 0).
+        verification_note = "Previous-run archive not available for this variable; NWP skill not verified."
+        truth = []
+    elif not truth:
+        verification_note = "Not enough history to verify the forecast."
+    if truth:
+        for name, pred in (("nwp_24h_ahead", nwp), ("persistence", persist), ("linear_trend", trend)):
+            evaluation_models[name] = {**_regression_metrics(truth, pred), "validation_size": len(truth),
+                                       "confusion_matrix": _confusion_matrix(truth, pred, cfg)}
+    best = min(evaluation_models, key=lambda k: evaluation_models[k]["mae"]) if evaluation_models else "nwp_forecast"
+    skill = None
+    if evaluation_models and evaluation_models["persistence"]["mae"]:
+        skill = round(1 - evaluation_models["nwp_24h_ahead"]["mae"] / evaluation_models["persistence"]["mae"], 3)
 
-    if slope > 0.03:
-        trend = "SHARP_INCREASE"
-        trend_label = "तीव्र वृद्धि (Surging)"
-    elif slope > 0.005:
-        trend = "MODERATE_RISE"
-        trend_label = "मध्यम वृद्धि (Rising)"
-    elif slope < -0.03:
-        trend = "SHARP_DECREASE"
-        trend_label = "तीव्र कमी (Easing)"
-    elif slope < -0.005:
-        trend = "MODERATE_FALL"
-        trend_label = "मध्यम कमी (Falling)"
+    # Summary ---------------------------------------------------------------
+    peak = max(predictions, key=lambda p: p["ci_upper"])
+    val_24h = predictions[-1]["predicted_value"]
+    trend_fit = fit_linear_regression([p["hour_offset"] for p in predictions], [p["predicted_value"] for p in predictions])
+    slope = trend_fit["slope"]
+    rel = slope * 24 / max(abs(val_now), cfg["safe_max"] * 0.25)
+    trend_code = ("SHARP_INCREASE" if rel > 0.5 else "MODERATE_RISE" if rel > 0.15 else
+                  "SHARP_DECREASE" if rel < -0.5 else "MODERATE_FALL" if rel < -0.15 else "STABLE")
+    unit = cfg["unit"]
+    status = _safety_class(peak["ci_upper"], cfg)
+    when = peak["time_label"]
+    if status == "danger":
+        advisory = f"Warning: {cfg['label']} forecast to reach {peak['ci_upper']:.1f} {unit} around {when}. Small craft should stay in harbour."
+    elif status == "caution":
+        advisory = f"Caution: {cfg['label']} up to {peak['ci_upper']:.1f} {unit} around {when}. Plan an early return."
     else:
-        trend = "STABLE"
-        trend_label = "स्थिर (Stable)"
+        advisory = f"{cfg['label']} stays below {cfg['safe_max']:g} {unit} for the next {horizon_hours} h (max {peak['ci_upper']:.1f} {unit})."
+    if skill is not None:
+        advisory += f" Model forecast error over the last day: {evaluation_models['nwp_24h_ahead']['mae']:.2f} {unit} (persistence: {evaluation_models['persistence']['mae']:.2f})."
 
-    # Advisory messages in Hindi, English, and Tamil
-    if max_val >= cfg["danger_min"]:
-        overall_status = "danger"
-        advisory_hi = f"चेतावनी: अगले 24 घंटों में {cfg['label']} {max_val:.1f}{cfg['unit']} (घंटा +{max_val_hour}) तक पहुंचने का अनुमान है। छोटी नौकाएं तट के निकट रहें।"
-        advisory_en = f"Warning: 24h linear regression models {cfg['label']} reaching hazardous peak of {max_val:.1f}{cfg['unit']} at +{max_val_hour}h. Craft <20m should remain inshore."
-        advisory_ta = f"எச்சரிக்கை: அடுத்த 24 மணி நேரத்தில் {cfg['label']} {max_val:.1f}{cfg['unit']} வரை உயரும் என கணிக்கப்பட்டுள்ளது. சிறிய படகுகள் கரைக்குத் திரும்பவும்."
-    elif max_val >= cfg["safe_max"]:
-        overall_status = "caution"
-        advisory_hi = f"सतर्कता: {cfg['label']} में अगले 24 घंटों में {delta_24h:+.1f}{cfg['unit']} की वृद्धि का रुझान है। मौसम पर सतत निगरानी रखें।"
-        advisory_en = f"Advisory: Linear trend indicates a {delta_24h:+.1f}{cfg['unit']} increase over 24h. Keep crew on standby and monitor barometric telemetry."
-        advisory_ta = f"கவனம்: அடுத்த 24 மணி நேரத்தில் {cfg['label']} {delta_24h:+.1f}{cfg['unit']} அதிகரிக்கும் போக்கு உள்ளது. விழிப்புடன் இருக்கவும்."
-    else:
-        overall_status = "safe"
-        advisory_hi = f"सुरक्षित: अगले 24 घंटे की सांख्यिकीय मॉडलिंग अनुकूल स्थिति दर्शाती है ({val_24h:.1f}{cfg['unit']})। सामान्य मत्स्य संचालन अनुशंसित है।"
-        advisory_en = f"Clear: 24h linear regression projects favorable operational conditions ({val_24h:.1f}{cfg['unit']}). Normal fishing permitted."
-        advisory_ta = f"பாதுகாப்பானது: அடுத்த 24 மணி நேர கணிப்பு சாதகமான கடல் சூழலைக் குறிக்கிறது ({val_24h:.1f}{cfg['unit']})."
-
+    nwp_eval = evaluation_models.get("nwp_24h_ahead", {})
     return {
         "success": True,
         "variable": variable,
-        "unit": cfg["unit"],
+        "unit": unit,
         "label": cfg["label"],
-        "thresholds": {
-            "safe_max": cfg["safe_max"],
-            "caution_max": cfg["caution_max"],
-            "danger_min": cfg["danger_min"]
-        },
+        "thresholds": {"safe_max": cfg["safe_max"], "caution_max": cfg["caution_max"], "danger_min": cfg["danger_min"]},
         "current_value": round(val_now, 2),
         "horizon_hours": horizon_hours,
         "past_hours": past_hours,
-        "metrics": metrics,
-        "model_evaluation": model_evaluation,
+        "forecast_source": "Open-Meteo numerical models" + (" (spread: ECMWF vs NOAA)" if band_available else ""),
+        "uncertainty_available": band_available,
+        "metrics": {
+            "equation": f"NWP forecast - last-24h MAE {nwp_eval.get('mae')} {unit}" if nwp_eval else "NWP forecast",
+            "r_squared": nwp_eval.get("r_squared"),
+            "mae": nwp_eval.get("mae"),
+            "rmse": nwp_eval.get("rmse"),
+            "skill_vs_persistence": skill,
+            "forecast_trend_slope_per_h": slope,
+        },
+        "model_evaluation": {
+            "best_model": best,
+            "selection_metric": "lowest_mae_last_24h",
+            "truth_source": "latest model hindcast (not in-situ observations)",
+            "note": verification_note,
+            "models": evaluation_models,
+            "confusion_matrix": evaluation_models.get("nwp_24h_ahead", {}).get("confusion_matrix"),
+        },
         "summary": {
-            "trend": trend,
-            "trend_label": trend_label,
-            "overall_status": overall_status,
+            "trend": trend_code,
+            "trend_label": trend_code.replace("_", " ").title(),
+            "overall_status": status,
             "val_now": round(val_now, 2),
             "val_24h": round(val_24h, 2),
-            "delta_24h": delta_24h,
-            "peak_val": round(max_val, 2),
-            "peak_hour": max_val_hour,
-            "advisory_hi": advisory_hi,
-            "advisory_en": advisory_en,
-            "advisory_ta": advisory_ta
+            "delta_24h": round(val_24h - val_now, 2),
+            "peak_val": round(peak["ci_upper"], 2),
+            "peak_hour": peak["hour_offset"],
+            "advisory_en": advisory,
         },
-        "history": hist_data,
-        "predictions": predictions
+        "history": history,
+        "predictions": predictions,
     }
-
-
-async def compute_24h_prediction_async(
-    variable: str = "wave_height",
-    current_val: Optional[float] = None,
-    past_hours: int = 24,
-    horizon_hours: int = 24,
-    lat: Optional[float] = None,
-    lon: Optional[float] = None,
-) -> Dict[str, Any]:
-    """
-    Asynchronously compute 24h linear regression prediction using live hourly data if available.
-    """
-    if lat is None or lon is None:
-        raise ValueError("Latitude and longitude are required for live predictions")
-    hist_points = await fetch_real_hourly_series(variable, lat, lon, past_hours=past_hours)
-    return compute_24h_prediction(
-        variable=variable,
-        current_val=current_val,
-        past_hours=past_hours,
-        horizon_hours=horizon_hours,
-        history=hist_points,
-    )

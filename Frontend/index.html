@@ -3,747 +3,738 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>ORCA • Ocean Intelligence & Marine Conservation Platform</title>
-  <meta name="description" content="Next-generation marine conservation, acoustic species tracking, satellite bathymetry, and AI ocean intelligence platform.">
+  <title>ORCA • Marine Safety Agents</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23091113'/%3E%3Cpath d='M6 20c3 0 4.5-2.4 7.5-2.4S17 20 20 20s4.2-1.2 6-1.8' fill='none' stroke='%23E0559A' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M12 17.4c1-4.6 3.6-8.2 7.5-9.4-1.1 3.4-1.1 6.3 0 9.6' fill='none' stroke='%23E8EDF2' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="description" content="ORCA: collaborative AI agents that fuse ECMWF/NOAA forecasts, INCOIS and GDACS warnings, protected areas and biodiversity records into clear marine safety advisories for fishers.">
+  <meta name="theme-color" content="#091113">
 
-  <!-- Preconnect & Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script defer src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 
-  <!-- Leaflet Geographic Mapping Engine -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script defer src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
-  <!-- Environment & Map Configuration -->
-  <script src="env.js" onerror=""></script>
-  <script src="../env.js" onerror=""></script>
-  <script src="../../env.js" onerror=""></script>
-  <script src="map_config.js" onerror=""></script>
-  <script src="../map_config.js" onerror=""></script>
-  <script src="../../map_config.js" onerror=""></script>
+  <!-- Optional deployment config (copy env.example.js to env.js) and map config.
+       All scripts are deferred: they download in parallel, run in this order
+       after the page is parsed, and never block the first paint. -->
+  <script defer src="env.js"></script>
+  <script defer src="map_config.js"></script>
 
-  <!-- Plotly gives the analytics view zoom, hover, and export controls. -->
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <!-- Plotly is loaded on demand by orca-dashboard.js (Forecast only). -->
 
-  <!-- ORCA Cyber-Ocean Theme Stylesheet -->
-  <link rel="stylesheet" href="css/orca-theme.css">
-  <link rel="stylesheet" href="../css/orca-theme.css" onerror="">
+  <link rel="stylesheet" href="css/orca-theme.css?v=8.6">
+  <link rel="stylesheet" href="css/landing.css?v=8.6">
+  <link rel="stylesheet" href="css/app.css?v=8.6">
+  <link rel="preload" as="image" href="assets/hero-boat-mahabalipuram.jpg">
 </head>
 <body>
+  <script src="js/landing.js?v=8.6"></script>
+  <a class="skip-link" href="#orcaWorkspaceStage">Skip to content</a>
 
-  <!-- MASTER BRIDGE CONTAINER -->
-  <div class="bridge-frame">
-
-    <!-- ====================================================================
-         1. HERO / BRAND LANDING SECTION (Collapsible Cyber Ocean Banner)
-         ==================================================================== -->
-    <section class="orca-hero-banner" id="orcaHeroBanner" aria-label="Hero Overview">
-      <canvas class="hero-particle-canvas" id="heroParticleCanvas"></canvas>
-      <div class="hero-content-wrapper">
-        <div class="hero-brand-lockup">
-          <div class="hero-orca-seal" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <circle cx="12" cy="12" r="9"></circle>
-              <line x1="12" y1="3" x2="12" y2="21"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <polygon points="12 4 14 10 20 12 14 14 12 20 10 14 4 12 10 10" fill="currentColor"></polygon>
-            </svg>
-          </div>
-          <div class="hero-brand-text">
-            <h1>ORCA <span class="version-tag">SIH 2026 EDITION • v2.4</span></h1>
-            <p class="hero-tagline" id="txtHeroTagline">Intelligence for a Healthier Ocean</p>
-          </div>
-        </div>
-
-        <!-- Live Metrics Counter Bar -->
-        <div class="hero-live-stats">
-          <div class="hero-stat-pill">
-            <span class="hero-stat-label">Coverage</span>
-            <span class="hero-stat-value">1.4M km²</span>
-          </div>
-          <div class="hero-stat-pill">
-            <span class="hero-stat-label">Sensor Uptime</span>
-            <span class="hero-stat-value">99.4%</span>
-          </div>
-          <div class="hero-stat-pill">
-            <span class="hero-stat-label">Active Tracks</span>
-            <span class="hero-stat-value">142</span>
-          </div>
-          <div class="hero-stat-pill">
-            <span class="hero-stat-label">Marine Reserves</span>
-            <span class="hero-stat-value">12 Zones</span>
-          </div>
-        </div>
-
-        <!-- CTAs -->
-        <div class="hero-actions">
-          <button type="button" class="btn-hero-cta btn-hero-primary" id="btnHeroExplore">
-            <span>📊 Explore Ocean Data</span>
-          </button>
-          <button type="button" class="btn-hero-cta btn-hero-secondary" id="btnHeroMap">
-            <span>🗺️ View Live Map</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====================================================================
-         2. TOP MASTHEAD & LIVE TELEMETRY BAR
-         ==================================================================== -->
-    <header class="bridge-masthead" role="banner">
-      <div class="masthead-primary-row">
-        <div class="ship-station-lockup">
-          <div class="sextant-seal" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <circle cx="12" cy="12" r="9"></circle>
-              <line x1="12" y1="3" x2="12" y2="21"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <polygon points="12 4 14 10 20 12 14 14 12 20 10 14 4 12 10 10" fill="currentColor"></polygon>
-            </svg>
-          </div>
-          <div class="station-identity">
-            <div class="station-callsign">
-              <span>ORCA</span>
-              <span style="font-size: 10px; font-weight: 700; color: var(--cyan-primary); font-family: var(--font-telemetry);">ECM-88</span>
-            </div>
-            <div class="station-specs" id="txtBridgeSubtitle">
-              OCEAN CONSERVATION & MARINE INTELLIGENCE COMMAND
-            </div>
-          </div>
-        </div>
-
-        <div class="masthead-controls">
-          <!-- GPS Toggle -->
-          <button id="btnGpsToggle" class="bezel-btn gps-active" type="button" title="Toggle GPS">
-            <span class="gps-led-dot"></span>
-            <span id="txtGpsToggle">📡 GPS: ON</span>
-          </button>
-
-          <!-- Sunlight Deck Mode Button -->
-          <button id="btnSunlightToggle" class="bezel-btn" type="button" title="High Contrast Mode">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            </svg>
-            <span id="txtSunlightLabel">SUNLIGHT</span>
-          </button>
-
-          <!-- Device Mode Pill -->
-          <div class="view-bezel-pill" role="group" aria-label="Device View">
-            <button id="btnViewPC" class="view-opt-btn selected" type="button">
-              <span id="txtViewPC">PC</span>
-            </button>
-            <button id="btnViewPhone" class="view-opt-btn" type="button">
-              <span id="txtViewPhone">PHONE</span>
-            </button>
-          </div>
-
-          <!-- Language Selector Pill -->
-          <div class="lang-bezel-pill" role="group" aria-label="Language">
-            <button id="btnLangHI" class="lang-opt-btn" type="button">HI</button>
-            <button id="btnLangEN" class="lang-opt-btn selected" type="button">EN</button>
-            <button id="btnLangTA" class="lang-opt-btn" type="button">TA</button>
-            <button id="btnLangMore" class="lang-opt-btn" type="button" title="More Languages">▼</button>
-          </div>
-
-          <!-- Expanded Language Dropdown -->
-          <div id="expandedLangDropdown" class="expanded-lang-dropdown" style="display: none;">
-            <div class="lang-grid">
-              <button class="lang-grid-btn" data-lang="as">Assamese</button>
-              <button class="lang-grid-btn" data-lang="bn">Bengali</button>
-              <button class="lang-grid-btn" data-lang="brx">Bodo</button>
-              <button class="lang-grid-btn" data-lang="doi">Dogri</button>
-              <button class="lang-grid-btn" data-lang="gu">Gujarati</button>
-              <button class="lang-grid-btn" data-lang="hi">Hindi</button>
-              <button class="lang-grid-btn" data-lang="kn">Kannada</button>
-              <button class="lang-grid-btn" data-lang="ks">Kashmiri</button>
-              <button class="lang-grid-btn" data-lang="kok">Konkani</button>
-              <button class="lang-grid-btn" data-lang="mai">Maithili</button>
-              <button class="lang-grid-btn" data-lang="ml">Malayalam</button>
-              <button class="lang-grid-btn" data-lang="mni">Manipuri</button>
-              <button class="lang-grid-btn" data-lang="mr">Marathi</button>
-              <button class="lang-grid-btn" data-lang="ne">Nepali</button>
-              <button class="lang-grid-btn" data-lang="or">Odia</button>
-              <button class="lang-grid-btn" data-lang="pa">Punjabi</button>
-              <button class="lang-grid-btn" data-lang="sa">Sanskrit</button>
-              <button class="lang-grid-btn" data-lang="sat">Santali</button>
-              <button class="lang-grid-btn" data-lang="sd">Sindhi</button>
-              <button class="lang-grid-btn" data-lang="ta">Tamil</button>
-              <button class="lang-grid-btn" data-lang="te">Telugu</button>
-              <button class="lang-grid-btn" data-lang="ur">Urdu</button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Live Telemetry Strip -->
-      <div class="bridge-telemetry-ticker">
-        <div class="telemetry-cluster">
-          <span class="telemetry-node">
-            <span class="sensor-live-blip"></span>
-            <span id="txtTelemetryFix">DGPS FIX: 15°24.6'N, 73°48.2'E</span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemSog">SOG: <strong>6.2 kt</strong></span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemCog">COG: <strong>218° SW</strong></span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemDepth">DEPTH: <strong>34m</strong></span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemBaro">BARO: <strong>1008.4 hPa ↓</strong></span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemSsh">SSH: <strong>-- cm</strong></span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemSwell">SWELL: <strong>UNAVAILABLE</strong></span>
-          </span>
-          <span class="telemetry-node">
-            <span id="txtTelemVhf" style="color: var(--cyan-primary); font-weight: 700;">VHF CH 16 GUARD</span>
-          </span>
-        </div>
-        <div class="telemetry-node clock-node" id="bridgeMasterClock">
-          --:--:-- IST
+  <!-- ================================================================== LANDING -->
+  <div class="landing" id="landing">
+    <span id="lpTop" aria-hidden="true"></span>
+    <header class="lp-nav">
+      <div class="lp-wrap lp-nav-inner">
+        <a class="brand" href="#home" aria-label="ORCA home">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <path class="brand-wave" d="M6 20c3 0 4.5-2.4 7.5-2.4S17 20 20 20s4.2-1.2 6-1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12 17.4c1-4.6 3.6-8.2 7.5-9.4-1.1 3.4-1.1 6.3 0 9.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="brand-word">ORCA</span>
+        </a>
+        <nav class="lp-links" aria-label="Page sections">
+          <a href="#how">How it works</a>
+          <a href="#languages">Languages</a>
+          <a href="#sources">Data sources</a>
+        </nav>
+        <div class="lp-nav-actions">
+          <button type="button" class="lp-icon-btn" data-theme-toggle aria-label="Switch light or dark theme"><i class="ph ph-circle-half icon" aria-hidden="true"></i></button>
+          <a class="btn btn-primary" href="#dashboard">Check conditions</a>
         </div>
       </div>
     </header>
 
-    <!-- ====================================================================
-         3. COMMAND CENTER CONTAINER (Left Nav + Central Workspace)
-         ==================================================================== -->
+    <main>
+      <!-- Hero: full-bleed photograph, live verdict docked like an instrument panel -->
+      <section class="lp-hero-shell" aria-labelledby="lpHeroTitle">
+        <img class="lp-hero-photo" src="assets/hero-boat-mahabalipuram.jpg" width="1920" height="1200" fetchpriority="high"
+             alt="Three fishermen standing in a small fibreglass boat as it heads out through breaking waves at Devaneri, Mahabalipuram, Tamil Nadu">
+        <canvas class="lp-swell" id="lpSwell" aria-hidden="true"></canvas>
+        <div class="lp-wrap lp-hero">
+          <div class="lp-hero-copy">
+            <h1 id="lpHeroTitle">Know the sea before you leave the shore.</h1>
+            <p class="lp-hero-sub">Forecasts, official warnings and protected areas for your exact position, turned into one plain answer: go, or stay.</p>
+            <div class="lp-cta">
+              <a class="btn btn-primary btn-lg" href="#dashboard">Check conditions<i class="ph ph-arrow-right icon" aria-hidden="true"></i></a>
+              <a class="btn btn-glass btn-lg" href="#chat"><i class="ph ph-chat-circle-text icon" aria-hidden="true"></i>Ask ORCA</a>
+            </div>
+          </div>
+
+          <aside class="lp-live-card" id="lpLiveCard" data-level="" aria-live="polite" aria-label="Live conditions">
+            <div class="lp-live-top">
+              <span class="lp-live-place"><i class="ph ph-crosshair-simple icon" aria-hidden="true"></i><span id="lpLivePlace">Loading position</span></span>
+              <span class="lp-live-tag" id="lpLiveTag"><span class="lp-pulse" aria-hidden="true"></span><span id="lpLiveTagText">Live</span></span>
+            </div>
+            <p class="lp-live-headline" id="lpLiveHeadline"><span class="skeleton-line"></span></p>
+            <dl class="lp-live-stats">
+              <div><dt>Waves</dt><dd id="lpLiveWave">-</dd></div>
+              <div><dt>Wind</dt><dd id="lpLiveWind">-</dd></div>
+              <div><dt>Warnings</dt><dd id="lpLiveAlerts">-</dd></div>
+            </dl>
+            <p class="lp-live-note" id="lpSwellNote">The lines across this photo move with the live swell.</p>
+            <a class="lp-live-link" href="#dashboard">Open the full picture<i class="ph ph-arrow-right icon" aria-hidden="true"></i></a>
+          </aside>
+        </div>
+      </section>
+
+      <!-- How it decides: agent flow + bento -->
+      <section class="lp-section" id="how" aria-labelledby="lpHowTitle">
+        <div class="lp-wrap">
+          <h2 class="lp-h2" id="lpHowTitle" data-reveal>Five agents check each other before ORCA gives advice.</h2>
+          <p class="lp-lede" data-reveal>Each agent reads one kind of evidence. A consensus agent compares them, flags disagreement and leans to the safer reading.</p>
+
+          <div class="lp-flow" id="lpFlow" aria-label="How a question flows through ORCA">
+            <ol class="lp-flow-sources">
+              <li style="--i:0"><i class="ph ph-wind icon" aria-hidden="true"></i><span>Weather</span><small>ECMWF, NOAA</small></li>
+              <li style="--i:1"><i class="ph ph-waves icon" aria-hidden="true"></i><span>Sea state</span><small>Waves, swell, tide</small></li>
+              <li style="--i:2"><i class="ph ph-siren icon" aria-hidden="true"></i><span>Official warnings</span><small>INCOIS, GDACS</small></li>
+              <li style="--i:3"><i class="ph ph-shield-check icon" aria-hidden="true"></i><span>Protected areas</span><small>OpenStreetMap</small></li>
+              <li style="--i:4"><i class="ph ph-fish icon" aria-hidden="true"></i><span>Species</span><small>OBIS records</small></li>
+            </ol>
+            <div class="lp-flow-wire" aria-hidden="true"><span class="lp-flow-packet"></span></div>
+            <div class="lp-flow-node">
+              <span class="lp-flow-ring" aria-hidden="true"></span>
+              <i class="ph ph-scales icon" aria-hidden="true"></i>
+              <strong>Consensus</strong>
+              <small>Compares sources, flags conflicts</small>
+            </div>
+            <div class="lp-flow-wire lp-flow-wire--out" aria-hidden="true"><span class="lp-flow-packet"></span></div>
+            <div class="lp-flow-advice" id="lpFlowAdvice" data-level="">
+              <small>Advice for <span id="lpFlowPlace">your position</span></small>
+              <strong id="lpFlowVerdict">Checking conditions</strong>
+              <span class="lp-flow-reason" id="lpFlowReason">Reasons appear here</span>
+            </div>
+          </div>
+
+          <div class="lp-bento">
+            <article class="lp-cell lp-cell--consensus" data-reveal>
+              <div class="lp-cell-icon"><i class="ph ph-scales icon" aria-hidden="true"></i></div>
+              <h3>When sources disagree, ORCA takes the safer reading.</h3>
+              <p>Two forecast models, official warnings and your position are cross-checked. Missing data is reported, never treated as calm.</p>
+              <ul class="lp-findings" id="lpFindings">
+                <li class="skeleton-line"></li>
+                <li class="skeleton-line short"></li>
+              </ul>
+              <p class="lp-findings-src" id="lpFindingsSrc">Live findings load from the agents</p>
+            </article>
+
+            <article class="lp-cell lp-cell--forecast" data-reveal>
+              <div class="lp-cell-icon"><i class="ph ph-wind icon" aria-hidden="true"></i></div>
+              <h3>Wind and waves, 12 hours ahead</h3>
+              <p>ECMWF and NOAA side by side, with gusts, swell and falling pressure.</p>
+            </article>
+
+            <article class="lp-cell lp-cell--warnings" data-reveal>
+              <div class="lp-cell-icon"><i class="ph ph-siren icon" aria-hidden="true"></i></div>
+              <h3>Official warnings come first</h3>
+              <p>INCOIS high-wave and swell-surge alerts, plus GDACS cyclones and tsunamis near you.</p>
+            </article>
+
+            <article class="lp-cell lp-cell--species" data-reveal>
+              <div class="lp-cell-icon"><i class="ph ph-fish icon" aria-hidden="true"></i></div>
+              <h3>Protected areas and species</h3>
+              <p>Marine reserves from OpenStreetMap and threatened species recorded nearby in OBIS.</p>
+            </article>
+
+            <article class="lp-cell lp-cell--routes" data-reveal>
+              <div class="lp-cell-icon"><i class="ph ph-path icon" aria-hidden="true"></i></div>
+              <h3>Safe routes for your boat size</h3>
+              <p>Plans a path around rough water and land for the whole trip. If no safe route exists, it says so.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Languages: photo + the same question rotating through Indian languages -->
+      <section class="lp-section lp-lang" id="languages" aria-labelledby="lpBandTitle">
+        <div class="lp-wrap lp-lang-grid">
+          <figure class="lp-lang-photo" data-reveal>
+            <img src="assets/fishermen-nets.jpg" width="1280" height="960" loading="lazy"
+                 alt="Fishermen in Kerala repairing nets on the beach beside a wooden boat">
+          </figure>
+          <div class="lp-lang-copy">
+            <h2 class="lp-h2" id="lpBandTitle" data-reveal>Plain advice, in the language you speak.</h2>
+            <p class="lp-lede" data-reveal>Answers in 22 Indian languages, read aloud on request, with the reasons behind every call.</p>
+            <div class="lp-rotator" data-reveal aria-label="The same question in nine Indian languages: is it safe to go to sea today?">
+              <span lang="hi" style="--k:0">क्या आज समुद्र में जाना सुरक्षित है?</span>
+              <span lang="ta" style="--k:1">இன்று கடலுக்குச் செல்வது பாதுகாப்பானதா?</span>
+              <span lang="ml" style="--k:2">ഇന്ന് കടലിൽ പോകുന്നത് സുരക്ഷിതമാണോ?</span>
+              <span lang="te" style="--k:3">ఈరోజు సముద్రంలోకి వెళ్లడం సురక్షితమేనా?</span>
+              <span lang="kn" style="--k:4">ಇಂದು ಸಮುದ್ರಕ್ಕೆ ಹೋಗುವುದು ಸುರಕ್ಷಿತವೇ?</span>
+              <span lang="mr" style="--k:5">आज समुद्रात जाणे सुरक्षित आहे का?</span>
+              <span lang="bn" style="--k:6">আজ সমুদ্রে যাওয়া কি নিরাপদ?</span>
+              <span lang="gu" style="--k:7">શું આજે દરિયામાં જવું સલામત છે?</span>
+              <span lang="or" style="--k:8">ଆଜି ସମୁଦ୍ରକୁ ଯିବା ସୁରକ୍ଷିତ କି?</span>
+            </div>
+            <p class="lp-rotator-gloss" data-reveal>"Is it safe to go to sea today?"</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: typographic columns, no cards -->
+      <section class="lp-section lp-sources-section" id="sources" aria-labelledby="lpSourcesTitle">
+        <div class="lp-wrap">
+          <h2 class="lp-h2" id="lpSourcesTitle" data-reveal>Where the data comes from</h2>
+          <p class="lp-lede" data-reveal>Public, documented sources. When one cannot be reached, ORCA tells you instead of guessing.</p>
+          <div class="lp-source-groups">
+            <div class="lp-source-group" data-reveal>
+              <h3>Forecasts</h3>
+              <ul class="lp-source-list">
+                <li><strong>ECMWF</strong><span>IFS weather and WAM wave models</span></li>
+                <li><strong>NOAA</strong><span>GFS weather and GFS-Wave models</span></li>
+              </ul>
+            </div>
+            <div class="lp-source-group" data-reveal>
+              <h3>Official warnings</h3>
+              <ul class="lp-source-list">
+                <li><strong>INCOIS</strong><span>High-wave and swell-surge alerts for Indian coasts</span></li>
+                <li><strong>GDACS</strong><span>Tropical cyclones and tsunamis worldwide</span></li>
+              </ul>
+            </div>
+            <div class="lp-source-group" data-reveal>
+              <h3>Ecosystem and boundaries</h3>
+              <ul class="lp-source-list">
+                <li><strong>OBIS</strong><span>Occurrence records of threatened marine species</span></li>
+                <li><strong>OSM</strong><span>Marine reserves and restricted areas from OpenStreetMap</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-final-shell" aria-labelledby="lpFinalTitle">
+        <div class="lp-wrap lp-final" data-reveal>
+          <h2 class="lp-h2" id="lpFinalTitle">Check your coast before the next trip.</h2>
+          <a class="btn btn-primary btn-lg" href="#dashboard">Check conditions<i class="ph ph-arrow-right icon" aria-hidden="true"></i></a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="lp-footer">
+      <div class="lp-wrap lp-footer-grid">
+        <div>
+          <a class="brand" href="#home" aria-label="ORCA home">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+              <path class="brand-wave" d="M6 20c3 0 4.5-2.4 7.5-2.4S17 20 20 20s4.2-1.2 6-1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M12 17.4c1-4.6 3.6-8.2 7.5-9.4-1.1 3.4-1.1 6.3 0 9.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span class="brand-word">ORCA</span>
+          </a>
+          <p>Built for Smart India Hackathon problem SIH26176 (ISRO). ORCA is a planning aid. Always follow official warnings and your local authorities.</p>
+        </div>
+        <div class="lp-footer-distress">
+          <h4>In distress</h4>
+          <p><span>VHF channel</span><strong>16</strong></p>
+          <p><span>India Coast Guard</span><strong>1554</strong></p>
+        </div>
+        <div>
+          <h4>Photographs</h4>
+          <p>Boat at Devaneri by <a href="https://commons.wikimedia.org/wiki/File:Fishing_Boat_Waves_Devaneri_Mahabalipuram_Sep22_A7C_02637.jpg" target="_blank" rel="noopener">Timothy A. Gonsalves</a>, CC BY-SA 4.0.<br>Net repair by <a href="https://commons.wikimedia.org/wiki/File:Fishermen_repairing_their_fishing_net.jpg" target="_blank" rel="noopener">Ishtihaar</a>, CC BY-SA 4.0.</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+
+
+  <div class="bridge-frame">
+
+    <!-- ================================================================ TOP BAR -->
+    <header class="bridge-masthead" role="banner">
+      <div class="masthead-primary-row">
+        <a class="brand" href="#home" aria-label="ORCA home">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <path class="brand-wave" d="M6 20c3 0 4.5-2.4 7.5-2.4S17 20 20 20s4.2-1.2 6-1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12 17.4c1-4.6 3.6-8.2 7.5-9.4-1.1 3.4-1.1 6.3 0 9.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="brand-word">ORCA</span>
+          
+        </a>
+        <p class="station-specs" id="txtBridgeSubtitle">Marine safety &amp; ecosystem intelligence</p>
+
+        <div class="masthead-location">
+          <i class="ph ph-crosshair-simple icon" aria-hidden="true"></i>
+          <span id="txtTelemetryFix">Location: --</span>
+        </div>
+
+        <div class="masthead-controls">
+          <span class="system-status-indicator" id="backendStatusPill" data-state="connecting" title="Backend connection">
+            <span class="status-beacon-ring"></span>
+            <strong id="txtBackendStatus">CONNECTING</strong>
+          </span>
+          <button id="btnGpsToggle" class="bezel-btn" type="button" title="Use device GPS" aria-label="Use device GPS" aria-pressed="false">
+            <span class="gps-led-dot" aria-hidden="true"></span>
+            <i class="ph ph-navigation-arrow icon gps-icon" aria-hidden="true"></i>
+            <span id="txtGpsToggle">GPS: OFF</span>
+          </button>
+          <button id="btnSunlightToggle" class="bezel-btn" type="button" title="High-contrast light theme for bright sunlight" aria-label="Sunlight theme">
+            <i class="ph ph-sun icon" aria-hidden="true"></i>
+            <span id="txtSunlightLabel">Sunlight</span>
+          </button>
+          <div class="lang-bezel-pill" role="group" aria-label="Language">
+            <button id="btnLangHI" class="lang-opt-btn" type="button">HI</button>
+            <button id="btnLangEN" class="lang-opt-btn selected" type="button">EN</button>
+            <button id="btnLangTA" class="lang-opt-btn" type="button">TA</button>
+            <button id="btnLangMore" class="lang-opt-btn" type="button" title="More languages" aria-label="More languages">▾</button>
+            <div id="expandedLangDropdown" class="expanded-lang-dropdown" style="display: none;">
+              <div class="lang-grid">
+                <button class="lang-grid-btn" data-lang="as">Assamese</button>
+                <button class="lang-grid-btn" data-lang="bn">Bengali</button>
+                <button class="lang-grid-btn" data-lang="brx">Bodo</button>
+                <button class="lang-grid-btn" data-lang="doi">Dogri</button>
+                <button class="lang-grid-btn" data-lang="gu">Gujarati</button>
+                <button class="lang-grid-btn" data-lang="hi">Hindi</button>
+                <button class="lang-grid-btn" data-lang="kn">Kannada</button>
+                <button class="lang-grid-btn" data-lang="ks">Kashmiri</button>
+                <button class="lang-grid-btn" data-lang="kok">Konkani</button>
+                <button class="lang-grid-btn" data-lang="mai">Maithili</button>
+                <button class="lang-grid-btn" data-lang="ml">Malayalam</button>
+                <button class="lang-grid-btn" data-lang="mni">Manipuri</button>
+                <button class="lang-grid-btn" data-lang="mr">Marathi</button>
+                <button class="lang-grid-btn" data-lang="ne">Nepali</button>
+                <button class="lang-grid-btn" data-lang="or">Odia</button>
+                <button class="lang-grid-btn" data-lang="pa">Punjabi</button>
+                <button class="lang-grid-btn" data-lang="sa">Sanskrit</button>
+                <button class="lang-grid-btn" data-lang="sat">Santali</button>
+                <button class="lang-grid-btn" data-lang="sd">Sindhi</button>
+                <button class="lang-grid-btn" data-lang="ta">Tamil</button>
+                <button class="lang-grid-btn" data-lang="te">Telugu</button>
+                <button class="lang-grid-btn" data-lang="ur">Urdu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live conditions strip -->
+      <div class="bridge-telemetry-ticker" aria-label="Live conditions">
+        <div class="telemetry-cluster">
+          <span class="telemetry-node" id="txtTelemWind">Wind <strong>--</strong></span>
+          <span class="telemetry-node" id="txtTelemWave">Waves <strong>--</strong></span>
+          <span class="telemetry-node" id="txtTelemBaro">Pressure <strong>--</strong></span>
+          <span class="telemetry-node" id="txtTelemSsh">High tide <strong>--</strong></span>
+          <span class="telemetry-node" id="txtTelemSwell">Swell <strong>--</strong></span>
+          <span class="telemetry-node telemetry-vhf" id="txtTelemVhf">VHF 16</span>
+        </div>
+        <div class="telemetry-node clock-node" id="bridgeMasterClock">--:--:--</div>
+      </div>
+    </header>
+
     <div class="orca-command-container">
 
-      <!-- LEFT SIDEBAR: MISSION CONTROL NAVIGATION -->
-      <aside class="orca-sidebar" role="navigation" aria-label="Command Navigation">
-        <ul class="sidebar-nav-list">
-          <li class="sidebar-nav-item">
-            <button type="button" class="sidebar-nav-btn active" data-view="dashboard">
-              <span class="nav-icon">📊</span>
-              <span>Dashboard</span>
-            </button>
-          </li>
-          <li class="sidebar-nav-item">
-            <button type="button" class="sidebar-nav-btn" data-view="map">
-              <span class="nav-icon">🗺️</span>
-              <span>Live Ocean Map</span>
-            </button>
-          </li>
-          <li class="sidebar-nav-item">
-            <button type="button" class="sidebar-nav-btn" data-view="alerts">
-              <span class="nav-icon">⚠️</span>
-              <span>Alerts & Bulletins</span>
-              <span class="nav-badge" id="sidebarAlertBadge">1 NEW</span>
-            </button>
-          </li>
-          <li class="sidebar-nav-item">
-            <button type="button" class="sidebar-nav-btn" data-view="species">
-              <span class="nav-icon">🐋</span>
-              <span>Species Tracker</span>
-            </button>
-          </li>
-          <li class="sidebar-nav-item">
-            <button type="button" class="sidebar-nav-btn" data-view="analytics">
-              <span class="nav-icon">📈</span>
-              <span>Analytics Studio</span>
-            </button>
-          </li>
-          <li class="sidebar-nav-item">
-            <button type="button" class="sidebar-nav-btn" data-view="chat">
-              <span class="nav-icon">🤖</span>
-              <span>Ask ORCA AI</span>
-            </button>
-          </li>
-        </ul>
-
-        <!-- Sidebar Footer -->
+      <!-- ================================================================ SIDEBAR -->
+      <aside class="orca-sidebar" aria-label="Sections">
+        <a class="sb-home" href="#home"><i class="ph ph-house icon" aria-hidden="true"></i><span>Home</span><span class="sb-home-hint">Front page</span></a>
+        <nav>
+          <ul class="sidebar-nav-list">
+            <li><button type="button" class="sidebar-nav-btn active" data-view="dashboard" aria-keyshortcuts="1"><i class="ph ph-squares-four nav-icon" aria-hidden="true"></i><span>Overview</span><kbd class="nav-key" aria-hidden="true">1</kbd></button></li>
+            <li><button type="button" class="sidebar-nav-btn" data-view="map" aria-keyshortcuts="2"><i class="ph ph-map-trifold nav-icon" aria-hidden="true"></i><span>Live map</span><kbd class="nav-key" aria-hidden="true">2</kbd></button></li>
+            <li><button type="button" class="sidebar-nav-btn" data-view="alerts" aria-keyshortcuts="3"><i class="ph ph-warning nav-icon" aria-hidden="true"></i><span>Warnings</span><span class="nav-badge" id="sidebarAlertBadge">0</span><kbd class="nav-key" aria-hidden="true">3</kbd></button></li>
+            <li><button type="button" class="sidebar-nav-btn" data-view="species" aria-keyshortcuts="4"><i class="ph ph-fish nav-icon" aria-hidden="true"></i><span>Protected species</span><kbd class="nav-key" aria-hidden="true">4</kbd></button></li>
+            <li><button type="button" class="sidebar-nav-btn" data-view="analytics" aria-keyshortcuts="5"><i class="ph ph-chart-line-up nav-icon" aria-hidden="true"></i><span>Forecast</span><kbd class="nav-key" aria-hidden="true">5</kbd></button></li>
+            <li><button type="button" class="sidebar-nav-btn" data-view="chat" aria-keyshortcuts="6"><i class="ph ph-chat-circle-text nav-icon" aria-hidden="true"></i><span>Ask ORCA</span><kbd class="nav-key" aria-hidden="true">6</kbd></button></li>
+          </ul>
+        </nav>
         <div class="sidebar-footer">
-          <div class="system-status-indicator">
-            <span class="status-beacon-ring"></span>
-            <span>Neural Link: <strong>ACTIVE</strong></span>
+          <button type="button" class="sb-status" id="sbStatus" data-level="" aria-label="Current verdict. Open the overview">
+            <span class="sb-status-top"><span class="sb-status-dot" aria-hidden="true"></span><span id="sbStatusLevel">Checking</span></span>
+            <strong class="sb-status-headline" id="sbStatusHeadline">Reading the sea</strong>
+            <span class="sb-status-place" id="sbStatusPlace">Locating</span>
+          </button>
+          <div class="sb-distress">
+            <span class="sb-distress-label"><i class="ph ph-lifebuoy icon" aria-hidden="true"></i>In distress</span>
+            <div class="sb-distress-row"><span>VHF channel</span><strong>16</strong></div>
+            <a class="sb-distress-row" href="tel:1554"><span>Coast Guard</span><strong>1554</strong></a>
           </div>
+          <p class="sidebar-note">Advice comes from public forecasts and official warnings. Always follow your local authorities.</p>
         </div>
       </aside>
 
-      <!-- MAIN WORKSPACE STAGE -->
-      <main class="orca-workspace-stage" id="orcaWorkspaceStage">
+      <!-- ================================================================ WORKSPACE -->
+      <main class="orca-workspace-stage" id="orcaWorkspaceStage" tabindex="-1">
 
-        <!-- ==================================================================
-             VIEW 1: DASHBOARD (Overview + KPIs + Mini Map + Intel Deck)
-             ================================================================== -->
-        <div class="workspace-view-panel active-view" id="view-dashboard">
-          
-          <!-- 6 Premium Glass KPI Cards -->
-          <div class="dashboard-kpi-deck">
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">🌊 Ocean Health</span>
-                <span class="kpi-icon-pill">🌿</span>
-              </div>
-              <div class="kpi-main-readout">
-                <span class="kpi-value" id="kpiValHealth">88.4</span>
-                <span class="kpi-unit">% Optimal</span>
-              </div>
-              <div class="kpi-footer-meta">
-                <span class="kpi-trend positive">▲ +2.1% Net</span>
-                <span>Bio-Index</span>
-              </div>
-            </div>
+        <!-- OVERVIEW -->
+        <section class="workspace-view-panel active-view" id="view-dashboard" aria-label="Overview">
+          <div class="overview-grid">
 
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">🐋 Species Detected</span>
-                <span class="kpi-icon-pill">📡</span>
+            <!-- Conditions panel: verdict, risk gauge, 12 h outlook -->
+            <article class="verdict-card" id="verdictCard" data-level="">
+              <div class="vc-main">
+                <p class="eyebrow"><i class="ph ph-crosshair-simple icon" aria-hidden="true"></i><span id="verdictPlace">Locating…</span></p>
+                <span class="verdict-status" id="verdictStatus"></span>
+                <h1 class="verdict-headline" id="verdictHeadline">Checking conditions</h1>
+                <ul class="verdict-reasons" id="verdictReasons"><li class="skeleton-line"></li><li class="skeleton-line short"></li></ul>
+                <div class="verdict-actions">
+                  <button type="button" class="btn btn-primary" id="btnVerdictAsk">Ask why<i class="ph ph-arrow-right icon" aria-hidden="true"></i></button>
+                  <button type="button" class="btn btn-quiet" id="btnVerdictRoute"><i class="ph ph-compass icon" aria-hidden="true"></i>Plan a route</button>
+                </div>
+                <p class="verdict-meta" id="verdictMeta"></p>
               </div>
-              <div class="kpi-main-readout">
-                <span class="kpi-value" id="kpiValSpecies">142</span>
-                <span class="kpi-unit">Tracks</span>
-              </div>
-              <div class="kpi-footer-meta">
-                <span class="kpi-trend positive">▲ 6 Species</span>
-                <span>Hydrophone</span>
-              </div>
-            </div>
 
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">⚠️ Active Alerts</span>
-                <span class="kpi-icon-pill">🚨</span>
+              <div class="vc-gauge">
+                <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="gauge-track" cx="60" cy="60" r="50" pathLength="100"/>
+                  <circle class="gauge-value" id="gaugeValue" cx="60" cy="60" r="50" pathLength="100"/>
+                </svg>
+                <div class="gauge-center" role="img" aria-label="Risk score">
+                  <span class="gauge-num" id="kpiValRisk">--</span>
+                  <span class="gauge-of">of 100</span>
+                </div>
+                <span class="kpi-trend gauge-trend" id="kpiTrendRisk">--</span>
               </div>
-              <div class="kpi-main-readout">
-                <span class="kpi-value" id="kpiValAlerts" style="color: var(--danger-crimson);">3</span>
-                <span class="kpi-unit">Live</span>
-              </div>
-              <div class="kpi-footer-meta">
-                <span class="kpi-trend danger">1 Critical</span>
-                <span>SAR Linked</span>
-              </div>
-            </div>
 
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">🧪 Pollution Risk</span>
-                <span class="kpi-icon-pill">🔬</span>
+              <div class="vc-outlook">
+                <h2 class="vc-outlook-title">Next 12 hours</h2>
+                <button type="button" class="outlook-row" data-goto="analytics:wave_height">
+                  <span class="ol-head"><span><i class="ph ph-waves icon" aria-hidden="true"></i>Waves</span><strong id="olNow-wave_height">--</strong></span>
+                  <svg class="spark" id="olSpark-wave_height" viewBox="0 0 200 44" preserveAspectRatio="none" aria-hidden="true"></svg>
+                  <span class="ol-range" id="olRange-wave_height">Loading forecast</span>
+                </button>
+                <button type="button" class="outlook-row" data-goto="analytics:wind_speed">
+                  <span class="ol-head"><span><i class="ph ph-wind icon" aria-hidden="true"></i>Wind</span><strong id="olNow-wind_speed">--</strong></span>
+                  <svg class="spark" id="olSpark-wind_speed" viewBox="0 0 200 44" preserveAspectRatio="none" aria-hidden="true"></svg>
+                  <span class="ol-range" id="olRange-wind_speed">Loading forecast</span>
+                </button>
               </div>
-              <div class="kpi-main-readout">
-                <span class="kpi-value" id="kpiValPollution" style="color: var(--caution-amber);">32</span>
-                <span class="kpi-unit">/100</span>
-              </div>
-              <div class="kpi-footer-meta">
-                <span class="kpi-trend warning">Moderate</span>
-                <span>Dispersing</span>
-              </div>
-            </div>
+            </article>
 
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">🌡 Sea Surface Temp</span>
-                <span class="kpi-icon-pill">☀️</span>
-              </div>
-              <div class="kpi-main-readout">
-                <span class="kpi-value" id="kpiValTemp">28.4</span>
-                <span class="kpi-unit">°C</span>
-              </div>
-              <div class="kpi-footer-meta">
-                <span class="kpi-trend positive">Nominal SST</span>
-                <span>MODIS Live</span>
-              </div>
-            </div>
-
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">📍 Monitored Zones</span>
-                <span class="kpi-icon-pill">🛡️</span>
-              </div>
-              <div class="kpi-main-readout">
-                <span class="kpi-value" id="kpiValZones">12</span>
-                <span class="kpi-unit">MPA Sectors</span>
-              </div>
-              <div class="kpi-footer-meta">
-                <span class="kpi-trend positive">100% Guard</span>
-                <span>INCOIS Grid</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Split Cockpit: Map Center + Intel Side -->
-          <div class="dashboard-cockpit-split">
-            <!-- Central Map Station -->
-            <div class="dashboard-map-station" style="display:none;"
-              
-              <!-- Location Search & Port Chips -->
+            <!-- Map (moved to the Live map view when that view is open) -->
+            <div class="dashboard-map-station">
               <div class="tactical-location-search-bar" id="locSearchBar">
                 <div class="loc-search-input-wrapper">
-                  <span class="loc-search-icon">🔍</span>
-                  <input type="text" id="inputCustomLocation" placeholder="Search coastal port or coordinates (e.g. Nellore, Chennai, 15.24, 73.80)..." autocomplete="off" spellcheck="false">
-                  <button type="button" id="btnClearLocSearch" class="loc-search-clear">×</button>
+                  <i class="ph ph-magnifying-glass icon loc-search-icon" aria-hidden="true"></i>
+                  <input type="text" id="inputCustomLocation" placeholder="Search any port, coast or coordinates" autocomplete="off" spellcheck="false" aria-label="Search location">
+                  <button type="button" id="btnClearLocSearch" class="loc-search-clear" aria-label="Clear search"><i class="ph ph-x icon" aria-hidden="true"></i></button>
                 </div>
-                <button type="button" id="btnSubmitLocation" class="loc-search-submit">
-                  <span id="txtBtnSubmitLoc">📍 Locate</span>
-                </button>
-                <button type="button" id="btnCurrentGpsLocation" class="loc-search-gps">
-                  <span id="txtBtnCurrentGps">🎯 My GPS</span>
-                </button>
+                <button type="button" id="btnSubmitLocation" class="loc-search-submit"><span id="txtBtnSubmitLoc">Go</span></button>
+                <button type="button" id="btnCurrentGpsLocation" class="loc-search-gps"><i class="ph ph-crosshair-simple icon" aria-hidden="true"></i><span id="txtBtnCurrentGps">My location</span></button>
                 <div class="loc-quick-chips" id="locQuickChips">
-                  <span class="loc-quick-lbl" id="txtQuickPortsLbl">Quick Ports:</span>
-                  <button type="button" class="loc-chip" data-loc="goa">Goa Coastal</button>
+                  <span class="loc-quick-lbl" id="txtQuickPortsLbl">Ports</span>
+                  <button type="button" class="loc-chip" data-loc="goa">Goa</button>
                   <button type="button" class="loc-chip" data-loc="mumbai">Mumbai</button>
                   <button type="button" class="loc-chip" data-loc="chennai">Chennai</button>
-                  <button type="button" class="loc-chip" data-loc="nellore">Nellore</button>
-                  <button type="button" class="loc-chip" data-loc="visakhapatnam">Visakhapatnam</button>
                   <button type="button" class="loc-chip" data-loc="kochi">Kochi</button>
+                  <button type="button" class="loc-chip" data-loc="visakhapatnam">Visakhapatnam</button>
                   <button type="button" class="loc-chip" data-loc="mangalore">Mangalore</button>
-                  <button type="button" class="loc-chip" data-loc="andaman">Andaman &amp; Nicobar</button>
+                  <button type="button" class="loc-chip" data-loc="nellore">Nellore</button>
+                  <button type="button" class="loc-chip" data-loc="andaman">Andaman</button>
                 </div>
               </div>
 
-              <!-- Map Viewport -->
               <div class="chart-viewport" id="chartViewport">
-                <!-- Compass & HUD -->
                 <div class="chart-hud-overlay">
-                  <div class="hud-compass-dial">
-                    <span class="compass-true-north">N ▲ 000°</span>
-                    <span>W • E</span>
-                  </div>
-                  <div class="hud-scale-chip">
-                    <div class="scale-bar-segment"></div>
-                    <span>10 NM (18.5 km)</span>
-                  </div>
                   <button id="btnToggleHeatmap" class="hud-heatmap-btn active" type="button">
-                    <span class="heatmap-live-dot"></span>
-                    <span id="txtHeatmapToggle">HEATMAP: ON</span>
+                    <i class="ph ph-stack-simple icon" aria-hidden="true"></i>
+                    <span id="txtHeatmapToggle">Risk layer: on</span>
                   </button>
                 </div>
 
-                <!-- Legend Panel -->
                 <div class="chart-legend-container">
                   <button id="btnToggleLegend" class="chart-legend-btn" type="button">
                     <span id="txtLegendTitle">Legend</span>
-                    <span id="legendArrow">▾</span>
+                    <span id="legendArrow" aria-hidden="true">▾</span>
                   </button>
-                  <div class="chart-legend-panel" id="chartLegendPanel">
-                    <div class="legend-row">
-                      <span class="legend-swatch swatch-pfz"></span>
-                      <span id="legPfz">Potential Fishing Zone (PFZ)</span>
-                    </div>
-                    <div class="legend-row">
-                      <span class="legend-swatch swatch-caution"></span>
-                      <span id="legCaution">Caution Area</span>
-                    </div>
-                    <div class="legend-row">
-                      <span class="legend-swatch swatch-danger"></span>
-                      <span id="legDanger">Hazard / Squall Warning</span>
-                    </div>
-                    <div class="legend-row">
-                      <span class="legend-swatch swatch-vessel"></span>
-                      <span id="legVessel">Vessel Position (GPS)</span>
-                    </div>
+                  <div class="chart-legend-panel collapsed" id="chartLegendPanel">
+                    <div class="legend-row"><span class="legend-swatch swatch-pfz"></span><span id="legPfz">Calm sea (safety only, not a PFZ forecast)</span></div>
+                    <div class="legend-row"><span class="legend-swatch swatch-caution"></span><span id="legCaution">Caution</span></div>
+                    <div class="legend-row"><span class="legend-swatch swatch-danger"></span><span id="legDanger">Hazard</span></div>
+                    <div class="legend-row"><span class="legend-swatch swatch-vessel"></span><span id="legVessel">Your position</span></div>
                     <div class="heatmap-legend-scale" id="heatmapLegendScale">
-                      <div class="scale-labels">
-                        <span id="heatScaleLow">0% Low Risk</span>
-                        <span id="heatScaleHigh">100% Critical</span>
-                      </div>
                       <div class="scale-gradient-bar"></div>
+                      <div class="scale-labels"><span id="heatScaleLow">Low risk</span><span id="heatScaleHigh">Critical</span></div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Leaflet Container -->
+                <div class="route-planner-panel" id="routePlannerPanel">
+                  <button type="button" class="route-planner-toggle" id="btnRouteToggle"><i class="ph ph-compass icon" aria-hidden="true"></i>Safe route</button>
+                  <div class="route-planner-body" id="routePlannerBody" hidden>
+                    <label class="route-field"><span>From</span><input type="text" id="inputRouteFrom" placeholder="Current location" autocomplete="off"></label>
+                    <label class="route-field"><span>To</span><input type="text" id="inputRouteTo" placeholder="Port, place or lat, lon" autocomplete="off"></label>
+                    <label class="route-field"><span>Vessel</span>
+                      <select id="selectRouteVessel">
+                        <option value="small">Small boat (under 10 m)</option>
+                        <option value="medium">Fishing vessel (10 to 20 m)</option>
+                        <option value="large">Large vessel (over 20 m)</option>
+                      </select>
+                    </label>
+                    <button type="button" class="route-plan-btn" id="btnPlanRoute">Plan safest route</button>
+                    <div class="route-result" id="routeResult" aria-live="polite"></div>
+                  </div>
+                </div>
+
                 <div id="marineMapLeaflet"></div>
 
-                <!-- Tactical Detail Drawer -->
                 <div class="tactical-detail-drawer" id="tacticalDrawer">
                   <div class="drawer-header-row">
-                    <span class="drawer-zone-title" id="drawerTitle">Zone Briefing</span>
-                    <button class="drawer-close-btn" id="btnDismissDrawer" type="button">✕</button>
+                    <span class="drawer-zone-title" id="drawerTitle">Details</span>
+                    <button class="drawer-close-btn" id="btnDismissDrawer" type="button" aria-label="Close"><i class="ph ph-x icon" aria-hidden="true"></i></button>
                   </div>
-                  <p class="drawer-zone-reason" id="drawerReason">Details...</p>
-                  <div style="font-family: var(--font-telemetry); font-size: 11px; color: var(--text-dim);" id="drawerCoordinates">
-                    Sector Coordinates
-                  </div>
+                  <p class="drawer-zone-reason" id="drawerReason"></p>
+                  <div class="drawer-coords" id="drawerCoordinates"></div>
                   <div class="drawer-action-dock">
-                    <button class="card-btn" id="btnDrawerAskChat" type="button" onclick="window.orcaAskInChat(document.getElementById('drawerTitle').textContent)">
-                      <span id="txtDrawerAsk">Ask ORCA in Chat 💬</span>
-                    </button>
-                    <button class="card-btn" id="btnDrawerCloseOnly" type="button" onclick="document.getElementById('tacticalDrawer').style.display='none'">
-                      <span id="txtDrawerDismiss">Close</span>
-                    </button>
+                    <button class="card-btn" id="btnDrawerAskChat" type="button" onclick="window.orcaAskInChat(document.getElementById('drawerTitle').textContent)"><span id="txtDrawerAsk">Ask ORCA</span></button>
+                    <button class="card-btn card-btn-quiet" id="btnDrawerCloseOnly" type="button" onclick="document.getElementById('tacticalDrawer').style.display='none'"><span id="txtDrawerDismiss">Close</span></button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Right Intelligence Panel -->
-            <aside class="dashboard-intel-side" aria-label="Intelligence Feed">
-              <!-- Live Bulletins -->
-              <div class="alerts-feed-container" style="background: var(--bg-console); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px;">
-                <div class="bulletin-registry-header">
-                  <div class="bulletin-registry-title">
-                    <span id="txtRegistryTitle">Active Threat Bulletins</span>
-                    <span style="font-family: var(--font-telemetry); font-size: 10px; color: var(--cyan-primary);" id="badgeDangerCount">1</span>
-                  </div>
-                  <p class="bulletin-status-line">Real-time ocean satellite telemetry</p>
-                </div>
-                <div id="bulletinCardsList">
-                  <!-- Rendered dynamically -->
-                </div>
-              </div>
-            </aside>
-          </div>
-        </div>
-
-        <!-- ==================================================================
-             VIEW 2: LIVE OCEAN MAP (Full Screen Immersion)
-             ================================================================== -->
-        <div class="workspace-view-panel" id="view-map">
-          <!-- The map is moved/rendered into this view when active -->
-          <div style="flex:1; display:flex; flex-direction:column;" id="fullscreenMapContainer">
-            <!-- Inherits interactive Leaflet controls -->
-          </div>
-        </div>
-
-        <!-- ==================================================================
-             VIEW 3: ALERTS STATION
-             ================================================================== -->
-        <div class="workspace-view-panel" id="view-alerts" style="padding: 16px; overflow-y: auto;">
-          <div class="bulletin-registry-header" style="margin-bottom: 12px;">
-            <div class="bulletin-registry-title" style="font-size: 1.3rem;">
-              <span>🚨 Marine Conservation & Safety Alerts</span>
-            </div>
-            <p class="bulletin-status-line">Early warning satellite telemetry, cyclonic squalls, and marine boundary protection.</p>
-          </div>
-
-          <div class="bulletin-filter-bar" style="margin-bottom: 14px;">
-            <button class="bulletin-filter-chip active" id="btnFiltAll" onclick="window.setAlertFilter('all')">All Advisories</button>
-            <button class="bulletin-filter-chip" id="btnFiltDanger" onclick="window.setAlertFilter('danger')">Critical Risk</button>
-            <button class="bulletin-filter-chip" id="btnFiltCaution" onclick="window.setAlertFilter('caution')">Precautionary</button>
-            <button class="bulletin-filter-chip" id="btnFiltResolved" onclick="window.setAlertFilter('resolved')">Nominal Status</button>
-          </div>
-
-          <div id="alertsFullCardsList" style="display: flex; flex-direction: column; gap: 12px;">
-            <!-- Rendered dynamically -->
-          </div>
-        </div>
-
-        <!-- ==================================================================
-             VIEW 4: SPECIES TRACKER (Marine Biodiversity)
-             ================================================================== -->
-        <div class="workspace-view-panel" id="view-species">
-          <div class="species-catalog-view">
-            <div class="species-header-bar">
-              <div class="species-title-lockup">
-                <h2>🐋 Marine Biodiversity & Species Intelligence</h2>
-                <p>Real-time satellite ARGOS and hydrophone acoustic telemetry across the Indian Ocean biosphere.</p>
-              </div>
+            <!-- Instrument column beside the map -->
+            <div class="metric-grid">
+              <article class="metric is-link" data-goto="analytics:wave_height" tabindex="0" role="link" aria-label="Waves: open the wave forecast">
+                <header class="metric-head"><i class="ph ph-waves icon" aria-hidden="true"></i><span class="kpi-title">Waves</span><i class="ph ph-arrow-up-right metric-go" aria-hidden="true"></i></header>
+                <p class="metric-value"><span id="kpiValWave">--</span><span class="metric-unit">m</span></p>
+                <p class="metric-foot"><span class="kpi-trend" id="kpiTrendWave">--</span><span class="metric-src">ECMWF · NOAA</span></p>
+              </article>
+              <article class="metric is-link" data-goto="analytics:wind_speed" tabindex="0" role="link" aria-label="Wind: open the wind forecast">
+                <header class="metric-head"><i class="ph ph-wind icon" aria-hidden="true"></i><span class="kpi-title">Wind</span><i class="ph ph-arrow-up-right metric-go" aria-hidden="true"></i></header>
+                <p class="metric-value"><span id="kpiValWind">--</span><span class="metric-unit">kt</span></p>
+                <p class="metric-foot"><span class="kpi-trend" id="kpiTrendWind">--</span><span class="metric-src">ECMWF · NOAA</span></p>
+              </article>
+              <article class="metric">
+                <header class="metric-head"><i class="ph ph-thermometer-simple icon" aria-hidden="true"></i><span class="kpi-title">Sea temperature</span></header>
+                <p class="metric-value"><span id="kpiValTemp">--</span><span class="metric-unit">°C</span></p>
+                <p class="metric-foot"><span class="kpi-trend" id="kpiTrendTemp">--</span><span class="metric-src">Open-Meteo</span></p>
+              </article>
+              <article class="metric is-link" data-goto="alerts" tabindex="0" role="link" aria-label="Official warnings: open the warnings list">
+                <header class="metric-head"><i class="ph ph-shield-warning icon" aria-hidden="true"></i><span class="kpi-title">Official warnings</span><i class="ph ph-arrow-up-right metric-go" aria-hidden="true"></i></header>
+                <p class="metric-value"><span id="kpiValAlerts">--</span><span class="metric-unit">nearby</span></p>
+                <p class="metric-foot"><span class="kpi-trend" id="kpiTrendAlerts">--</span><span class="metric-src">INCOIS · GDACS</span></p>
+              </article>
+              <article class="metric is-link" data-goto="species" tabindex="0" role="link" aria-label="Threatened species: open the species guide">
+                <header class="metric-head"><i class="ph ph-leaf icon" aria-hidden="true"></i><span class="kpi-title">Threatened species</span><i class="ph ph-arrow-up-right metric-go" aria-hidden="true"></i></header>
+                <p class="metric-value"><span id="kpiValSpecies">--</span><span class="metric-unit">within ~25 km</span></p>
+                <p class="metric-foot"><span class="kpi-trend" id="kpiTrendSpecies">--</span><span class="metric-src">OBIS records</span></p>
+              </article>
             </div>
 
-            <!-- Species Grid -->
-            <div class="species-grid" id="speciesGridContainer">
-              <!-- Rendered dynamically from species-data.js -->
-            </div>
+            <section class="dashboard-intel-side" aria-labelledby="txtRegistryTitle">
+              <header class="section-head">
+                <h2 id="txtRegistryTitle">Warnings &amp; live assessment</h2>
+                <span class="count-badge" id="badgeDangerCount">0</span>
+              </header>
+              <p class="section-sub" id="txtBulletinStatus">Official INCOIS / GDACS warnings and the agents' assessment for this position.</p>
+              <div id="bulletinCardsList" class="bulletin-list"></div>
+            </section>
           </div>
-        </div>
+        </section>
 
-        <!-- ==================================================================
-             VIEW 5: ANALYTICS STUDIO (24-Hour OLS Regression & Trends)
-             ================================================================== -->
-        <div class="workspace-view-panel" id="view-analytics">
-          <div class="graph-viewport" style="position: relative;">
-            <div class="graph-top-hud">
-              <div class="graph-hud-title-lockup">
-                <div class="graph-badge-icon">📈</div>
-                <div>
-                  <div class="graph-hud-title" id="txtGraphHeaderTitle">24-Hour Predictive Linear Regression Engine</div>
-                  <div class="graph-hud-subtitle" id="txtGraphHeaderSubtitle">Ordinary Least Squares (OLS) Trend Analysis & Forecasting</div>
-                </div>
+        <!-- LIVE MAP -->
+        <section class="workspace-view-panel" id="view-map" aria-label="Live map">
+          <div id="fullscreenMapContainer" class="fullscreen-map"></div>
+        </section>
+
+        <!-- WARNINGS: status board + timeline -->
+        <section class="workspace-view-panel view-scroll" id="view-alerts" aria-labelledby="alertsTitle">
+          <div class="page-wrap warn-wrap">
+            <header class="page-head">
+              <p class="eyebrow">Warnings</p>
+              <h1 class="page-title" id="alertsTitle">What could affect you at sea</h1>
+              <p class="page-lede">Official warnings (INCOIS high wave &amp; swell surge, GDACS cyclones &amp; tsunamis), protected areas and the live multi-agent assessment for your position.</p>
+            </header>
+            <div class="bulletin-filter-bar warn-board" role="group" aria-label="Filter warnings">
+              <button type="button" class="bulletin-filter-chip active" id="btnFiltAll" data-group="all" onclick="window.setAlertFilter('all')"><span class="filt-count" id="cntFiltAll"></span><span class="filt-row"><span class="filt-dot filt-all" aria-hidden="true"></span><span class="filt-label">All</span></span></button>
+              <button type="button" class="bulletin-filter-chip" id="btnFiltDanger" data-group="danger" onclick="window.setAlertFilter('danger')"><span class="filt-count" id="cntFiltDanger"></span><span class="filt-row"><span class="filt-dot filt-danger" aria-hidden="true"></span><span class="filt-label">Danger</span></span></button>
+              <button type="button" class="bulletin-filter-chip" id="btnFiltCaution" data-group="caution" onclick="window.setAlertFilter('caution')"><span class="filt-count" id="cntFiltCaution"></span><span class="filt-row"><span class="filt-dot filt-caution" aria-hidden="true"></span><span class="filt-label">Caution</span></span></button>
+              <button type="button" class="bulletin-filter-chip" id="btnFiltResolved" data-group="resolved" onclick="window.setAlertFilter('resolved')"><span class="filt-count" id="cntFiltResolved"></span><span class="filt-row"><span class="filt-dot filt-resolved" aria-hidden="true"></span><span class="filt-label">Normal</span></span></button>
+            </div>
+            <div id="alertsFullCardsList" class="bulletin-list bulletin-list-wide warn-timeline"></div>
+          </div>
+        </section>
+
+        <!-- PROTECTED SPECIES: field guide (list + detail) -->
+        <section class="workspace-view-panel view-scroll" id="view-species" aria-labelledby="speciesTitle">
+          <div class="page-wrap sp-wrap">
+            <header class="sp-hero">
+              <div class="sp-hero-copy">
+                <p class="eyebrow">Ecosystem</p>
+                <h1 class="page-title" id="speciesTitle">Threatened species recorded near you</h1>
+                <p class="page-lede" id="txtSpeciesSubtitle">IUCN Red List species with occurrence records within about 25 km, from OBIS. These are historical records, not live tracking. Use them to avoid bycatch.</p>
               </div>
+              <div class="sp-stats" id="speciesStats" aria-live="polite"></div>
+            </header>
+            <div class="species-toolbar" id="speciesToolbar" hidden>
+              <div class="seg" role="group" aria-label="Filter by IUCN category">
+                <button type="button" class="seg-btn active" data-iucn="all">All<span class="seg-count" id="spCntAll"></span></button>
+                <button type="button" class="seg-btn" data-iucn="CR">Critically endangered<span class="seg-count" id="spCntCR"></span></button>
+                <button type="button" class="seg-btn" data-iucn="EN">Endangered<span class="seg-count" id="spCntEN"></span></button>
+                <button type="button" class="seg-btn" data-iucn="VU">Vulnerable<span class="seg-count" id="spCntVU"></span></button>
+                <button type="button" class="seg-btn" data-iucn="NT">Near threatened<span class="seg-count" id="spCntNT"></span></button>
+              </div>
+              <label class="species-search">
+                <i class="ph ph-magnifying-glass icon" aria-hidden="true"></i>
+                <input type="search" id="speciesSearch" placeholder="Search name, group or family" autocomplete="off" spellcheck="false" aria-label="Search species">
+              </label>
+            </div>
+            <div class="sp-guide">
+              <div class="sp-list" id="speciesGridContainer" role="listbox" aria-label="Species near you"></div>
+              <aside class="sp-detail" id="speciesDetail" aria-live="polite"></aside>
+            </div>
+            <div class="species-bycatch-box" id="speciesBycatchBox" hidden></div>
+          </div>
+        </section>
 
-              <!-- Variable Pills -->
-              <div class="graph-var-pills" role="radiogroup" aria-label="Variables">
+        <!-- FORECAST: variable rail + chart -->
+        <section class="workspace-view-panel view-scroll" id="view-analytics" aria-labelledby="txtGraphHeaderTitle">
+          <div class="page-wrap graph-viewport fc-wrap">
+            <header class="page-head graph-top-hud">
+              <div>
+                <p class="eyebrow">Next 24 hours</p>
+                <h1 class="page-title graph-hud-title" id="txtGraphHeaderTitle">Forecast &amp; verification</h1>
+                <p class="page-lede graph-hud-subtitle" id="txtGraphHeaderSubtitle">ECMWF and NOAA model forecast. The shaded band is where the two models disagree; the error figures compare yesterday's forecast with what happened.</p>
+              </div>
+              <div class="graph-controls">
+                <button class="graph-btn-action" id="btnRecalcRegression" type="button" onclick="ORCA.loadRegressionData()" aria-label="Refresh forecast"><i class="ph ph-arrows-clockwise icon" aria-hidden="true"></i></button>
+              </div>
+            </header>
+
+            <div class="fc-layout">
+              <div class="graph-var-pills fc-rail" role="group" aria-label="Choose what to forecast">
                 <button class="graph-var-pill active" data-var="wave_height" id="btnVarWave" type="button" onclick="ORCA.loadRegressionData('wave_height')">
-                  <span>🌊 Wave Height</span>
+                  <span class="gv-top"><i class="ph ph-waves icon" aria-hidden="true"></i><span class="gv-label">Waves</span></span>
+                  <span class="gv-now" id="gvNow-wave_height">--</span>
+                  <svg class="spark gv-spark" id="gvSpark-wave_height" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </button>
                 <button class="graph-var-pill" data-var="wind_speed" id="btnVarWind" type="button" onclick="ORCA.loadRegressionData('wind_speed')">
-                  <span>💨 Wind Speed</span>
+                  <span class="gv-top"><i class="ph ph-wind icon" aria-hidden="true"></i><span class="gv-label">Wind</span></span>
+                  <span class="gv-now" id="gvNow-wind_speed">--</span>
+                  <svg class="spark gv-spark" id="gvSpark-wind_speed" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </button>
                 <button class="graph-var-pill" data-var="swell_wave_height" id="btnVarSwell" type="button" onclick="ORCA.loadRegressionData('swell_wave_height')">
-                  <span>🌊 Swell Wave</span>
+                  <span class="gv-top"><i class="ph ph-wave-sine icon" aria-hidden="true"></i><span class="gv-label">Swell</span></span>
+                  <span class="gv-now" id="gvNow-swell_wave_height">--</span>
+                  <svg class="spark gv-spark" id="gvSpark-swell_wave_height" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </button>
                 <button class="graph-var-pill" data-var="ocean_current_velocity" id="btnVarCurrent" type="button" onclick="ORCA.loadRegressionData('ocean_current_velocity')">
-                  <span>🧭 Current Velocity</span>
+                  <span class="gv-top"><i class="ph ph-arrows-out-line-horizontal icon" aria-hidden="true"></i><span class="gv-label">Current</span></span>
+                  <span class="gv-now" id="gvNow-ocean_current_velocity">--</span>
+                  <svg class="spark gv-spark" id="gvSpark-ocean_current_velocity" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </button>
                 <button class="graph-var-pill" data-var="risk_score" id="btnVarRisk" type="button" onclick="ORCA.loadRegressionData('risk_score')">
-                  <span>⚡ Risk Score</span>
+                  <span class="gv-top"><i class="ph ph-gauge icon" aria-hidden="true"></i><span class="gv-label" title="From waves and wind only; the overview verdict also counts official warnings">Sea-state risk</span></span>
+                  <span class="gv-now" id="gvNow-risk_score">--</span>
+                  <svg class="spark gv-spark" id="gvSpark-risk_score" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg>
                 </button>
               </div>
 
-              <div class="graph-top-actions">
-                <button class="graph-btn-action" id="btnRecalcRegression" type="button" onclick="ORCA.loadRegressionData()">
-                  <span>🔄 Recalculate</span>
-                </button>
-              </div>
-            </div>
+              <div class="fc-main">
+                <div class="regression-advisory-box safe" id="boxRegAdvisory">
+                  <span class="advisory-label" id="txtRegAdvisoryTitle">Forecast advisory</span>
+                  <p id="txtRegAdvisoryBody">Loading forecast…</p>
+                </div>
 
-            <!-- Canvas Stage -->
-            <div class="graph-canvas-container" id="graphCanvasContainer">
-              <div id="regressionPlotly" style="width:100%;height:100%;"></div>
-              <canvas id="regressionCanvas" style="display:none;"></canvas>
-            </div>
-            <div id="modelEvaluationPanel" style="margin: 0 16px 10px; font-size: 0.78rem;"></div>
+                <div class="graph-canvas-container" id="graphCanvasContainer">
+                  <div id="regressionPlotly"></div>
+                  <canvas id="regressionCanvas" style="display:none;"></canvas>
+                </div>
 
-            <!-- Bottom Telemetry Bar -->
-            <div class="graph-bottom-telemetry-bar">
-              <div class="graph-bottom-card">
-                <span class="graph-bottom-card-lbl" id="lblBtmCurrent">Current Observation (0h)</span>
-                <span class="graph-bottom-card-val" id="valBtmCurrent">1.25 m</span>
-                <span class="graph-bottom-card-sub" id="subBtmCurrent">Live Fix</span>
-              </div>
-              <div class="graph-bottom-card">
-                <span class="graph-bottom-card-lbl" id="lblBtmMid">+6h Midday Projection</span>
-                <span class="graph-bottom-card-val" id="valBtmMid">1.44 m</span>
-                <span class="graph-bottom-card-sub" id="subBtmMid">+0.19m Delta</span>
-              </div>
-              <div class="graph-bottom-card">
-                <span class="graph-bottom-card-lbl">Model Equation</span>
-                <span class="graph-bottom-card-val" id="txtRegEquation" style="font-size: 0.9rem;">y = 0.032x + 1.25</span>
-                <span class="graph-bottom-card-sub">OLS Best-Fit</span>
-              </div>
-              <div class="graph-bottom-card">
-                <span class="graph-bottom-card-lbl">Determination (R² Fit)</span>
-                <span class="graph-bottom-card-val" id="txtRegR2">0.884</span>
-                <span class="graph-bottom-card-sub">High Correlation</span>
-              </div>
-              <div class="graph-bottom-card" style="border-color: var(--cyan-primary);">
-                <span class="graph-bottom-card-lbl" id="lblBtmPeak">24h Peak Horizon</span>
-                <span class="graph-bottom-card-val" id="valBtmPeak" style="color: var(--caution-amber);">2.01 m</span>
-                <span class="graph-bottom-card-sub">Hour +24</span>
-              </div>
-            </div>
-
-            <!-- Statistical Advisory Box -->
-            <div class="regression-advisory-box safe" id="boxRegAdvisory" style="margin: 10px 16px;">
-              <div style="font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                <span>⚠️</span> <span id="txtRegAdvisoryTitle">24-Hour Statistical Marine Advisory</span>
-              </div>
-              <div id="txtRegAdvisoryBody">
-                24-Hour statistical OLS projection confirms steady trend for Significant Wave Height. Maintain regular marine monitoring.
+                <div class="graph-bottom-telemetry-bar">
+                  <div class="graph-bottom-card"><span class="graph-bottom-card-lbl" id="lblBtmCurrent">Now</span><span class="graph-bottom-card-val" id="valBtmCurrent">--</span><span class="graph-bottom-card-sub" id="subBtmCurrent">model analysis</span></div>
+                  <div class="graph-bottom-card"><span class="graph-bottom-card-lbl" id="lblBtmMid">In 6 hours</span><span class="graph-bottom-card-val" id="valBtmMid">--</span><span class="graph-bottom-card-sub" id="subBtmMid">--</span></div>
+                  <div class="graph-bottom-card"><span class="graph-bottom-card-lbl" id="lblBtmPeak">24 h peak</span><span class="graph-bottom-card-val" id="valBtmPeak">--</span><span class="graph-bottom-card-sub" id="subBtmPeak">worst model</span></div>
+                  <div class="graph-bottom-card"><span class="graph-bottom-card-lbl">Forecast error, last 24 h</span><span class="graph-bottom-card-val" id="txtRegEquation">--</span><span class="graph-bottom-card-sub" id="subRegEquation">mean absolute error</span></div>
+                  <div class="graph-bottom-card"><span class="graph-bottom-card-lbl">Skill vs persistence</span><span class="graph-bottom-card-val" id="txtRegR2">--</span><span class="graph-bottom-card-sub" id="subRegR2">1 = perfect · 0 = no better</span></div>
+                </div>
+                <div id="modelEvaluationPanel" class="model-eval"></div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- ==================================================================
-             VIEW 6: "ASK ORCA" AI ASSISTANT
-             ================================================================== -->
-        <div class="workspace-view-panel" id="view-chat">
-          <div class="tactical-log-container">
-            <div class="log-scroll-thread" id="tacticalChatThread">
-              <div class="mission-brief-card">
-                <div class="brief-header-meta">
-                  <div class="brief-title">
-                    <span>🤖 ORCA Ocean Neural Assistant</span>
+        <!-- ASK ORCA: conversation + agent rail -->
+        <section class="workspace-view-panel" id="view-chat" aria-label="Ask ORCA">
+          <div class="chat-layout">
+            <div class="tactical-log-container">
+              <div class="log-scroll-thread" id="tacticalChatThread" aria-live="polite">
+                <div class="chat-intro" id="chatIntro">
+                  <div class="chat-intro-mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32">
+                      <path class="brand-wave" d="M6 20c3 0 4.5-2.4 7.5-2.4S17 20 20 20s4.2-1.2 6-1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M12 17.4c1-4.6 3.6-8.2 7.5-9.4-1.1 3.4-1.1 6.3 0 9.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
                   </div>
-                  <div class="brief-swarm-badge">
-                    <span class="pulse-dot"></span>
-                    <span>Multi-Agent Link Online</span>
-                  </div>
+                  <h1 class="chat-intro-title">What would you like to know about the sea?</h1>
+                  <p class="chat-context">
+                    <i class="ph ph-crosshair-simple icon" aria-hidden="true"></i>
+                    Answering for <strong id="chatPlace">your position</strong>
+                    <button type="button" class="chat-context-change" id="btnChatChangePlace">Change</button>
+                  </p>
+                  <div class="chat-conditions" id="chatConditions" aria-live="polite"></div>
+                  <div class="chat-suggest" id="chatSuggest"></div>
+                  <p class="chat-intro-foot" id="txtBriefBody">Weather, sea state, official warnings, protected areas and species agents answer together. A consensus agent cross-checks them, and every answer shows its reasoning.</p>
                 </div>
-                <p class="brief-desc" id="txtBriefBody">
-                  Satellite connection to INCOIS, MODIS, and coastal hydrophone arrays active. Ask questions about marine safety, endangered species, pollution dispersal, or weather risks.
-                </p>
-                <div class="brief-agent-tags">
-                  <span class="agent-tag">🌊 Marine Met</span>
-                  <span class="agent-tag">🛰️ Satellite SAR</span>
-                  <span class="agent-tag">🐋 Species Acoustic</span>
-                  <span class="agent-tag">⚡ Risk Matrix</span>
-                  <span class="agent-tag">🧠 Ocean LLM</span>
-                </div>
+              </div>
+
+              <div class="tactical-input-dock">
+                <div class="tactical-queries-row" id="quickQueriesRow"></div>
+                <form class="query-input-form" id="tacticalQueryForm" onsubmit="return false;">
+                  <input type="text" id="tacticalQueryInput" class="marine-input-box" placeholder="Ask ORCA (e.g. Is it safe to fish near Kochi today?)" autocomplete="off" aria-label="Your question">
+                  <button class="tactical-voice-btn" id="btnVoiceCommand" type="button" title="Speak your question" aria-label="Speak your question">
+                    <i class="ph ph-microphone icon" aria-hidden="true"></i>
+                    <span class="voice-pulse-ring"></span>
+                  </button>
+                  <button class="tactical-submit-btn" id="btnSubmitQuery" type="submit" aria-label="Send question"><span>Send</span><i class="ph ph-arrow-up icon" aria-hidden="true"></i></button>
+                </form>
+                <p class="chat-disclaimer">ORCA is a planning aid. In distress use VHF 16 or call 1554.</p>
               </div>
             </div>
 
-            <!-- Input Dock -->
-            <div class="tactical-input-dock">
-              <div class="tactical-queries-row" id="quickQueriesRow">
-                <!-- Populated dynamically based on language -->
-              </div>
-
-              <form class="query-input-form" id="tacticalQueryForm" onsubmit="return false;">
-                <input type="text" id="tacticalQueryInput" class="marine-input-box" placeholder="Ask ORCA (e.g. Show pollution hotspots or whale tracks)..." autocomplete="off">
-                <button class="tactical-voice-btn" id="btnVoiceCommand" type="button" title="Voice Command" aria-label="Voice Command">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="23"></line>
-                    <line x1="8" y1="23" x2="16" y2="23"></line>
-                  </svg>
-                  <span class="voice-pulse-ring"></span>
-                </button>
-                <button class="tactical-submit-btn" id="btnSubmitQuery" type="submit">
-                  <span>Send</span>
-                </button>
-              </form>
-            </div>
+            <aside class="chat-rail" aria-label="Agents behind the answer">
+              <section class="rail-card">
+                <h2 class="rail-title">Agents on your question</h2>
+                <ol class="agent-board" id="agentBoard">
+                  <li data-agent="conversational_agent"><i class="ph ph-chat-circle-dots icon" aria-hidden="true"></i><span class="ab-name">Understanding</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="weather_agent"><i class="ph ph-wind icon" aria-hidden="true"></i><span class="ab-name">Weather</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="marine_agent"><i class="ph ph-waves icon" aria-hidden="true"></i><span class="ab-name">Sea state</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="official_alerts_agent"><i class="ph ph-siren icon" aria-hidden="true"></i><span class="ab-name">Official warnings</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="geospatial_agent"><i class="ph ph-shield-check icon" aria-hidden="true"></i><span class="ab-name">Protected areas</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="ecosystem_agent"><i class="ph ph-fish icon" aria-hidden="true"></i><span class="ab-name">Species</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="consensus_agent"><i class="ph ph-scales icon" aria-hidden="true"></i><span class="ab-name">Consensus</span><span class="ab-state">Idle</span></li>
+                  <li data-agent="recommendation_agent"><i class="ph ph-compass icon" aria-hidden="true"></i><span class="ab-name">Advice</span><span class="ab-state">Idle</span></li>
+                </ol>
+                <p class="rail-note" id="agentBoardNote">Ask a question to watch the agents work.</p>
+              </section>
+              <section class="rail-card rail-tips">
+                <h2 class="rail-title">Ask it like this</h2>
+                <ul>
+                  <li>Name a place: "near Kochi" or "15.2, 73.8"</li>
+                  <li>Describe what you see: "3 m waves at the harbour mouth"</li>
+                  <li>Ask in your language, then press <kbd>Listen</kbd> on the answer</li>
+                </ul>
+              </section>
+            </aside>
           </div>
-        </div>
-
+        </section>
       </main>
     </div>
 
-    <!-- ====================================================================
-         4. MOBILE NAVIGATION DOCK (Displays on small screens)
-         ==================================================================== -->
-    <nav class="mobile-bridge-dock" id="mobileBridgeDock" aria-label="Mobile Navigation">
-      <button class="mobile-dock-btn active" id="mobNavChart" data-view="dashboard" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-        </svg>
-        <span id="txtMobChart">Dashboard</span>
-      </button>
-      <button class="mobile-dock-btn" id="mobNavMap" data-view="map" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-        </svg>
-        <span>Live Map</span>
-      </button>
-      <button class="mobile-dock-btn" id="mobNavAlerts" data-view="alerts" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        </svg>
-        <span id="txtMobAlerts">Alerts</span>
-      </button>
-      <button class="mobile-dock-btn" id="mobNavSpecies" data-view="species" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-        </svg>
-        <span id="txtMobSpecies">Species</span>
-      </button>
-      <button class="mobile-dock-btn" id="mobNavGraph" data-view="analytics" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="20" x2="18" y2="10"></line>
-          <line x1="12" y1="20" x2="12" y2="4"></line>
-          <line x1="6" y1="20" x2="6" y2="14"></line>
-        </svg>
-        <span id="txtMobGraph">Analytics</span>
-      </button>
-      <button class="mobile-dock-btn" id="mobNavChat" data-view="chat" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-        <span id="txtMobChat">Ask AI</span>
-      </button>
+    <!-- MOBILE DOCK -->
+    <nav class="mobile-bridge-dock" id="mobileBridgeDock" aria-label="Sections">
+      <button class="mobile-dock-btn active" id="mobNavChart" data-view="dashboard" type="button"><i class="ph ph-squares-four icon" aria-hidden="true"></i><span id="txtMobChart">Overview</span></button>
+      <button class="mobile-dock-btn" id="mobNavMap" data-view="map" type="button"><i class="ph ph-map-trifold icon" aria-hidden="true"></i><span id="txtMobMap">Map</span></button>
+      <button class="mobile-dock-btn" id="mobNavAlerts" data-view="alerts" type="button"><i class="ph ph-warning icon" aria-hidden="true"></i><span id="txtMobAlerts">Warnings</span></button>
+      <button class="mobile-dock-btn" id="mobNavSpecies" data-view="species" type="button"><i class="ph ph-fish icon" aria-hidden="true"></i><span id="txtMobSpecies">Species</span></button>
+      <button class="mobile-dock-btn" id="mobNavGraph" data-view="analytics" type="button"><i class="ph ph-chart-line-up icon" aria-hidden="true"></i><span id="txtMobGraph">Forecast</span></button>
+      <button class="mobile-dock-btn" id="mobNavChat" data-view="chat" type="button"><i class="ph ph-chat-circle-text icon" aria-hidden="true"></i><span id="txtMobChat">Ask</span></button>
     </nav>
-
   </div>
 
-  <!-- Scripts -->
-  <script src="js/species-data.js"></script>
-  <script src="js/orca-dashboard.js"></script>
+  <script defer src="js/orca-dashboard.js?v=8.6"></script>
+  <script defer src="js/app-ui.js?v=8.6"></script>
 </body>
 </html>
