@@ -11,4 +11,4 @@ if errorlevel 1 (
 )
 
 echo Starting KyroX frontend at http://localhost:5500/
-python -m http.server 5500
+python serve.py 5500

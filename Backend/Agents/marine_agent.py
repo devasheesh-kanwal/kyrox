@@ -1,14 +1,17 @@
 # Backend/Agents/marine_agent.py
 """
-Marine Agent — processes raw Open-Meteo Marine API data into clean structured output.
+Marine Agent - turns the Open-Meteo marine payload into structured sea-state
+facts: current conditions, a 12 h look-ahead, independent-model wave values
+for cross-checking, and model-estimated tide timing.
 
-Responsibility: Accept a location, call the marine API tool, and return
-a clean dictionary of marine conditions. No risk calculations, no LLM logic.
+No risk scoring here; the risk and consensus agents consume this output.
+Missing values stay None - they are never replaced with zeros or defaults.
 """
 import logging
+from typing import Optional
 
 from Models.schemas import Location
-from Tools.marine_tools import get_marine_data
+from Tools.marine_tools import MarineDataUnavailable, get_marine_data
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +20,6 @@ class MarineAgentError(Exception):
     """Raised when marine data cannot be retrieved or parsed."""
 
 
-# Marine fields we extract from the API response.
-# Maps API field name → our output key (they happen to match in this case).
 _MARINE_FIELDS = [
     "wave_height",
     "wave_direction",
@@ -26,94 +27,89 @@ _MARINE_FIELDS = [
     "swell_wave_height",
     "swell_wave_period",
     "swell_wave_direction",
-    "ocean_current_velocity",
+    "ocean_current_velocity",   # knots (converted in the tool)
     "ocean_current_direction",
     "sea_surface_temperature",
 ]
 
 
+def _numbers(series) -> list:
+    return [v for v in (series or []) if isinstance(v, (int, float))]
+
+
+def _peak(times: list, series: list) -> tuple[Optional[float], Optional[str]]:
+    best_val, best_time = None, None
+    for t, v in zip(times, series or []):
+        if isinstance(v, (int, float)) and (best_val is None or v > best_val):
+            best_val, best_time = v, t
+    return best_val, (f"{best_time}Z" if best_time else None)
+
+
+def _tide_events(times: list, levels: list) -> dict:
+    """Next high / low water from modelled sea level (local extrema, ~1 h resolution)."""
+    pts = [(t, v) for t, v in zip(times, levels or []) if isinstance(v, (int, float))]
+    next_high = next_low = None
+    for i in range(1, len(pts) - 1):
+        prev_v, (t, v), next_v = pts[i - 1][1], pts[i], pts[i + 1][1]
+        if next_high is None and v >= prev_v and v > next_v:
+            next_high = {"time": f"{t}Z", "level_m": v}
+        if next_low is None and v <= prev_v and v < next_v:
+            next_low = {"time": f"{t}Z", "level_m": v}
+    return {
+        "next_high": next_high,
+        "next_low": next_low,
+        "source": "Open-Meteo modelled sea level (tide + surge), not a tide gauge",
+    }
+
+
 async def marine_agent(location: Location) -> dict:
     """
-    Fetch marine conditions for a vessel location and return clean structured data.
+    Fetch marine conditions for a position.
 
-    Args:
-        location: A Location object with latitude and longitude.
-
-    Returns:
-        dict: Structured marine data, e.g.:
-            {
-                "wave_height": 1.8,
-                "wave_direction": 220,
-                "wave_period": 7.5,
-                "swell_wave_height": 1.2,
-                "ocean_current_velocity": 2.1,
-                "ocean_current_direction": 180,
-                "sea_surface_temperature": 28.4
-            }
-
-    Raises:
-        MarineAgentError: On any failure to retrieve or parse marine data.
+    Returns the flat current fields (backward compatible) plus:
+        forecast_12h, models, tide, source, observed_at, stale, data_available
+    Raises MarineAgentError when nothing usable can be retrieved.
     """
-    # ---- Fetch raw data from the Marine API tool ----
     try:
-        raw_data = await get_marine_data(
-            latitude=location.latitude,
-            longitude=location.longitude,
-        )
+        raw = await get_marine_data(latitude=location.latitude, longitude=location.longitude)
+    except MarineDataUnavailable as exc:
+        logger.info("No marine coverage at (%s, %s)", location.latitude, location.longitude)
+        raise MarineAgentError(str(exc)) from exc
     except Exception as exc:
-        # Don't leak raw upstream error details
-        logger.error(
-            "Marine data fetch failed for (%s, %s): %s",
-            location.latitude, location.longitude, exc,
-        )
+        logger.error("Marine data fetch failed for (%s, %s): %s", location.latitude, location.longitude, exc)
         raise MarineAgentError("Unable to retrieve marine data") from exc
 
-    # ---- Extract the "current" block from the API response ----
-    current_data = raw_data.get("current")
-    if not isinstance(current_data, dict):
-        logger.error(
-            "Missing or invalid 'current' block in Marine API response: %s",
-            type(current_data),
-        )
-        raise MarineAgentError(
-            "Marine API returned an unexpected response format"
-        )
+    current = raw.get("current") or {}
+    conditions = {
+        field: (current.get(field) if isinstance(current.get(field), (int, float)) else None)
+        for field in _MARINE_FIELDS
+    }
 
-    # ---- Build clean structured output ----
-    marine_conditions = {}
-    for field in _MARINE_FIELDS:
-        value = current_data.get(field)
-        if isinstance(value, (int, float)):
-            marine_conditions[field] = value
-        else:
-            # Missing or non-numeric — log a warning but default to None
-            logger.warning(
-                "Marine field '%s' missing or invalid in API response "
-                "(got %r), defaulting to None",
-                field, value,
-            )
-            marine_conditions[field] = None
+    times = raw.get("hourly_time") or []
+    wave_fc = raw.get("forecast", {}).get("wave_height") or []
+    swell_fc = raw.get("forecast", {}).get("swell_wave_height") or []
+    wave_max, wave_max_time = _peak(times, wave_fc)
+    swell_max, _ = _peak(times, swell_fc)
 
-    logger.info(
-        "Marine data processed for (%s, %s): %s",
-        location.latitude, location.longitude, marine_conditions,
-    )
+    models = {}
+    for label, series in (raw.get("models") or {}).items():
+        values = _numbers(series)
+        if values:
+            models[label] = {"wave_height_now": values[0], "wave_height_max_12h": max(values)}
 
-    return marine_conditions
-
-
-# ---------- Example Usage (Test this file directly) ----------
-if __name__ == "__main__":
-    import asyncio
-
-    async def test():
-        try:
-            loc = Location(latitude=20.0, longitude=70.0)
-            result = await marine_agent(loc)
-            print("Structured Marine Data:")
-            for key, val in result.items():
-                print(f"  {key}: {val}")
-        except MarineAgentError as e:
-            print(f"Agent Error: {e}")
-
-    asyncio.run(test())
+    conditions.update({
+        "forecast_12h": {
+            "wave_height_max": wave_max,
+            "wave_height_max_time": wave_max_time,
+            "swell_wave_height_max": swell_max,
+            "hours": len(times),
+        },
+        "models": models,
+        "tide": _tide_events(times, raw.get("sea_level") or []),
+        "source": "Open-Meteo Marine (best match + ECMWF WAM + NOAA GFS-Wave)",
+        "observed_at": raw.get("observed_at"),
+        "stale": bool(raw.get("stale")),
+        "age_seconds": raw.get("age_seconds"),
+        "data_available": True,
+    })
+    return conditions

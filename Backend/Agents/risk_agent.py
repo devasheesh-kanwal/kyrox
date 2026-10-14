@@ -1,239 +1,122 @@
 # Backend/Agents/risk_agent.py
 """
-Risk Agent & Dynamic Heatmap Generator for KyroX Marine Safety AI.
-Constructs a geographic 3x3 risk grid centered around the user's verified GPS coordinates.
-For each grid point:
-    Location -> Weather Agent + Marine Agent + Geospatial Agent -> Deterministic Risk Calculation -> Risk Score (0-100)
-Does not generate fake or random risk scores.
-Evaluates all grid cells concurrently and caches evaluations to optimize API throughput.
+Risk Agent - scores many sea cells at once for the heatmap and route planner.
+
+Previously each heatmap refresh made 27 separate upstream calls (9 points x
+3 agents), which got the app rate-limited. Cells are now fetched in batched
+multi-point requests (2 calls for a whole grid) and scored with the same
+deterministic `calculate_risk` used for the chat advisory, including the
+12 h look-ahead. Land / no-coverage cells are returned as None - never as
+"safe".
 """
 import asyncio
 import logging
-import time
-import os
-import sys
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-# Ensure Backend root is in sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from Models.schemas import Location
-from Agents.gps_agent import gps_agent
-from Agents.marine_agent import marine_agent
-from Agents.weather_agent import weather_agent
 from Agents.geospatial_agent import geospatial_agent
+from Agents.gps_agent import gps_agent
 from Agents.orchestrator import calculate_risk
+from Models.schemas import Location
+from Tools.marine_tools import get_marine_grid
+from Tools.openmeteo_weather import get_weather_grid
 
 logger = logging.getLogger(__name__)
 
-# Default geographic step distance for 3x3 grid (~0.035 degrees ≈ 3.8 km at coastal latitudes)
 GRID_STEP_DEG = 0.035
 
-# In-memory TTL Cache for evaluated coordinates to avoid redundant upstream calls
-# Key: "round(lat, 3)_round(lon, 3)" -> (timestamp, evaluation_result)
-_RISK_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
-CACHE_TTL_SECONDS = 600.0  # 10 minutes
 
-
-def _cache_key(lat: float, lon: float) -> str:
-    return f"{round(lat, 3):.3f}_{round(lon, 3):.3f}"
-
-
-def generate_3x3_coordinates(
-    center_lat: float,
-    center_lon: float,
-    step: float = GRID_STEP_DEG
-) -> List[Tuple[float, float]]:
-    """
-    Generate 3x3 geographic coordinates with the user at the exact center (P5).
-
-    Layout:
-        P1 (North-West)    P2 (North)    P3 (North-East)
-        P4 (West)          USER (Center) P6 (East)
-        P7 (South-West)    P8 (South)    P9 (South-East)
-    """
-    lat_offsets = [step, 0.0, -step]
-    lon_offsets = [-step, 0.0, step]
-
+def generate_3x3_coordinates(center_lat: float, center_lon: float, step: float = GRID_STEP_DEG) -> List[Tuple[float, float]]:
+    """3x3 grid with the user at the centre (row-major, north to south, west to east)."""
     points = []
-    for d_lat in lat_offsets:
-        for d_lon in lon_offsets:
-            pt_lat = max(-90.0, min(90.0, center_lat + d_lat))
-            pt_lon = max(-180.0, min(180.0, center_lon + d_lon))
-            points.append((round(pt_lat, 6), round(pt_lon, 6)))
-
+    for d_lat in (step, 0.0, -step):
+        for d_lon in (-step, 0.0, step):
+            lat = max(-90.0, min(90.0, center_lat + d_lat))
+            lon = ((center_lon + d_lon + 180.0) % 360.0) - 180.0
+            points.append((round(lat, 6), round(lon, 6)))
     return points
 
 
-async def evaluate_risk_point(latitude: float, longitude: float) -> Dict[str, Any]:
-    """
-    Concurrently query real Weather, Marine, and Geospatial APIs for a coordinate,
-    and compute deterministic risk via calculate_risk.
-    Returns None if no real data is available.
-    """
-    ckey = _cache_key(latitude, longitude)
-    now = time.time()
-
-    if ckey in _RISK_CACHE:
-        cached_time, cached_data = _RISK_CACHE[ckey]
-        if now - cached_time < CACHE_TTL_SECONDS:
-            return cached_data
-
-    loc = Location(latitude=latitude, longitude=longitude)
-
-    # Concurrently evaluate real environment conditions for this location
-    try:
-        marine_res, weather_res, geo_res = await asyncio.gather(
-            marine_agent(loc),
-            weather_agent(loc),
-            geospatial_agent(loc),
-            return_exceptions=True
-        )
-    except Exception as exc:
-        logger.warning("Agent gather error for point (%.4f, %.4f): %s", latitude, longitude, exc)
+def score_cell(marine: Optional[dict], weather: Optional[dict], geo: Optional[dict] = None) -> Optional[Dict[str, Any]]:
+    """Score one grid cell from batched grid data. Returns None for land / no data."""
+    if marine is None:
         return None
-
-    if isinstance(marine_res, Exception):
-        logger.warning("Marine agent failed for (%.4f, %.4f): %s", latitude, longitude, marine_res)
-        m_data = {}
-    elif hasattr(marine_res, "model_dump"):
-        m_data = marine_res.model_dump()
-    elif isinstance(marine_res, dict):
-        m_data = marine_res
-    else:
-        m_data = {}
-
-    if isinstance(weather_res, Exception):
-        logger.warning("Weather agent failed for (%.4f, %.4f): %s", latitude, longitude, weather_res)
-        w_data = {}
-    elif hasattr(weather_res, "model_dump"):
-        w_data = weather_res.model_dump()
-    elif isinstance(weather_res, dict):
-        w_data = weather_res
-    else:
-        w_data = {}
-
-    if isinstance(geo_res, Exception):
-        logger.warning("Geospatial agent failed for (%.4f, %.4f): %s", latitude, longitude, geo_res)
-        g_data = {}
-    elif hasattr(geo_res, "model_dump"):
-        g_data = geo_res.model_dump()
-    elif isinstance(geo_res, dict):
-        g_data = geo_res
-    else:
-        g_data = {}
-
-    # Check if we have any real data - if all agents failed, return None
-    if not m_data and not w_data and not g_data:
-        logger.warning("No real data available for point (%.4f, %.4f)", latitude, longitude)
-        return None
-
-    # Cross-fill wave height from marine if weather has 0
-    if not w_data.get("wave_height") and m_data.get("wave_height"):
-        w_data["wave_height"] = m_data["wave_height"]
-
-    # Calculate deterministic risk using verified rules
-    risk_assessment = calculate_risk(
-        marine=m_data,
-        weather=w_data,
-        geospatial=g_data,
-        intent="CHECK_SAFETY",
-        user_message=""
-    )
-
-    risk_score = float(risk_assessment.get("risk_score", 0))
-    risk_level = risk_assessment.get("risk_level", "LOW")
-    wave_height = m_data.get("wave_height")
-    swell_height = m_data.get("swell_wave_height")
-    wind_speed = w_data.get("wind_speed")
-    sst = m_data.get("sea_surface_temperature")
-    restricted = bool(g_data.get("restricted_zone") or g_data.get("inside_protected_area"))
-
-    # A zone is only emitted when the live agent values support it. This is a
-    # suitability model, not a substitute for an official INCOIS advisory.
-    hazard = (
-        risk_level in {"HIGH", "CRITICAL"}
-        or (wave_height is not None and wave_height >= 2.0)
-        or (swell_height is not None and swell_height >= 2.0)
-        or (wind_speed is not None and wind_speed >= 25.0)
-    )
-    caution = (
-        not hazard and (
-            risk_level == "MEDIUM"
-            or (wave_height is not None and wave_height >= 1.2)
-            or (swell_height is not None and swell_height >= 1.2)
-            or (wind_speed is not None and wind_speed >= 18.0)
-        )
-    )
-    suitable = (
-        not restricted and not hazard and not caution
-        and sst is not None and wave_height is not None
-    )
-
-    result = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "risk": round(risk_score, 1),
-        "risk_level": risk_level,
-        "wave_height": wave_height,
-        "swell_height": swell_height,
-        "swell_period": m_data.get("swell_wave_period"),
-        "wind_speed": wind_speed,
-        "sst": sst,
-        "restricted": restricted,
-        "zone_type": "hazard" if hazard else ("caution" if caution else ("pfz" if suitable else None)),
-        "zone_label": "Hazard" if hazard else ("Caution" if caution else ("Suitable fishing area" if suitable else None)),
-        "reasons": risk_assessment.get("reasons", []),
+    weather = weather or {}
+    m = {
+        "wave_height": marine.get("wave_height"),
+        "swell_wave_height": marine.get("swell_wave_height"),
+        "sea_surface_temperature": marine.get("sea_surface_temperature"),
+        "forecast_12h": {"wave_height_max": marine.get("wave_height_max_12h")},
     }
-
-    _RISK_CACHE[ckey] = (now, result)
-    return result
-
-
-async def generate_risk_heatmap(
-    latitude: float,
-    longitude: float,
-    step: float = GRID_STEP_DEG
-) -> Dict[str, Any]:
-    """
-    Generate the complete 3x3 risk heatmap centered on user's verified GPS position.
-    Only includes points where real data is available.
-
-    Returns:
-        {
-            "user_location": {"latitude": ..., "longitude": ...},
-            "risk_points": [
-                {"latitude": ..., "longitude": ..., "risk": ..., "risk_level": ...},
-                ... (points with real data only)
-            ]
-        }
-    """
-    # 1. Validate coordinates strictly with GPS Agent
-    gps_info = gps_agent(latitude, longitude)
-    center_lat = gps_info["latitude"]
-    center_lon = gps_info["longitude"]
-
-    # 2. Build 3x3 grid coordinates
-    grid_coords = generate_3x3_coordinates(center_lat, center_lon, step=step)
-
-    evaluations = await asyncio.gather(
-        *[evaluate_risk_point(pt_lat, pt_lon) for pt_lat, pt_lon in grid_coords]
-    )
-    
-    # Filter out None values (points where no real data was available)
-    risk_points = [eval for eval in evaluations if eval is not None]
-
-    logger.info(
-        "Generated 3x3 risk heatmap for user at (%.4f, %.4f) with %d valid points (out of 9)",
-        center_lat,
-        center_lon,
-        len(risk_points)
-    )
-
-    return {
-        "user_location": {
-            "latitude": center_lat,
-            "longitude": center_lon
+    w = {
+        "wind_speed": weather.get("wind_speed"),
+        "wind_gusts": weather.get("wind_gusts"),
+        "forecast_12h": {
+            "wind_speed_max": weather.get("wind_speed_max_12h"),
+            "wind_gusts_max": weather.get("wind_gusts_max_12h"),
         },
-        "risk_points": list(risk_points)
     }
+    code = weather.get("weather_code")
+    if code in (95, 96, 99):
+        w["lightning_risk"] = "HIGH"
+        w["storm_risk"] = "HIGH"
+    risk = calculate_risk(m, w, geo or {})
+    return {
+        "risk": float(risk["risk_score"]),
+        "risk_level": risk["risk_level"],
+        "reasons": risk["reasons"],
+        "confidence": risk.get("confidence"),
+        "wave_height": m["wave_height"],
+        "wave_height_max_12h": marine.get("wave_height_max_12h"),
+        "swell_height": m["swell_wave_height"],
+        "wind_speed": w["wind_speed"],
+        "wind_speed_max_12h": weather.get("wind_speed_max_12h"),
+        "sst": m["sea_surface_temperature"],
+    }
+
+
+async def score_points(points: List[Tuple[float, float]]) -> List[Optional[Dict[str, Any]]]:
+    marine_cells, weather_cells = await asyncio.gather(get_marine_grid(points), get_weather_grid(points))
+    return [score_cell(m, w) for m, w in zip(marine_cells, weather_cells)]
+
+
+async def generate_risk_heatmap(latitude: float, longitude: float, step: float = GRID_STEP_DEG) -> Dict[str, Any]:
+    """3x3 risk grid around the verified position; only cells with real data are returned."""
+    gps_info = gps_agent(latitude, longitude)
+    center_lat, center_lon = gps_info["latitude"], gps_info["longitude"]
+    grid = generate_3x3_coordinates(center_lat, center_lon, step=step)
+
+    scored, center_geo = await asyncio.gather(
+        score_points(grid),
+        geospatial_agent(Location(latitude=center_lat, longitude=center_lon)),
+        return_exceptions=True,
+    )
+    if isinstance(scored, Exception):
+        raise scored
+    restricted_here = (
+        not isinstance(center_geo, Exception)
+        and bool(center_geo.get("restricted_zone") or center_geo.get("inside_protected_area"))
+    )
+
+    risk_points = []
+    for idx, ((lat, lon), cell) in enumerate(zip(grid, scored)):
+        if cell is None:
+            continue
+        restricted = restricted_here and idx == 4
+        level = cell["risk_level"]
+        wave, swell, wind, sst = cell["wave_height"], cell["swell_height"], cell["wind_speed"], cell["sst"]
+        hazard = level in {"HIGH", "CRITICAL"} or (wave or 0) >= 2.0 or (swell or 0) >= 2.0 or (wind or 0) >= 25
+        caution = not hazard and (level == "MEDIUM" or (wave or 0) >= 1.2 or (swell or 0) >= 1.2 or (wind or 0) >= 18)
+        # "Suitable" = calm and safe now and over the next 12 h. It is a safety
+        # suitability flag, NOT a fish-availability (PFZ) forecast.
+        suitable = not restricted and not hazard and not caution and sst is not None and wave is not None
+        risk_points.append({
+            "latitude": lat,
+            "longitude": lon,
+            **cell,
+            "restricted": restricted,
+            "zone_type": "hazard" if hazard else ("caution" if caution else ("calm" if suitable else None)),
+            "zone_label": "Hazard" if hazard else ("Caution" if caution else ("Calm sea (safety only)" if suitable else None)),
+        })
+
+    logger.info("Heatmap at (%.4f, %.4f): %d/9 sea cells", center_lat, center_lon, len(risk_points))
+    return {"user_location": {"latitude": center_lat, "longitude": center_lon}, "risk_points": risk_points}
